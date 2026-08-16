@@ -4,9 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-
+import 'dart:async';
 import 'location_weather_service.dart';
-import 'models/weather_model.dart';
+import 'earthquake_service.dart';
+import 'models/earthquake_model.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:fl_chart/fl_chart.dart'; // پاکێجی گراف
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,17 +19,18 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late Future<WeatherModel> _weatherData;
+  late Future<List<EarthquakeModel>> _earthquakeData;
 
-  bool _isAiPressed = false;
-  bool _isRainPressed = false;
   bool _isLocationLoading = false;
 
   final MapController _mapController = MapController();
 
   double _latitude = 35.5558;
   double _longitude = 45.4351;
+  double _elevation = 850.0; // گۆڕاوی نوێ بۆ بەرزی زەوی لە ئاستی ڕووی دەریا
 
   String _cityName = 'سلێمانی';
 
@@ -34,40 +39,118 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color _secondaryText = Color(0xFF718096);
   static const Color _purple = Color(0xFF6C5CE7);
 
+  // Animation controller for the interactive touch indicator icon
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  // گۆڕاوی نوێ بۆ جووڵەی سەرنجڕاکێشی ئایکۆنی لۆکەیشن
+  late Animation<double> _locationBounceAnimation;
+
+  // گۆڕاوێک بۆ بەدواداچوونی جووڵەی ئامێر بە بەردەوامی
+  StreamSubscription<Position>? _positionStreamSubscription;
+  Position? _lastFetchedPosition; // بۆ کۆنترۆڵکردنی نوێکردنەوەی کەشوهەوا
+
+  // گۆڕاوێک بۆ هەڵگرتنی ناوەکان تا خێراتر بێت و سێرڤەر بلۆکمان نەکات
+  final Map<String, String> _placeNameCache = {};
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
 
     _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
+    _earthquakeData = EarthquakeService.getRecentEarthquakes();
+    _fetchElevation(
+      _latitude,
+      _longitude,
+    ); // هێنانی بەرزی سەرەتایی (تەنها وەک یەدەگ)
+
+    // نوێکردنەوەی خۆکارانەی داتاکان هەموو ٦ کاتژمێر جارێک
+    _refreshTimer = Timer.periodic(const Duration(hours: 6), (timer) {
+      if (mounted) {
+        setState(() {
+          _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
+        });
+      }
+    });
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 0.0, end: 6.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // دروستکردنی جووڵەی نەرم بۆ ئایکۆنی لۆکەیشن
+    _locationBounceAnimation = Tween<double>(begin: -3.0, end: 3.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initLiveLocation();
+      _startLocationStream(); // دەستپێکردنی بەدواداچونی جووڵەی ئامێر بە هەستیاری زۆرەوە
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // WEATHER / LOCATION
-  // ---------------------------------------------------------------------------
-
-  Future<WeatherModel> _loadWeatherForCoordinates(
-    double latitude,
-    double longitude,
-  ) async {
-    final json = await LocationWeatherService.getWeather(latitude, longitude);
-
-    return WeatherModel.fromJson(json);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _pulseController.dispose();
+    _positionStreamSubscription?.cancel();
+    super.dispose();
   }
 
-  Future<void> _initLiveLocation() async {
-    await _getCurrentLocationAndWeather(showError: false);
+  // ---------------------------------------------------------------------------
+  // LIVE LOCATION STREAM (چاودێریکردنی بەردەوامی جووڵەی ئامێر بە هەستیارییەکی جیوەیی)
+  // ---------------------------------------------------------------------------
+  void _startLocationStream() {
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation, // بەرزترین ئاستی وردی GPS
+      distanceFilter:
+          0, // سفر کراوە بۆ ئەوەی بچووکترین جووڵەی مۆبایلەکە هەست پێبکات
+    );
+
+    _positionStreamSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) {
+            _updateLiveElevationAndLocation(position);
+          },
+        );
   }
 
-  Future<void> _updatePositionData(Position position) async {
+  void _updateLiveElevationAndLocation(Position position) {
     if (!mounted) return;
 
     setState(() {
       _latitude = position.latitude;
       _longitude = position.longitude;
+
+      // ڕاستەوخۆ وەرگرتنی بەرزی لە هەستەوەرەکانی مۆبایلەکەوە بەبێ چاوەڕێکردنی ئینتەرنێت
+      if (position.altitude != 0.0) {
+        _elevation = position.altitude;
+      }
+    });
+
+    // بۆ ئەوەی لەگەڵ هەر بەرزکردنەوەیەکی دەستتدا سێرڤەری کەشوهەوا لۆد نەکرێت و بلۆک نەبیت:
+    // تەنها کاتێک کەشوهەوا نوێ دەکەینەوە کە زیاتر لە ٥ کیلۆمەتر جووڵابیت.
+    if (_lastFetchedPosition == null ||
+        Geolocator.distanceBetween(
+              _lastFetchedPosition!.latitude,
+              _lastFetchedPosition!.longitude,
+              position.latitude,
+              position.longitude,
+            ) >
+            5000) {
+      _lastFetchedPosition = position;
+      _fetchCityAndWeather(position);
+    }
+  }
+
+  Future<void> _fetchCityAndWeather(Position position) async {
+    if (!mounted) return;
+
+    setState(() {
       _isLocationLoading = true;
     });
 
@@ -98,6 +181,134 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // FETCH ELEVATION METHOD (وەک یەدەگ بەکاردێت کاتێک لە نەخشە شارێک هەڵدەبژێریت)
+  // ---------------------------------------------------------------------------
+  Future<void> _fetchElevation(double lat, double lon) async {
+    try {
+      final url = Uri.parse(
+        'https://api.open-meteo.com/v1/elevation?latitude=$lat&longitude=$lon',
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['elevation'] != null) {
+          final List elevations = data['elevation'];
+          if (elevations.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _elevation = (elevations[0] as num).toDouble();
+              });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------------------
+  // MAP LOCATION NAME GETTER (REVERSE GEOCODING)
+  // ---------------------------------------------------------------------------
+
+  String _translateEarthquakePlace(String englishPlace) {
+    String text = englishPlace;
+    text = text.replaceAll(' NNE ', ' باکوور بۆ باکووری ڕۆژهەڵات ');
+    text = text.replaceAll(' ENE ', ' ڕۆژهەڵات بۆ باکووری ڕۆژهەڵات ');
+    text = text.replaceAll(' ESE ', ' ڕۆژهەڵات بۆ باشووری ڕۆژهەڵات ');
+    text = text.replaceAll(' SSE ', ' باشوور بۆ باشووری ڕۆژهەڵات ');
+    text = text.replaceAll(' SSW ', ' باشوور بۆ باشووری ڕۆژئاوا ');
+    text = text.replaceAll(' WSW ', ' ڕۆژئاوا بۆ باشووری ڕۆژئاوا ');
+    text = text.replaceAll(' WNW ', ' ڕۆژئاوا بۆ باکووری ڕۆژئاوا ');
+    text = text.replaceAll(' NNW ', ' باکوور بۆ باکووری ڕۆژئاوا ');
+    text = text.replaceAll(' NE ', ' باکووری ڕۆژهەڵات ');
+    text = text.replaceAll(' SE ', ' باشووری ڕۆژهەڵات ');
+    text = text.replaceAll(' SW ', ' باشووری ڕۆژئاوا ');
+    text = text.replaceAll(' NW ', ' باکووری ڕۆژئاوا ');
+    text = text.replaceAll(' N ', ' باکووری ');
+    text = text.replaceAll(' S ', ' باشووری ');
+    text = text.replaceAll(' E ', ' ڕۆژهەڵاتی ');
+    text = text.replaceAll(' W ', ' ڕۆژئاوای ');
+    text = text.replaceAll('km', 'کم');
+    text = text.replaceAll(' of ', ' لە ');
+    text = text.replaceAll('Iraq', 'عێراق');
+    text = text.replaceAll('Kirkuk', 'کەرکووک');
+    text = text.replaceAll('Sulaymaniyah', 'سلێمانی');
+    text = text.replaceAll('Halabja', 'هەڵەبجە');
+    text = text.replaceAll('Erbil', 'هەولێر');
+    text = text.replaceAll('Duhok', 'دهۆک');
+    text = text.replaceAll('Kalar', 'کەلار');
+    text = text.replaceAll('Chamchamal', 'چەمچەماڵ');
+    text = text.replaceAll('Kifri', 'کفری');
+    text = text.replaceAll('Ranya', 'ڕانیە');
+    text = text.replaceAll('Said Sadiq', 'سیدصادق');
+    text = text.replaceAll('Dukan', 'دوکان');
+    text = text.replaceAll('Zakho', 'زاخۆ');
+    text = text.replaceAll('Mosul', 'موسڵ');
+    text = text.replaceAll('Baghdad', 'بەغدا');
+    text = text.replaceAll('Basra', 'بەسرە');
+    return text;
+  }
+
+  Future<String> _getRealMapLocationName(
+    double lat,
+    double lon,
+    String fallbackName,
+  ) async {
+    final cacheKey = '${lat.toStringAsFixed(2)}_${lon.toStringAsFixed(2)}';
+    if (_placeNameCache.containsKey(cacheKey)) {
+      return _placeNameCache[cacheKey]!;
+    }
+
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&zoom=10&accept-language=ckb,ku,ar',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {'User-Agent': 'com.zheer.weatherapp'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['address'] != null) {
+          final addr = data['address'];
+
+          String place =
+              addr['village'] ??
+              addr['town'] ??
+              addr['city'] ??
+              addr['county'] ??
+              addr['state'] ??
+              'عێراق';
+
+          final finalName = 'لەنزیک $place';
+          _placeNameCache[cacheKey] = finalName;
+          return finalName;
+        }
+      }
+    } catch (_) {}
+
+    return _translateEarthquakePlace(fallbackName);
+  }
+
+  // ---------------------------------------------------------------------------
+  // WEATHER / LOCATION
+  // ---------------------------------------------------------------------------
+
+  Future<WeatherModel> _loadWeatherForCoordinates(
+    double latitude,
+    double longitude,
+  ) async {
+    final json = await LocationWeatherService.getWeather(latitude, longitude);
+
+    return WeatherModel.fromJson(json);
+  }
+
+  Future<void> _initLiveLocation() async {
+    await _getCurrentLocationAndWeather(showError: false);
+  }
+
   Future<void> _getCurrentLocationAndWeather({bool showError = true}) async {
     if (_isLocationLoading) return;
 
@@ -111,15 +322,21 @@ class _HomeScreenState extends State<HomeScreen> {
       final Position position =
           await LocationWeatherService.getCurrentLocation();
 
-      await _updatePositionData(position);
+      // بەکارهێنانی فانکشنی نوێ بۆ نوێکردنەوەی هەستیار و خێرا
+      _updateLiveElevationAndLocation(position);
 
       if (mounted && showError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            backgroundColor: _background,
             content: Text(
               'شوێنەکەت دۆزرایەوە: $_cityName',
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
+              style: const TextStyle(
+                color: _darkText,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             duration: const Duration(seconds: 2),
           ),
@@ -144,10 +361,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            backgroundColor: _background,
             content: Text(
               errorMsg,
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
+              style: const TextStyle(
+                color: _darkText,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             duration: const Duration(seconds: 4),
           ),
@@ -169,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: AlertDialog(
             backgroundColor: _background,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(24),
             ),
             title: const Text(
               'گۆڕینی لۆکەیشن / هەڵبژاردنی شار',
@@ -187,57 +409,72 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _purple,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 15,
-                          horizontal: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      onPressed: _isLocationLoading
+                    child: GestureDetector(
+                      onTap: _isLocationLoading
                           ? null
                           : () async {
                               Navigator.pop(dialogContext);
                               await _getCurrentLocationAndWeather();
                             },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _isLocationLoading
-                              ? const SizedBox(
-                                  width: 19,
-                                  height: 19,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 15,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _background,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              offset: const Offset(-4, -4),
+                              blurRadius: 8,
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              offset: const Offset(4, 4),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _isLocationLoading
+                                ? const SizedBox(
+                                    width: 19,
+                                    height: 19,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: _purple,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.my_location_rounded,
+                                    size: 20,
+                                    color: _purple,
                                   ),
-                                )
-                              : const Icon(Icons.my_location_rounded, size: 20),
-                          const SizedBox(width: 9),
-                          Flexible(
-                            child: Text(
-                              _isLocationLoading
-                                  ? 'لە دۆزینەوەی شوێن...'
-                                  : 'دیاریکردنی لۆکەیشن بە GPS و کەشوهەوا',
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
+                            const SizedBox(width: 9),
+                            Flexible(
+                              child: Text(
+                                _isLocationLoading
+                                    ? 'لە دۆزینەوەی شوێن...'
+                                    : 'دیاریکردنی لۆکەیشن بە GPS و کەشوهەوا',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: _darkText,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Divider(),
+                  Divider(color: _secondaryText.withValues(alpha: 0.2)),
                   const SizedBox(height: 12),
                   const Text(
                     'یان شارێکی خێرا هەڵبژێرە:',
@@ -259,6 +496,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _buildCityChip('دهۆک', 36.8679, 42.9885),
                       _buildCityChip('هەڵەبجە', 35.1772, 45.9877),
                       _buildCityChip('کەرکووک', 35.4681, 44.3922),
+                      _buildCityChip('سیدصادق', 35.354339, 45.867086),
                     ],
                   ),
                 ],
@@ -281,19 +519,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCityChip(String name, double lat, double lon) {
-    return ActionChip(
-      backgroundColor: _background,
-      elevation: 2,
-      label: Text(
-        name,
-        textAlign: TextAlign.right,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          color: _darkText,
-        ),
-      ),
-      onPressed: () {
+    return GestureDetector(
+      onTap: () {
         Navigator.pop(context);
 
         setState(() {
@@ -303,7 +530,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
           _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
         });
+        _fetchElevation(
+          lat,
+          lon,
+        ); // گۆڕینی بەرزی بەپێی شارەکە کاتێک لە دەرەوەی GPS ین
       },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: _background,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.9),
+              offset: const Offset(-3, -3),
+              blurRadius: 6,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              offset: const Offset(3, 3),
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: Text(
+          name,
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: _darkText,
+          ),
+        ),
+      ),
     );
   }
 
@@ -478,6 +737,28 @@ class _HomeScreenState extends State<HomeScreen> {
     return isDay == 1 ? Colors.orangeAccent : Colors.indigoAccent;
   }
 
+  Color _getWeatherCardTint(int code) {
+    if (code == 0) {
+      return const Color(0xFFF7F3EA);
+    }
+    if (code >= 1 && code <= 3) {
+      return const Color(0xFFE8EEF3);
+    }
+    if (code >= 45 && code <= 48) {
+      return const Color(0xFFECEFF1);
+    }
+    if (code >= 51 && code <= 67 || code >= 80 && code <= 82) {
+      return const Color(0xFFE3EDF6);
+    }
+    if (code >= 71 && code <= 77 || code == 85 || code == 86) {
+      return const Color(0xFFEEF4F8);
+    }
+    if (code >= 95 && code <= 99) {
+      return const Color(0xFFEFEAF4);
+    }
+    return _background;
+  }
+
   String _getWeatherDescription(int code) {
     if (code == 0) {
       return 'ساماڵ و ڕووناک';
@@ -597,9 +878,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(Icons.psychology_rounded, color: _purple),
                 SizedBox(width: 10),
                 Text(
-                  'ڕاپۆرتی ٦ ڕۆژی',
+                  'ڕاپۆرتی ڕۆژەکان',
                   textAlign: TextAlign.right,
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: _darkText,
+                  ),
                 ),
               ],
             ),
@@ -641,14 +926,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final String date = data.times[i];
 
-      final dynamic rainAmount =
-          data.precipitationSums.length > i && data.precipitationSums[i] != null
+      final dynamic rainAmount = data.precipitationSums.length > i
           ? data.precipitationSums[i]
           : 0.0;
 
-      final dynamic rainProb =
-          data.precipitationProbabilities.length > i &&
-              data.precipitationProbabilities[i] != null
+      final dynamic rainProb = data.precipitationProbabilities.length > i
           ? data.precipitationProbabilities[i]
           : 0;
 
@@ -677,9 +959,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(Icons.water_drop_rounded, color: Colors.blueAccent),
                 SizedBox(width: 10),
                 Text(
-                  'ڕاپۆرتی باران بۆ ٦ ڕۆژ',
+                  'بڕی باران بارین',
                   textAlign: TextAlign.right,
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: _darkText,
+                  ),
                 ),
               ],
             ),
@@ -714,21 +1000,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showDayDetailDialog(
-    BuildContext context,
-    String date,
-    dynamic maxT,
-    dynamic minT,
-    int weatherCode,
-  ) {
-    final String dayName = _getKurdishDayName(date);
-
-    final double tempMax = maxT is num ? maxT.toDouble() : 35.0;
-
-    final double tempMin = minT is num ? minT.toDouble() : 20.0;
-
-    final double tempShadow = tempMax - 3.5;
-
+  void _showEarthquakeReportDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -739,94 +1011,540 @@ class _HomeScreenState extends State<HomeScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(22),
             ),
-            title: Text(
-              'کەشوهەوای $dayName',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: _darkText,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            title: const Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                Icon(Icons.waves_rounded, color: Colors.deepOrangeAccent),
+                SizedBox(width: 10),
                 Text(
-                  'بەروار: $date',
+                  '  سەرچاوەکانی  (USGS)',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: _secondaryText,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: _darkText,
                   ),
-                ),
-                const SizedBox(height: 18),
-                Center(
-                  child: Container(
-                    width: 82,
-                    height: 82,
-                    decoration: BoxDecoration(
-                      color: _getWeatherIconColor(
-                        weatherCode,
-                        1,
-                      ).withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _getWeatherIcon(weatherCode, 1),
-                      color: _getWeatherIconColor(weatherCode, 1),
-                      size: 46,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Center(
-                  child: Text(
-                    _getWeatherDescription(weatherCode),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                      color: _darkText,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildDetailRow(
-                  Icons.thermostat_rounded,
-                  Colors.redAccent,
-                  'بەرز',
-                  '${tempMax.toStringAsFixed(1)} °C',
-                ),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  Icons.ac_unit_rounded,
-                  Colors.blueAccent,
-                  'نزم',
-                  '${tempMin.toStringAsFixed(1)} °C',
-                ),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  Icons.wb_sunny_rounded,
-                  Colors.orange,
-                  'لە بەرخۆر',
-                  '${tempMax.toStringAsFixed(1)} °C',
-                ),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  Icons.park_rounded,
-                  Colors.green,
-                  'لە سێبەر',
-                  '${tempShadow.toStringAsFixed(1)} °C',
-                ),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  Icons.nightlight_round,
-                  Colors.indigoAccent,
-                  'شەو',
-                  '${tempMin.toStringAsFixed(1)} °C',
                 ),
               ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: FutureBuilder<List<EarthquakeModel>>(
+                future: _earthquakeData,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'هەڵە لە وەرگرتنی داتا: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                        textAlign: TextAlign.right,
+                      ),
+                    );
+                  }
+
+                  final allEarthquakes = snapshot.data ?? [];
+                  final now = DateTime.now();
+
+                  final earthquakes = allEarthquakes.where((eq) {
+                    final isIraq = eq.place.toLowerCase().contains('iraq');
+                    if (!isIraq) return false;
+
+                    try {
+                      final eqTime = DateTime.parse(eq.time);
+                      final difference = now.difference(eqTime).inHours;
+                      return difference <= 48 && difference >= 0;
+                    } catch (_) {
+                      return true;
+                    }
+                  }).toList();
+
+                  if (earthquakes.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text(
+                          'هیچ بومەلەرزەیەک لە هەرێمی کوردستان تۆمار نەکراوە لە ٤٨ سەعاتی ڕابردوودا',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: _darkText,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          '  بومەلەرزەکان لە هەرێمی کوردستان وعێراق (٤٨ سەعاتی ڕابردوو):',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: _secondaryText,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            height: 220,
+                            child: FlutterMap(
+                              options: MapOptions(
+                                initialCenter: LatLng(
+                                  earthquakes.first.lat,
+                                  earthquakes.first.lon,
+                                ),
+                                initialZoom: 6.0,
+                              ),
+                              children: [
+                                TileLayer(
+                                  urlTemplate:
+                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  userAgentPackageName: 'com.zheer.weatherapp',
+                                ),
+                                MarkerLayer(
+                                  markers: earthquakes.map((eq) {
+                                    return Marker(
+                                      point: LatLng(eq.lat, eq.lon),
+                                      width: 40,
+                                      height: 40,
+                                      child: Tooltip(
+                                        message:
+                                            'شوێن: ${eq.place}\nبری گوڕ: ${eq.mag} ڕێختەر\nقوڵی: ${eq.depth.toStringAsFixed(1)} کم\nکات و بەروار: ${eq.time}',
+                                        child: const Icon(
+                                          Icons.crisis_alert_rounded,
+                                          color: Colors.deepOrange,
+                                          size: 32,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'لیستی بومەلەرزەکان لە هەرێمی کوردستان و عێراق:',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: _darkText,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...earthquakes.take(10).map((eq) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10.0),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _background,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    offset: const Offset(-3, -3),
+                                    blurRadius: 6,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    offset: const Offset(3, 3),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  FutureBuilder<String>(
+                                    future: _getRealMapLocationName(
+                                      eq.lat,
+                                      eq.lon,
+                                      eq.place,
+                                    ),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Text(
+                                          'شوێن: لە دیاریکردندایە...',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 13,
+                                            color: Colors.grey,
+                                          ),
+                                        );
+                                      }
+
+                                      final placeName =
+                                          snapshot.data ?? 'نەناسراو';
+
+                                      return Text(
+                                        'شوێن: $placeName',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 13,
+                                          color: _darkText,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'بری گوڕ: ${eq.mag} ڕێختەر',
+                                    style: const TextStyle(
+                                      color: Colors.deepOrange,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'قوڵی: ${eq.depth.toStringAsFixed(1)} کم',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'کات و بەروار: ${eq.time}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 11,
+                                      color: _secondaryText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text(
+                  'داخستن',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDayDetailDialog(
+    BuildContext context,
+    String date,
+    dynamic maxT,
+    dynamic minT,
+    int weatherCode,
+    WeatherModel data,
+  ) {
+    final String dayName = _getKurdishDayName(date);
+
+    String searchDate = date.trim();
+    if (searchDate.contains('T')) {
+      searchDate = searchDate.split('T').first;
+    } else if (searchDate.contains(' ')) {
+      searchDate = searchDate.split(' ').first;
+    }
+
+    List<int> matchedIndices = [];
+    DateTime? selectedDt;
+    try {
+      selectedDt = DateTime.parse(searchDate);
+    } catch (_) {}
+
+    for (int i = 0; i < data.hourlyTimes.length; i++) {
+      bool isMatch = false;
+      if (selectedDt != null) {
+        try {
+          DateTime hDt = DateTime.parse(data.hourlyTimes[i]);
+          if (hDt.year == selectedDt.year &&
+              hDt.month == selectedDt.month &&
+              hDt.day == selectedDt.day) {
+            isMatch = true;
+          }
+        } catch (_) {}
+      }
+
+      if (!isMatch && data.hourlyTimes[i].contains(searchDate)) {
+        isMatch = true;
+      }
+
+      if (isMatch) {
+        matchedIndices.add(i);
+      }
+    }
+
+    List<int> filteredIndices = [];
+    for (int idx in matchedIndices) {
+      try {
+        DateTime hDt = DateTime.parse(data.hourlyTimes[idx]).toLocal();
+        if (hDt.hour % 4 == 0) {
+          filteredIndices.add(idx);
+        }
+      } catch (_) {
+        String timeOnly = data.hourlyTimes[idx].contains('T')
+            ? data.hourlyTimes[idx].split('T')[1]
+            : data.hourlyTimes[idx].split(' ')[1];
+        int hour = int.tryParse(timeOnly.split(':')[0]) ?? 0;
+        if (hour % 4 == 0) {
+          filteredIndices.add(idx);
+        }
+      }
+    }
+
+    if (filteredIndices.length > 8) {
+      filteredIndices = filteredIndices.take(8).toList();
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: _background,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'کەشوهەوای کاتژمێری ($dayName)',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: _darkText,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: _purple),
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 340,
+              child: filteredIndices.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'داتای سەعات بە سەعات بەردەست نییە بۆ ئەم ڕۆژە.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: _darkText,
+                        ),
+                      ),
+                    )
+                  : GridView.builder(
+                      itemCount: filteredIndices.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 1.5,
+                          ),
+                      itemBuilder: (context, index) {
+                        final realIdx = filteredIndices[index];
+                        final String fullTime = data.hourlyTimes[realIdx];
+
+                        final String timeOnly = fullTime.contains('T')
+                            ? fullTime.split('T')[1].substring(0, 5)
+                            : fullTime;
+
+                        String formattedTime12 = timeOnly;
+                        try {
+                          int hour24 = int.parse(timeOnly.split(':')[0]);
+                          String period = hour24 >= 12 ? 'PM' : 'AM';
+                          int hour12 = hour24 % 12;
+                          if (hour12 == 0) hour12 = 12;
+                          formattedTime12 = '$hour12:00 $period';
+                        } catch (_) {}
+
+                        final double temp = data.hourlyTemperatures[realIdx];
+                        final int hCode = data.hourlyWeatherCodes[realIdx];
+                        final double rain = data.hourlyPrecipitations[realIdx];
+                        final double wind = data.hourlyWindSpeeds[realIdx];
+
+                        int humidity = 0;
+                        try {
+                          if (data.hourlyHumidities.isNotEmpty &&
+                              data.hourlyHumidities.length > realIdx) {
+                            humidity = data.hourlyHumidities[realIdx];
+                          }
+                        } catch (_) {
+                          humidity = 0;
+                        }
+
+                        final int hourVal = int.parse(timeOnly.split(':')[0]);
+                        final int isDayTime = (hourVal >= 6 && hourVal < 19)
+                            ? 1
+                            : 0;
+
+                        final Color weatherColor = _getWeatherIconColor(
+                          hCode,
+                          isDayTime,
+                        );
+                        final IconData weatherIcon = _getWeatherIcon(
+                          hCode,
+                          isDayTime,
+                        );
+
+                        return Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _background,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                offset: const Offset(-3, -3),
+                                blurRadius: 6,
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                offset: const Offset(3, 3),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    formattedTime12,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 11,
+                                      color: _darkText,
+                                    ),
+                                  ),
+                                  Icon(
+                                    weatherIcon,
+                                    color: weatherColor,
+                                    size: 22,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${temp.round()}°C',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 13,
+                                      color: _purple,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.water_drop,
+                                        size: 9,
+                                        color: Colors.blueAccent,
+                                      ),
+                                      Text(
+                                        ' ${rain.toStringAsFixed(1)}ملم',
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: _secondaryText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.air,
+                                        size: 9,
+                                        color: Colors.teal,
+                                      ),
+                                      Text(
+                                        ' ${wind.round()}کم/س',
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: _secondaryText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.water,
+                                        size: 9,
+                                        color: Colors.lightBlue,
+                                      ),
+                                      Text(
+                                        ' %$humidity',
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: _secondaryText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
             actions: [
               TextButton(
@@ -844,30 +1562,80 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDetailRow(
-    IconData icon,
-    Color color,
-    String title,
-    String value,
-  ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Text(
-            '$title: $value',
-            textAlign: TextAlign.right,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: _darkText,
-            ),
+  Widget _buildNeuContainer({
+    required Widget child,
+    EdgeInsetsGeometry? padding,
+    double radius = 20,
+    Color? customColor,
+  }) {
+    return Container(
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: customColor ?? _background,
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.85),
+            offset: const Offset(-5, -5),
+            blurRadius: 10,
           ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            offset: const Offset(5, 5),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildSummaryCard({
+    required IconData icon,
+    required Color iconColor,
+    required Color cardColor,
+    required String title,
+    required String value,
+    required bool wideScreen,
+  }) {
+    return _buildNeuContainer(
+      radius: 10,
+      customColor: cardColor,
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: iconColor, size: 13),
+            const SizedBox(width: 3),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    color: _secondaryText,
+                  ),
+                ),
+                const SizedBox(height: 0.5),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: _darkText,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(width: 9),
-        Icon(icon, color: color, size: 23),
-      ],
+      ),
     );
   }
 
@@ -917,22 +1685,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
               final WeatherModel data = snapshot.data!;
 
-              final double todayMax =
-                  data.maxTemps.isNotEmpty && data.maxTemps[0] is num
-                  ? (data.maxTemps[0] as num).toDouble()
+              final currentCode = data.weatherCodes.isNotEmpty
+                  ? data.weatherCodes[0]
+                  : 0;
+
+              final double todayMax = data.maxTemps.isNotEmpty
+                  ? data.maxTemps[0]
                   : data.currentTemp.toDouble();
 
-              final double todayMin =
-                  data.minTemps.isNotEmpty && data.minTemps[0] is num
-                  ? (data.minTemps[0] as num).toDouble()
+              final double todayMin = data.minTemps.isNotEmpty
+                  ? data.minTemps[0]
                   : data.currentTemp.toDouble();
 
-              final double todayRainSum =
-                  data.precipitationSums.isNotEmpty &&
-                      data.precipitationSums[0] is num
-                  ? (data.precipitationSums[0] as num).toDouble()
+              final double todayRainSum = data.precipitationSums.isNotEmpty
+                  ? data.precipitationSums[0]
                   : 0.0;
-
               final String todayDate = data.times.isNotEmpty
                   ? data.times[0]
                   : DateTime.now().toIso8601String().split('T').first;
@@ -964,7 +1731,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           vertical: 14,
                         ),
                         children: [
-                          // HEADER
+                          // HEADER (تایبەت بە لۆکەیشن و کارتەی بەرزی زەوی لە لای چەپ)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -973,17 +1740,30 @@ class _HomeScreenState extends State<HomeScreen> {
                                 onTap: () => _showLocationPickerDialog(context),
                                 child: _buildNeuContainer(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 7,
+                                    horizontal: 14,
+                                    vertical: 8,
                                   ),
                                   radius: 14,
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.location_on_rounded,
-                                        color: Colors.redAccent,
-                                        size: 17,
+                                      // جووڵاندنی ئایکۆنی لۆکەیشن بۆ سەرنجڕاکێشانی بەکارهێنەر
+                                      AnimatedBuilder(
+                                        animation: _locationBounceAnimation,
+                                        builder: (context, child) {
+                                          return Transform.translate(
+                                            offset: Offset(
+                                              0,
+                                              _locationBounceAnimation.value,
+                                            ),
+                                            child: child,
+                                          );
+                                        },
+                                        child: const Icon(
+                                          Icons.location_on_rounded,
+                                          color: Colors.redAccent,
+                                          size: 17,
+                                        ),
                                       ),
                                       const SizedBox(width: 5),
                                       Text(
@@ -995,26 +1775,51 @@ class _HomeScreenState extends State<HomeScreen> {
                                           color: _darkText,
                                         ),
                                       ),
+                                      const SizedBox(width: 4),
+                                      // ئایکۆنێکی بچووکی تیر یان گۆڕین بۆ نیشاندانی ئەوەی دەتوانرێت داگیرسێنرێت
+                                      const Icon(
+                                        Icons.unfold_more_rounded,
+                                        size: 14,
+                                        color: _secondaryText,
+                                      ),
                                     ],
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  '  ',
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    fontSize: wideScreen ? 10 : 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: _secondaryText,
-                                  ),
+
+                              // کارتی GPS و بەرزی زەوی بە شێوەی زۆر هەستیار
+                              _buildNeuContainer(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                radius: 14,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.terrain_rounded,
+                                      color: Colors.teal,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${_elevation.toStringAsFixed(2)} م', // پیشاندانی گۆڕانکاری بە پۆینتەوە
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 12,
+                                        color: _darkText,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
 
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
 
                           // SUMMARY CARDS
                           Row(
@@ -1023,178 +1828,943 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: _buildSummaryCard(
                                   icon: Icons.thermostat_rounded,
                                   iconColor: Colors.redAccent,
+                                  cardColor: _background,
                                   title: 'بەرزترین',
                                   value: '${todayMax.round()}°',
                                   wideScreen: wideScreen,
                                 ),
                               ),
-                              const SizedBox(width: 7),
+                              const SizedBox(width: 9),
                               Expanded(
                                 child: _buildSummaryCard(
                                   icon: Icons.ac_unit_rounded,
                                   iconColor: Colors.blueAccent,
+                                  cardColor: _background,
                                   title: 'نزمترین',
                                   value: '${todayMin.round()}°',
                                   wideScreen: wideScreen,
                                 ),
                               ),
-                              const SizedBox(width: 7),
+                              const SizedBox(width: 9),
                               Expanded(
                                 child: _buildSummaryCard(
-                                  icon: Icons.nightlight_round,
-                                  iconColor: Colors.indigoAccent,
-                                  title: 'شەوانی',
-                                  value: '${todayMin.round()}°',
+                                  icon: Icons.water_drop_rounded,
+                                  iconColor: Colors.indigo,
+                                  cardColor: _background,
+                                  title: 'باران',
+                                  value:
+                                      '${todayRainSum.toStringAsFixed(1)}  mm ',
                                   wideScreen: wideScreen,
                                 ),
                               ),
                             ],
                           ),
 
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 16),
 
-                          // CURRENT WEATHER
-                          _buildCurrentWeatherCard(
-                            data: data,
-                            todayMax: todayMax,
-                            todayMin: todayMin,
-                            wideScreen: wideScreen,
+                          // NEUMORPHIC METEOGRAM CARD (بۆدی چارت و میتۆگرام بە ڕەنگی ناسک و هێمن)
+                          _buildNeuContainer(
+                            radius: 24,
+                            customColor: const Color(
+                              0xFFE6ECF5,
+                            ), // ڕەنگێکی ناسک و گونجاو لەگەڵ سیستەمەکە
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          _getWeatherIcon(
+                                            currentCode,
+                                            data.isDay,
+                                          ),
+                                          color: _getWeatherIconColor(
+                                            currentCode,
+                                            data.isDay,
+                                          ),
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '${data.currentTemp.round()}°C - ${_getWeatherDescription(currentCode)}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                            color: _darkText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Text(
+                                      ' ',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: _secondaryText,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+
+                                SizedBox(
+                                  height:
+                                      75, // بچووککردنەوەی بەرزی چارتەکە لە 100 بۆ 75
+                                  child: LineChart(
+                                    LineChartData(
+                                      minX: 0,
+                                      maxX:
+                                          (min(
+                                                    24,
+                                                    data
+                                                        .hourlyTemperatures
+                                                        .length,
+                                                  ) -
+                                                  1)
+                                              .toDouble()
+                                              .clamp(0.0, 23.0),
+                                      minY: 0,
+                                      maxY: 40,
+                                      gridData: FlGridData(
+                                        show: true,
+                                        drawVerticalLine: true,
+                                        getDrawingHorizontalLine: (value) =>
+                                            FlLine(
+                                              color: _secondaryText.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              strokeWidth: 1,
+                                            ),
+                                        getDrawingVerticalLine: (value) =>
+                                            FlLine(
+                                              color: _secondaryText.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              strokeWidth: 1,
+                                            ),
+                                      ),
+                                      titlesData: FlTitlesData(
+                                        rightTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 28,
+                                            getTitlesWidget: (value, meta) {
+                                              if (value == 0 ||
+                                                  value == 10 ||
+                                                  value == 20) {
+                                                return Text(
+                                                  '${value ~/ 2} ملم',
+                                                  style: const TextStyle(
+                                                    fontSize: 7,
+                                                    color: Colors.blue,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                );
+                                              }
+                                              return const SizedBox.shrink();
+                                            },
+                                          ),
+                                        ),
+                                        topTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
+                                        ),
+                                        leftTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 28,
+                                            getTitlesWidget: (value, meta) {
+                                              if (value >= 15 &&
+                                                  value <= 35 &&
+                                                  value % 5 == 0) {
+                                                return Text(
+                                                  '${value.toInt()}°',
+                                                  style: const TextStyle(
+                                                    fontSize: 7,
+                                                    color: Colors.red,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                );
+                                              }
+                                              return const SizedBox.shrink();
+                                            },
+                                          ),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 20,
+                                            getTitlesWidget: (value, meta) {
+                                              int idx = value.toInt();
+                                              if (idx >= 0 &&
+                                                  idx <
+                                                      (data
+                                                          .hourlyTimes
+                                                          .length)) {
+                                                String fullTime =
+                                                    data.hourlyTimes[idx];
+                                                String timeOnly =
+                                                    fullTime.contains('T')
+                                                    ? fullTime
+                                                          .split('T')[1]
+                                                          .substring(0, 5)
+                                                    : fullTime;
+
+                                                if (idx % 3 == 0) {
+                                                  return SideTitleWidget(
+                                                    axisSide: meta.axisSide,
+                                                    space: 2,
+                                                    child: Text(
+                                                      timeOnly,
+                                                      style: const TextStyle(
+                                                        fontSize: 7,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: _secondaryText,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                              return const SizedBox.shrink();
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      borderData: FlBorderData(show: false),
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: List.generate(
+                                            min(
+                                              24,
+                                              data.hourlyTemperatures.length,
+                                            ),
+                                            (i) {
+                                              double temp =
+                                                  data.hourlyTemperatures[i];
+                                              double mappedY =
+                                                  15.0 + (temp - 15.0) * 0.8;
+                                              return FlSpot(
+                                                i.toDouble(),
+                                                mappedY.clamp(10.0, 38.0),
+                                              );
+                                            },
+                                          ),
+                                          isCurved: true,
+                                          color: Colors.red,
+                                          barWidth: 2.5,
+                                          isStrokeCapRound: true,
+                                          dotData: FlDotData(
+                                            show: true,
+                                            getDotPainter: (spot, percent, barData, index) {
+                                              int idx = spot.x.toInt();
+                                              int hCode =
+                                                  (data
+                                                          .hourlyWeatherCodes
+                                                          .isNotEmpty &&
+                                                      data
+                                                              .hourlyWeatherCodes
+                                                              .length >
+                                                          idx)
+                                                  ? data.hourlyWeatherCodes[idx]
+                                                  : 0;
+
+                                              String fullTime =
+                                                  (data
+                                                          .hourlyTimes
+                                                          .isNotEmpty &&
+                                                      data.hourlyTimes.length >
+                                                          idx)
+                                                  ? data.hourlyTimes[idx]
+                                                  : '00:00';
+                                              String timeOnly =
+                                                  fullTime.contains('T')
+                                                  ? fullTime
+                                                        .split('T')[1]
+                                                        .substring(0, 5)
+                                                  : fullTime;
+                                              int hourVal =
+                                                  int.tryParse(
+                                                    timeOnly.split(':')[0],
+                                                  ) ??
+                                                  0;
+                                              int isDayTime =
+                                                  (hourVal >= 6 && hourVal < 19)
+                                                  ? 1
+                                                  : 0;
+
+                                              if (idx % 3 == 0) {
+                                                return _CustomWeatherDotPainter(
+                                                  icon: _getWeatherIcon(
+                                                    hCode,
+                                                    isDayTime,
+                                                  ),
+                                                  color: _getWeatherIconColor(
+                                                    hCode,
+                                                    isDayTime,
+                                                  ),
+                                                  radius:
+                                                      12, // زیادکردنی قەبارەی ئایکۆنەکان لە 8 بۆ 12
+                                                );
+                                              } else {
+                                                return FlDotCirclePainter(
+                                                  radius: 1.5,
+                                                  color: Colors.red,
+                                                  strokeWidth: 1,
+                                                  strokeColor: Colors.white,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                          belowBarData: BarAreaData(
+                                            show: false,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 8),
+
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                    horizontal: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _background,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                        offset: const Offset(-2, -2),
+                                        blurRadius: 4,
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.05,
+                                        ),
+                                        offset: const Offset(2, 2),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceAround,
+                                    children: List.generate(8, (index) {
+                                      return Column(
+                                        children: const [
+                                          Icon(
+                                            Icons.arrow_outward_rounded,
+                                            size: 10,
+                                            color: _darkText,
+                                          ),
+                                          SizedBox(height: 1),
+                                          Text(
+                                            '٢ م/س',
+                                            style: TextStyle(
+                                              fontSize: 7,
+                                              color: _secondaryText,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 6),
+
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(
+                                      Icons.square,
+                                      color: Colors.red,
+                                      size: 10,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'پلەی گەرمی (°C)',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(width: 14),
+                                    Icon(
+                                      Icons.square,
+                                      color: Colors.blue,
+                                      size: 10,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'باران بارین (ملم)',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
 
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 16),
 
-                          // SUN
-                          _buildSunCard(
-                            sunTimes: sunTimes,
-                            wideScreen: wideScreen,
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // MAP
-                          _buildMapCard(),
-
-                          const SizedBox(height: 14),
-
-                          // REPORT BUTTONS
+                          // ACTION BUTTONS
                           Row(
                             children: [
                               Expanded(
-                                child: _buildReportButton(
-                                  icon: Icons.cloud_rounded,
-                                  title: 'ڕاپۆرتی گشتی',
-                                  color: _purple,
-                                  pressed: _isAiPressed,
-                                  onTapDown: (_) {
-                                    setState(() {
-                                      _isAiPressed = true;
-                                    });
-                                  },
-                                  onTapUp: (_) {
-                                    setState(() {
-                                      _isAiPressed = false;
-                                    });
-                                  },
-                                  onTapCancel: () {
-                                    setState(() {
-                                      _isAiPressed = false;
-                                    });
-                                  },
+                                child: GestureDetector(
                                   onTap: () => _showDetailedAIReportDialog(
                                     context,
                                     data,
                                   ),
-                                  wideScreen: wideScreen,
+                                  child: _buildNeuContainer(
+                                    radius: 18,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                      horizontal: 10,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.psychology_rounded,
+                                              size: 18,
+                                              color: _purple,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'کەشوهەوا ',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        AnimatedBuilder(
+                                          animation: _pulseAnimation,
+                                          builder: (context, child) {
+                                            return Transform.translate(
+                                              offset: Offset(
+                                                _pulseAnimation.value,
+                                                0,
+                                              ),
+                                              child: child,
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: _background,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.1),
+                                                  offset: const Offset(2, 2),
+                                                  blurRadius: 4,
+                                                ),
+                                                BoxShadow(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.9),
+                                                  offset: const Offset(-2, -2),
+                                                  blurRadius: 4,
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Icon(
+                                              Icons.touch_app_rounded,
+                                              size: 12,
+                                              color: _purple,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               Expanded(
-                                child: _buildReportButton(
-                                  icon: Icons.water_drop_rounded,
-                                  title: 'ڕاپۆرتی باران',
-                                  color: Colors.blueAccent,
-                                  pressed: _isRainPressed,
-                                  pressedColor: const Color(0xFFD1D9E6),
-                                  onTapDown: (_) {
-                                    setState(() {
-                                      _isRainPressed = true;
-                                    });
-                                  },
-                                  onTapUp: (_) {
-                                    setState(() {
-                                      _isRainPressed = false;
-                                    });
-                                  },
-                                  onTapCancel: () {
-                                    setState(() {
-                                      _isRainPressed = false;
-                                    });
-                                  },
+                                child: GestureDetector(
                                   onTap: () =>
                                       _showRainReportDialog(context, data),
-                                  wideScreen: wideScreen,
-                                  subtitle: todayRainSum > 0
-                                      ? 'بارین هەیە'
-                                      : 'بارین نییە',
+                                  child: _buildNeuContainer(
+                                    radius: 18,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                      horizontal: 10,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.water_drop_rounded,
+                                              size: 18,
+                                              color: Colors.blueAccent,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'بڕی باران',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        AnimatedBuilder(
+                                          animation: _pulseAnimation,
+                                          builder: (context, child) {
+                                            return Transform.translate(
+                                              offset: Offset(
+                                                _pulseAnimation.value,
+                                                0,
+                                              ),
+                                              child: child,
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: _background,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.1),
+                                                  offset: const Offset(2, 2),
+                                                  blurRadius: 4,
+                                                ),
+                                                BoxShadow(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.9),
+                                                  offset: const Offset(-2, -2),
+                                                  blurRadius: 4,
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Icon(
+                                              Icons.touch_app_rounded,
+                                              size: 12,
+                                              color: Colors.blueAccent,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      _showEarthquakeReportDialog(context),
+                                  child: _buildNeuContainer(
+                                    radius: 18,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                      horizontal: 10,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.waves_rounded,
+                                              size: 18,
+                                              color: Colors.deepOrangeAccent,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'بومەلەرزە',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        AnimatedBuilder(
+                                          animation: _pulseAnimation,
+                                          builder: (context, child) {
+                                            return Transform.translate(
+                                              offset: Offset(
+                                                _pulseAnimation.value,
+                                                0,
+                                              ),
+                                              child: child,
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: _background,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.1),
+                                                  offset: const Offset(2, 2),
+                                                  blurRadius: 4,
+                                                ),
+                                                BoxShadow(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.9),
+                                                  offset: const Offset(-2, -2),
+                                                  blurRadius: 4,
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Icon(
+                                              Icons.touch_app_rounded,
+                                              size: 12,
+                                              color: Colors.deepOrangeAccent,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
-                          ),
-
-                          const SizedBox(height: 18),
-
-                          // 6 DAY TITLE
-                          const Text(
-                            ' بۆ بینینی پێشبینی ڕۆژانی داهاتوو کلیک بکە لەسەر ڕۆژانە  ',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              color: _darkText,
-                            ),
                           ),
 
                           const SizedBox(height: 12),
 
-                          // 6 DAY FORECAST
-                          _buildForecastGrid(
-                            data: data,
-                            forecastDays: forecastDays,
-                            wideScreen: wideScreen,
+                          // SUNRISE & SUNSET
+                          _buildNeuContainer(
+                            radius: 18,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.wb_sunny_rounded,
+                                      color: Colors.orange,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        color: _darkText,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  height: 20,
+                                  width: 1,
+                                  color: _secondaryText.withValues(alpha: 0.3),
+                                ),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.wb_twilight_rounded,
+                                      color: Colors.deepOrange,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        color: _darkText,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
 
                           const SizedBox(height: 18),
 
-                          // FOOTER
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  height: 1,
-                                  color: const Color(0xFFC7D0DF),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              const Text(
-                                'پڕۆگرامساز: طـە مەستەکانی',
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: _secondaryText,
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Container(
-                                  height: 1,
-                                  color: const Color(0xFFC7D0DF),
-                                ),
-                              ),
-                            ],
-                          ),
+                          // FORECAST LIST
+                          const SizedBox(height: 6),
+                          ...List.generate(forecastDays, (i) {
+                            final String date = data.times[i];
+                            final String dayName = _getKurdishDayName(date);
+                            final dynamic maxT = data.maxTemps[i];
+                            final dynamic minT = data.minTemps[i];
+                            final int code = data.weatherCodes.length > i
+                                ? data.weatherCodes[i]
+                                : 0;
 
-                          const SizedBox(height: 15),
+                            final Color cardTint = _getWeatherCardTint(code);
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10.0),
+                              child: GestureDetector(
+                                onTap: () => _showDayDetailDialog(
+                                  context,
+                                  date,
+                                  maxT,
+                                  minT,
+                                  code,
+                                  data,
+                                ),
+                                child: _buildNeuContainer(
+                                  radius: 16,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  customColor: cardTint,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: cardTint,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.9),
+                                                  offset: const Offset(-2, -2),
+                                                  blurRadius: 4,
+                                                ),
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.08),
+                                                  offset: const Offset(2, 2),
+                                                  blurRadius: 4,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              _getWeatherIcon(code, 1),
+                                              color: _getWeatherIconColor(
+                                                code,
+                                                1,
+                                              ),
+                                              size: 32,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                dayName,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 13,
+                                                  color: _darkText,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                date,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 11,
+                                                  color: _secondaryText
+                                                      .withValues(alpha: 0.8),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 13,
+                                                  color: _darkText,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                _getWeatherDescription(code),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 11,
+                                                  color: _secondaryText,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 12),
+                                          AnimatedBuilder(
+                                            animation: _pulseAnimation,
+                                            builder: (context, child) {
+                                              return Transform.translate(
+                                                offset: Offset(
+                                                  _pulseAnimation.value,
+                                                  0,
+                                                ),
+                                                child: child,
+                                              );
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: cardTint,
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withValues(alpha: 0.1),
+                                                    offset: const Offset(
+                                                      1.5,
+                                                      1.5,
+                                                    ),
+                                                    blurRadius: 3,
+                                                  ),
+                                                  BoxShadow(
+                                                    color: Colors.white
+                                                        .withValues(alpha: 0.9),
+                                                    offset: const Offset(
+                                                      -1.5,
+                                                      -1.5,
+                                                    ),
+                                                    blurRadius: 3,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: const Icon(
+                                                Icons.touch_app_rounded,
+                                                size: 14,
+                                                color: _purple,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+
+                          const SizedBox(height: 16),
+
+                          // MAP PREVIEW
+                          const Text(
+                            'شوێنەکەت لەسەر نەخشە      -        پڕۆگرامساز: ژیر مەستەکانــ©2026ـــی',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: _darkText,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  offset: const Offset(-5, -5),
+                                  blurRadius: 10,
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.12),
+                                  offset: const Offset(5, 5),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: SizedBox(
+                                height: 180,
+                                child: FlutterMap(
+                                  mapController: _mapController,
+                                  options: MapOptions(
+                                    initialCenter: LatLng(
+                                      _latitude,
+                                      _longitude,
+                                    ),
+                                    initialZoom: 12.0,
+                                    interactionOptions:
+                                        const InteractionOptions(
+                                          flags: InteractiveFlag.none,
+                                        ),
+                                  ),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate:
+                                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      userAgentPackageName:
+                                          'com.zheer.weatherapp',
+                                    ),
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: LatLng(_latitude, _longitude),
+                                          width: 40,
+                                          height: 40,
+                                          child: const Icon(
+                                            Icons.location_pin,
+                                            color: Colors.redAccent,
+                                            size: 38,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
                         ],
                       ),
                     ),
@@ -1207,841 +2777,146 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
 
-  // ---------------------------------------------------------------------------
-  // SUMMARY CARD
-  // ---------------------------------------------------------------------------
+class _CustomWeatherDotPainter extends FlDotPainter {
+  final IconData icon;
+  final Color color;
+  final double radius;
 
-  Widget _buildSummaryCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String value,
-    required bool wideScreen,
-  }) {
-    return _buildNeuContainer(
-      radius: 15,
-      padding: EdgeInsets.symmetric(
-        vertical: wideScreen ? 9 : 8,
-        horizontal: 5,
+  _CustomWeatherDotPainter({
+    required this.icon,
+    required this.color,
+    required this.radius,
+  });
+
+  @override
+  void draw(Canvas canvas, FlSpot spot, Offset offset) {
+    final TextPainter textPainter = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontSize: radius * 1.8,
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          color: color,
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: iconColor, size: wideScreen ? 23 : 21),
-          const SizedBox(height: 3),
-          Text(
-            title,
-            textAlign: TextAlign.right,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: wideScreen ? 11 : 10,
-              fontWeight: FontWeight.w800,
-              color: _darkText,
-            ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            value,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: wideScreen ? 19 : 17,
-              fontWeight: FontWeight.w900,
-              color: const Color(0xFF111827),
-            ),
-          ),
-        ],
+      textDirection: TextDirection.ltr,
+    );
+
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        offset.dx - textPainter.width / 2,
+        offset.dy - textPainter.height / 2,
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // CURRENT WEATHER CARD
-  // ---------------------------------------------------------------------------
+  @override
+  Color get mainColor => color;
 
-  Widget _buildCurrentWeatherCard({
-    required WeatherModel data,
-    required double todayMax,
-    required double todayMin,
-    required bool wideScreen,
-  }) {
-    final int code = data.currentWeatherCode;
-
-    return _buildNeuContainer(
-      radius: 17,
-      padding: EdgeInsets.symmetric(
-        horizontal: wideScreen ? 20 : 13,
-        vertical: wideScreen ? 14 : 11,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            flex: 5,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: wideScreen ? 65 : 55,
-                  height: wideScreen ? 65 : 55,
-                  decoration: BoxDecoration(
-                    color: _getWeatherIconColor(
-                      code,
-                      data.isDay,
-                    ).withValues(alpha: 0.10),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _getWeatherIcon(code, data.isDay),
-                    size: wideScreen ? 42 : 36,
-                    color: _getWeatherIconColor(code, data.isDay),
-                  ),
-                ),
-                const SizedBox(width: 11),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${data.currentTemp.round()}°C',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: wideScreen ? 36 : 30,
-                          fontWeight: FontWeight.w900,
-                          color: _darkText,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        _getWeatherDescription(code),
-                        textAlign: TextAlign.right,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: wideScreen ? 14 : 12,
-                          fontWeight: FontWeight.w800,
-                          color: _darkText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 11),
-          Container(
-            width: 1,
-            height: wideScreen ? 88 : 70,
-            color: const Color(0xFFC7D0DF),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildCurrentMiniRow(
-                  Icons.thermostat_rounded,
-                  Colors.redAccent,
-                  'بەرزترین',
-                  '${todayMax.round()}°',
-                  wideScreen,
-                ),
-                const SizedBox(height: 7),
-                _buildCurrentMiniRow(
-                  Icons.ac_unit_rounded,
-                  Colors.blueAccent,
-                  'نزمترین',
-                  '${todayMin.round()}°',
-                  wideScreen,
-                ),
-                const SizedBox(height: 7),
-                _buildCurrentMiniRow(
-                  Icons.nightlight_round,
-                  Colors.indigoAccent,
-                  'شەوانی',
-                  '${todayMin.round()}°',
-                  wideScreen,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  @override
+  FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t) {
+    return this;
   }
 
-  Widget _buildCurrentMiniRow(
-    IconData icon,
-    Color color,
-    String title,
-    String value,
-    bool wideScreen,
-  ) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: wideScreen ? 20 : 17),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            title,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: wideScreen ? 12 : 10,
-              fontWeight: FontWeight.w700,
-              color: _darkText,
-            ),
-          ),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          value,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            fontSize: wideScreen ? 16 : 13,
-            fontWeight: FontWeight.w900,
-            color: _darkText,
-          ),
-        ),
-      ],
-    );
+  @override
+  Size getSize(FlSpot spot) {
+    return Size(radius * 2, radius * 2);
   }
 
-  // ---------------------------------------------------------------------------
-  // SUN CARD
-  // ---------------------------------------------------------------------------
+  @override
+  List<Object?> get props => [icon, color, radius];
+}
 
-  Widget _buildSunCard({
-    required Map<String, String> sunTimes,
-    required bool wideScreen,
-  }) {
-    return _buildNeuContainer(
-      radius: 18,
-      padding: EdgeInsets.symmetric(
-        horizontal: wideScreen ? 28 : 16,
-        vertical: wideScreen ? 13 : 11,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildSunItem(
-              icon: Icons.wb_sunny_rounded,
-              color: Colors.orange,
-              title: 'خۆرهەڵاتن',
-              time: sunTimes['sunrise']!,
-              wideScreen: wideScreen,
-            ),
-          ),
-          Container(
-            width: 1,
-            height: wideScreen ? 55 : 45,
-            color: const Color(0xFFC7D0DF),
-          ),
-          Expanded(
-            child: _buildSunItem(
-              icon: Icons.nights_stay_rounded,
-              color: Colors.indigo,
-              title: 'خۆرئاوابوون',
-              time: sunTimes['sunset']!,
-              wideScreen: wideScreen,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class WeatherModel {
+  final double currentTemp;
+  final int isDay;
+  final List<String> times;
+  final List<double> maxTemps;
+  final List<double> minTemps;
+  final List<int> weatherCodes;
+  final List<double> precipitationSums;
+  final List<int> precipitationProbabilities;
 
-  Widget _buildSunItem({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String time,
-    required bool wideScreen,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: color, size: wideScreen ? 29 : 24),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: wideScreen ? 13 : 10,
-                fontWeight: FontWeight.w800,
-                color: _darkText,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              time,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: wideScreen ? 17 : 13,
-                fontWeight: FontWeight.w900,
-                color: _darkText,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  final List<String> hourlyTimes;
+  final List<double> hourlyTemperatures;
+  final List<int> hourlyWeatherCodes;
+  final List<double> hourlyPrecipitations;
+  final List<double> hourlyWindSpeeds;
+  final List<int> hourlyHumidities;
 
-  // ---------------------------------------------------------------------------
-  // MAP
-  // ---------------------------------------------------------------------------
+  WeatherModel({
+    required this.currentTemp,
+    required this.isDay,
+    required this.times,
+    required this.maxTemps,
+    required this.minTemps,
+    required this.weatherCodes,
+    required this.precipitationSums,
+    required this.precipitationProbabilities,
+    required this.hourlyTimes,
+    required this.hourlyTemperatures,
+    required this.hourlyWeatherCodes,
+    required this.hourlyPrecipitations,
+    required this.hourlyWindSpeeds,
+    required this.hourlyHumidities,
+  });
 
-  Widget _buildMapCard() {
-    return Container(
-      height: 150,
-      decoration: BoxDecoration(
-        color: _background,
-        borderRadius: BorderRadius.circular(19),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0xFFA3B1C6),
-            offset: Offset(5, 5),
-            blurRadius: 10,
-          ),
-          BoxShadow(
-            color: Colors.white,
-            offset: Offset(-5, -5),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(19),
-        child: FlutterMap(
-          key: ValueKey('$_latitude-$_longitude'),
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: LatLng(_latitude, _longitude),
-            initialZoom: 13.8,
-          ),
-          children: [
-            TileLayer(
-              urlTemplate:
-                  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-              userAgentPackageName: 'com.example.weather_zheer',
-            ),
-            MarkerLayer(
-              markers: [
-                Marker(
-                  point: LatLng(_latitude, _longitude),
-                  width: 40,
-                  height: 40,
-                  child: const Icon(
-                    Icons.location_on_rounded,
-                    color: Colors.redAccent,
-                    size: 37,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  factory WeatherModel.fromJson(Map<String, dynamic> json) {
+    final currentWeather = json['current'] ?? json['current_weather'] ?? {};
+    final daily = json['daily'] ?? {};
+    final hourly = json['hourly'] ?? {};
 
-  // ---------------------------------------------------------------------------
-  // REPORT BUTTON
-  // ---------------------------------------------------------------------------
-
-  Widget _buildReportButton({
-    required IconData icon,
-    required String title,
-    required Color color,
-    required bool pressed,
-    required VoidCallback onTap,
-    required void Function(TapDownDetails) onTapDown,
-    required void Function(TapUpDetails) onTapUp,
-    required VoidCallback onTapCancel,
-    required bool wideScreen,
-    String? subtitle,
-    Color? pressedColor,
-  }) {
-    return GestureDetector(
-      onTapDown: onTapDown,
-      onTapUp: onTapUp,
-      onTapCancel: onTapCancel,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        padding: EdgeInsets.symmetric(
-          vertical: wideScreen ? 13 : 11,
-          horizontal: 10,
-        ),
-        decoration: BoxDecoration(
-          color: pressed
-              ? (pressedColor ?? const Color(0xFFD1D9E6))
-              : _background,
-          borderRadius: BorderRadius.circular(17),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0xFFA3B1C6),
-              offset: Offset(4, 4),
-              blurRadius: 8,
-            ),
-            BoxShadow(
-              color: Colors.white,
-              offset: Offset(-4, -4),
-              blurRadius: 8,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: wideScreen ? 26 : 23),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    textAlign: TextAlign.right,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: wideScreen ? 17 : 15,
-                      fontWeight: FontWeight.w900,
-                      color: color,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 1),
-                    Text(
-                      subtitle,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: wideScreen ? 9 : 8,
-                        fontWeight: FontWeight.w600,
-                        color: _secondaryText,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // FORECAST GRID
-  // ---------------------------------------------------------------------------
-
-  Widget _buildForecastGrid({
-    required WeatherModel data,
-    required int forecastDays,
-    required bool wideScreen,
-  }) {
-    if (forecastDays == 0) {
-      return _buildNeuContainer(
-        child: const Text(
-          'پێشبینی ڕۆژانە بەردەست نییە.',
-          textAlign: TextAlign.right,
-          textDirection: TextDirection.rtl,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-        ),
+    List<double> parseDoubleList(dynamic data) {
+      if (data == null) return <double>[];
+      return List<double>.from(
+        (data as List).map((e) => (e as num).toDouble()),
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        int columns;
+    List<int> parseIntList(dynamic data) {
+      if (data == null) return <int>[];
+      return List<int>.from((data as List).map((e) => (e as num).toInt()));
+    }
 
-        if (constraints.maxWidth >= 1000) {
-          columns = 3;
-        } else if (constraints.maxWidth >= 650) {
-          columns = 3;
-        } else {
-          columns = 2;
-        }
+    List<String> parseStringList(dynamic data) {
+      if (data == null) return <String>[];
+      return List<String>.from((data as List).map((e) => e.toString()));
+    }
 
-        const double spacing = 10;
+    return WeatherModel(
+      currentTemp:
+          (currentWeather['temperature_2m'] ??
+                  currentWeather['temperature'] as num?)
+              ?.toDouble() ??
+          0.0,
+      isDay: (currentWeather['is_day'] as num?)?.toInt() ?? 1,
 
-        final double cardWidth =
-            (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: List.generate(forecastDays, (i) {
-            final String date = data.times[i];
-
-            final String dayName = _getKurdishDayName(date);
-
-            final double maxTemp = data.maxTemps[i] is num
-                ? (data.maxTemps[i] as num).toDouble()
-                : 0.0;
-
-            final double minTemp = data.minTemps[i] is num
-                ? (data.minTemps[i] as num).toDouble()
-                : 0.0;
-
-            final int code = data.weatherCodes.length > i
-                ? data.weatherCodes[i]
-                : 0;
-
-            final double rainProbability =
-                data.precipitationProbabilities.length > i &&
-                    data.precipitationProbabilities[i] is num
-                ? (data.precipitationProbabilities[i] as num).toDouble()
-                : 0.0;
-
-            return SizedBox(
-              width: cardWidth,
-              child: GestureDetector(
-                onTap: () =>
-                    _showDayDetailDialog(context, date, maxTemp, minTemp, code),
-                child: _buildForecastCard(
-                  dayName: dayName,
-                  date: date,
-                  maxTemp: maxTemp,
-                  minTemp: minTemp,
-                  code: code,
-                  rainProbability: rainProbability,
-                  wideScreen: wideScreen,
-                ),
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // FORECAST CARD - UPDATED
-  // ---------------------------------------------------------------------------
-
-  Widget _buildForecastCard({
-    required String dayName,
-    required String date,
-    required double maxTemp,
-    required double minTemp,
-    required int code,
-    required double rainProbability,
-    required bool wideScreen,
-  }) {
-    final Color dayIconColor = _getWeatherIconColor(code, 1);
-
-    final Color nightIconColor = _getWeatherIconColor(code, 0);
-
-    // WeatherModel ـی ئێستا داتای تایبەتی
-    // پلەی شەوی نییە، بۆیە minTemp بەکاردێت.
-    final double nightTemp = minTemp;
-
-    return _buildNeuContainer(
-      radius: 17,
-      padding: EdgeInsets.symmetric(
-        horizontal: wideScreen ? 13 : 10,
-        vertical: wideScreen ? 12 : 10,
+      times: parseStringList(daily['time']),
+      maxTemps: parseDoubleList(daily['temperature_2m_max']),
+      minTemps: parseDoubleList(daily['temperature_2m_min']),
+      weatherCodes: parseIntList(daily['weathercode'] ?? daily['weather_code']),
+      precipitationSums: parseDoubleList(daily['precipitation_sum']),
+      precipitationProbabilities: parseIntList(
+        daily['precipitation_probability_max'],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ---------------------------------------------------------------
-          // DAY NAME - CENTERED / BIG / BOLD
-          // ---------------------------------------------------------------
-          Center(
-            child: Text(
-              dayName,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: wideScreen ? 17 : 16,
-                fontWeight: FontWeight.w900,
-                color: _darkText,
-              ),
-            ),
-          ),
 
-          const SizedBox(height: 3),
-
-          // ---------------------------------------------------------------
-          // DATE - CENTERED / BIGGER / BOLD
-          // ---------------------------------------------------------------
-          Center(
-            child: Text(
-              date,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: wideScreen ? 13 : 12,
-                fontWeight: FontWeight.w800,
-                color: _secondaryText,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ---------------------------------------------------------------
-          // DAY + NIGHT ICONS
-          // ---------------------------------------------------------------
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildForecastTimeIcon(
-                icon: _getWeatherIcon(code, 1),
-                color: dayIconColor,
-                label: 'ڕۆژ',
-                temperature: '${maxTemp.round()}°',
-                wideScreen: wideScreen,
-              ),
-              Container(
-                width: 1,
-                height: wideScreen ? 60 : 53,
-                color: const Color(0xFFC7D0DF),
-              ),
-              _buildForecastTimeIcon(
-                icon: _getWeatherIcon(code, 0),
-                color: nightIconColor,
-                label: 'شەو',
-                temperature: '${nightTemp.round()}°',
-                wideScreen: wideScreen,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // ---------------------------------------------------------------
-          // WEATHER DESCRIPTION - CENTERED / BIG / BOLD
-          // ---------------------------------------------------------------
-          Center(
-            child: Text(
-              _getWeatherDescription(code),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: wideScreen ? 14 : 13,
-                fontWeight: FontWeight.w900,
-                color: _darkText,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ---------------------------------------------------------------
-          // MAX / MIN
-          // ---------------------------------------------------------------
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 7),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: const Color(0xFFD9DFE9),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.keyboard_arrow_up_rounded,
-                          color: Colors.redAccent,
-                          size: 17,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${maxTemp.round()}°',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: wideScreen ? 16 : 14,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.redAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        'بەرزترین پلەی گەرمی',
-                        textAlign: TextAlign.right,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: wideScreen ? 10 : 9,
-                          fontWeight: FontWeight.w800,
-                          color: _darkText,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: Colors.blueAccent,
-                          size: 17,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${minTemp.round()}°',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: wideScreen ? 15 : 13,
-                            fontWeight: FontWeight.w900,
-                            color: const Color(0xFF30458A),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        'نزمترین پلەی گەرمی',
-                        textAlign: TextAlign.right,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: wideScreen ? 10 : 9,
-                          fontWeight: FontWeight.w800,
-                          color: _darkText,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 7),
-
-          // ---------------------------------------------------------------
-          // RAIN
-          // ---------------------------------------------------------------
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text(
-                '${rainProbability.round()}٪',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: wideScreen ? 12 : 11,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.blueAccent,
-                ),
-              ),
-              const SizedBox(width: 5),
-              const Icon(
-                Icons.water_drop_rounded,
-                color: Colors.blueAccent,
-                size: 16,
-              ),
-            ],
-          ),
-        ],
+      hourlyTimes: parseStringList(hourly['time']),
+      hourlyTemperatures: parseDoubleList(hourly['temperature_2m']),
+      hourlyWeatherCodes: parseIntList(
+        hourly['weather_code'] ?? hourly['weathercode'],
       ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // FORECAST DAY/NIGHT ICON
-  // ---------------------------------------------------------------------------
-
-  Widget _buildForecastTimeIcon({
-    required IconData icon,
-    required Color color,
-    required String label,
-    required String temperature,
-    required bool wideScreen,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: wideScreen ? 48 : 43,
-          height: wideScreen ? 48 : 43,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: wideScreen ? 28 : 25),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            fontSize: wideScreen ? 9 : 8,
-            fontWeight: FontWeight.w800,
-            color: _secondaryText,
-          ),
-        ),
-        const SizedBox(height: 1),
-        Text(
-          temperature,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            fontSize: wideScreen ? 14 : 13,
-            fontWeight: FontWeight.w900,
-            color: _darkText,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // NEUMORPHIC CONTAINER
-  // ---------------------------------------------------------------------------
-
-  Widget _buildNeuContainer({
-    required Widget child,
-    EdgeInsetsGeometry? padding,
-    double radius = 16,
-  }) {
-    return Container(
-      padding: padding ?? const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _background,
-        borderRadius: BorderRadius.circular(radius),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0xFFA3B1C6),
-            offset: Offset(5, 5),
-            blurRadius: 10,
-          ),
-          BoxShadow(
-            color: Colors.white,
-            offset: Offset(-5, -5),
-            blurRadius: 10,
-          ),
-        ],
+      hourlyPrecipitations: parseDoubleList(hourly['precipitation']),
+      hourlyWindSpeeds: parseDoubleList(
+        hourly['wind_speed_10m'] ?? hourly['windspeed_10m'],
       ),
-      child: child,
+      hourlyHumidities: parseIntList(
+        hourly['relative_humidity_2m'] ?? hourly['relativehumidity_2m'],
+      ),
     );
   }
 }

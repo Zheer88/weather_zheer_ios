@@ -1,50 +1,89 @@
 class WeatherModel {
-  final List<dynamic> times;
-  final List<dynamic> maxTemps;
-  final List<dynamic> minTemps;
-  final List<dynamic> weatherCodes;
-  final List<dynamic> precipitationSums;
-  final List<dynamic> precipitationProbabilities;
   final double currentTemp;
-  final int currentWeatherCode;
   final int isDay;
+  final List<String> times;
+  final List<double> maxTemps;
+  final List<double> minTemps;
+  final List<int> weatherCodes;
+  final List<double> precipitationSums;
+  final List<int> precipitationProbabilities;
+
+  // سەعاتەکان
+  final List<String> hourlyTimes;
+  final List<double> hourlyTemperatures;
+  final List<int> hourlyWeatherCodes;
+  final List<double> hourlyPrecipitations;
+  final List<double> hourlyWindSpeeds;
+  final List<int> hourlyHumidities;
 
   WeatherModel({
+    required this.currentTemp,
+    required this.isDay,
     required this.times,
     required this.maxTemps,
     required this.minTemps,
     required this.weatherCodes,
     required this.precipitationSums,
     required this.precipitationProbabilities,
-    required this.currentTemp,
-    required this.currentWeatherCode,
-    required this.isDay,
+    required this.hourlyTimes,
+    required this.hourlyTemperatures,
+    required this.hourlyWeatherCodes,
+    required this.hourlyPrecipitations,
+    required this.hourlyWindSpeeds,
+    required this.hourlyHumidities,
   });
 
   factory WeatherModel.fromJson(Map<String, dynamic> json) {
-    final current =
-        (json['current'] ?? json['current_weather'] ?? {})
-            as Map<String, dynamic>;
-    final daily = (json['daily'] ?? {}) as Map<String, dynamic>;
+    final currentWeather = json['current'] ?? json['current_weather'] ?? {};
+    final daily = json['daily'] ?? {};
+    final hourly = json['hourly'] ?? {};
 
-    final currentTemperature =
-        current['temperature_2m'] ?? current['temperature'] ?? 0;
-    final currentCode = current['weather_code'] ?? current['weathercode'] ?? 0;
-    final currentIsDay = current['is_day'] ?? 1;
+    List<double> parseDoubleList(dynamic data) {
+      if (data == null) return <double>[];
+      return List<double>.from(
+        (data as List).map((e) => (e as num).toDouble()),
+      );
+    }
+
+    List<int> parseIntList(dynamic data) {
+      if (data == null) return <int>[];
+      return List<int>.from((data as List).map((e) => (e as num).toInt()));
+    }
+
+    List<String> parseStringList(dynamic data) {
+      if (data == null) return <String>[];
+      return List<String>.from((data as List).map((e) => e.toString()));
+    }
 
     return WeatherModel(
-      times: daily['time'] ?? <dynamic>[],
-      maxTemps: daily['temperature_2m_max'] ?? <dynamic>[],
-      minTemps: daily['temperature_2m_min'] ?? <dynamic>[],
-      weatherCodes: daily['weather_code'] ?? <dynamic>[],
-      precipitationSums: daily['precipitation_sum'] ?? <dynamic>[],
-      precipitationProbabilities:
-          daily['precipitation_probability_max'] ?? <dynamic>[],
-      currentTemp: currentTemperature is num
-          ? currentTemperature.toDouble()
-          : 0.0,
-      currentWeatherCode: currentCode is num ? currentCode.toInt() : 0,
-      isDay: currentIsDay is num ? currentIsDay.toInt() : 1,
+      currentTemp:
+          (currentWeather['temperature_2m'] ??
+                  currentWeather['temperature'] as num?)
+              ?.toDouble() ??
+          0.0,
+      isDay: (currentWeather['is_day'] as num?)?.toInt() ?? 1,
+
+      times: parseStringList(daily['time']),
+      maxTemps: parseDoubleList(daily['temperature_2m_max']),
+      minTemps: parseDoubleList(daily['temperature_2m_min']),
+      weatherCodes: parseIntList(daily['weathercode'] ?? daily['weather_code']),
+      precipitationSums: parseDoubleList(daily['precipitation_sum']),
+      precipitationProbabilities: parseIntList(
+        daily['precipitation_probability_max'],
+      ),
+
+      hourlyTimes: parseStringList(hourly['time']),
+      hourlyTemperatures: parseDoubleList(hourly['temperature_2m']),
+      hourlyWeatherCodes: parseIntList(
+        hourly['weather_code'] ?? hourly['weathercode'],
+      ),
+      hourlyPrecipitations: parseDoubleList(hourly['precipitation']),
+      hourlyWindSpeeds: parseDoubleList(
+        hourly['wind_speed_10m'] ?? hourly['windspeed_10m'],
+      ),
+      hourlyHumidities: parseIntList(
+        hourly['relative_humidity_2m'] ?? hourly['relativehumidity_2m'],
+      ),
     );
   }
 }
