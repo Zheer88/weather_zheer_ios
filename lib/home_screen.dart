@@ -26,6 +26,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   bool _isLocationLoading = false;
 
+  // گۆڕاوی ڕاگرتنی دۆخی تاریک (Dark Mode)
+  bool _isDarkMode = false;
+
   final MapController _mapController = MapController();
 
   double _latitude = 35.5558;
@@ -34,10 +37,50 @@ class _HomeScreenState extends State<HomeScreen>
 
   String _cityName = 'سلێمانی';
 
-  static const Color _background = Color(0xFFE0E5EC);
-  static const Color _darkText = Color(0xFF182333);
-  static const Color _secondaryText = Color(0xFF718096);
-  static const Color _purple = Color(0xFF6C5CE7);
+  // dynamic Color getters based on current mode
+  Color get _background =>
+      _isDarkMode ? const Color(0xFF1E242D) : const Color(0xFFE0E5EC);
+  Color get _darkText =>
+      _isDarkMode ? const Color(0xFFE2E8F0) : const Color(0xFF182333);
+  Color get _secondaryText =>
+      _isDarkMode ? const Color(0xFFA0AEC0) : const Color(0xFF718096);
+  Color get _purple =>
+      _isDarkMode ? const Color(0xFF9F7AEA) : const Color(0xFF6C5CE7);
+
+  // Dynamic Shadows for Neumorphism in both light and dark mode
+  List<BoxShadow> get _neuShadows => [
+    BoxShadow(
+      color: _isDarkMode
+          ? Colors.white.withValues(alpha: 0.04)
+          : Colors.white.withValues(alpha: 0.85),
+      offset: const Offset(-5, -5),
+      blurRadius: 10,
+    ),
+    BoxShadow(
+      color: _isDarkMode
+          ? Colors.black.withValues(alpha: 0.5)
+          : Colors.black.withValues(alpha: 0.12),
+      offset: const Offset(5, 5),
+      blurRadius: 10,
+    ),
+  ];
+
+  List<BoxShadow> get _neuShadowsSmall => [
+    BoxShadow(
+      color: _isDarkMode
+          ? Colors.white.withValues(alpha: 0.04)
+          : Colors.white.withValues(alpha: 0.9),
+      offset: const Offset(-3, -3),
+      blurRadius: 6,
+    ),
+    BoxShadow(
+      color: _isDarkMode
+          ? Colors.black.withValues(alpha: 0.4)
+          : Colors.black.withValues(alpha: 0.1),
+      offset: const Offset(3, 3),
+      blurRadius: 6,
+    ),
+  ];
 
   // Animation controller for the interactive touch indicator icon
   late AnimationController _pulseController;
@@ -333,10 +376,7 @@ class _HomeScreenState extends State<HomeScreen>
               'شوێنەکەت دۆزرایەوە: $_cityName',
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: _darkText,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: _darkText, fontWeight: FontWeight.bold),
             ),
             duration: const Duration(seconds: 2),
           ),
@@ -366,10 +406,7 @@ class _HomeScreenState extends State<HomeScreen>
               errorMsg,
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: _darkText,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: _darkText, fontWeight: FontWeight.bold),
             ),
             duration: const Duration(seconds: 4),
           ),
@@ -393,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
-            title: const Text(
+            title: Text(
               'گۆڕینی لۆکەیشن / هەڵبژاردنی شار',
               textAlign: TextAlign.right,
               style: TextStyle(
@@ -424,24 +461,13 @@ class _HomeScreenState extends State<HomeScreen>
                         decoration: BoxDecoration(
                           color: _background,
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              offset: const Offset(-4, -4),
-                              blurRadius: 8,
-                            ),
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              offset: const Offset(4, 4),
-                              blurRadius: 8,
-                            ),
-                          ],
+                          boxShadow: _neuShadowsSmall,
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             _isLocationLoading
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 19,
                                     height: 19,
                                     child: CircularProgressIndicator(
@@ -449,7 +475,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       color: _purple,
                                     ),
                                   )
-                                : const Icon(
+                                : Icon(
                                     Icons.my_location_rounded,
                                     size: 20,
                                     color: _purple,
@@ -461,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     ? 'لە دۆزینەوەی شوێن...'
                                     : 'دیاریکردنی لۆکەیشن بە GPS و کەشوهەوا',
                                 textAlign: TextAlign.right,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
                                   color: _darkText,
@@ -476,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen>
                   const SizedBox(height: 20),
                   Divider(color: _secondaryText.withValues(alpha: 0.2)),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'یان شارێکی خێرا هەڵبژێرە:',
                     textAlign: TextAlign.right,
                     style: TextStyle(
@@ -505,7 +531,7 @@ class _HomeScreenState extends State<HomeScreen>
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
+                child: Text(
                   'داخستن',
                   textAlign: TextAlign.right,
                   style: TextStyle(color: _purple, fontWeight: FontWeight.w800),
@@ -540,23 +566,12 @@ class _HomeScreenState extends State<HomeScreen>
         decoration: BoxDecoration(
           color: _background,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.9),
-              offset: const Offset(-3, -3),
-              blurRadius: 6,
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              offset: const Offset(3, 3),
-              blurRadius: 6,
-            ),
-          ],
+          boxShadow: _neuShadowsSmall,
         ),
         child: Text(
           name,
           textAlign: TextAlign.right,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
             color: _darkText,
@@ -738,6 +753,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Color _getWeatherCardTint(int code) {
+    if (_isDarkMode) {
+      if (code == 0) return const Color(0xFF2B2822);
+      if (code >= 1 && code <= 3) return const Color(0xFF22272E);
+      if (code >= 45 && code <= 48) return const Color(0xFF25292C);
+      if (code >= 51 && code <= 67 || code >= 80 && code <= 82) {
+        return const Color(0xFF1E2A36);
+      }
+      if (code >= 71 && code <= 77 || code == 85 || code == 86) {
+        return const Color(0xFF1F2B33);
+      }
+      if (code >= 95 && code <= 99) return const Color(0xFF292233);
+      return _background;
+    }
+
     if (code == 0) {
       return const Color(0xFFF7F3EA);
     }
@@ -872,11 +901,11 @@ class _HomeScreenState extends State<HomeScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(22),
             ),
-            title: const Row(
+            title: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Icon(Icons.psychology_rounded, color: _purple),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text(
                   'ڕاپۆرتی ڕۆژەکان',
                   textAlign: TextAlign.right,
@@ -893,17 +922,13 @@ class _HomeScreenState extends State<HomeScreen>
                 report,
                 textAlign: TextAlign.right,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.7,
-                  color: _darkText,
-                ),
+                style: TextStyle(fontSize: 14, height: 1.7, color: _darkText),
               ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
+                child: Text(
                   'داخستن',
                   textAlign: TextAlign.right,
                   style: TextStyle(color: _purple, fontWeight: FontWeight.w900),
@@ -953,11 +978,11 @@ class _HomeScreenState extends State<HomeScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(22),
             ),
-            title: const Row(
+            title: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Icon(Icons.water_drop_rounded, color: Colors.blueAccent),
-                SizedBox(width: 10),
+                const Icon(Icons.water_drop_rounded, color: Colors.blueAccent),
+                const SizedBox(width: 10),
                 Text(
                   'بڕی باران بارین',
                   textAlign: TextAlign.right,
@@ -974,11 +999,7 @@ class _HomeScreenState extends State<HomeScreen>
                 rainReport,
                 textAlign: TextAlign.right,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.7,
-                  color: _darkText,
-                ),
+                style: TextStyle(fontSize: 14, height: 1.7, color: _darkText),
               ),
             ),
             actions: [
@@ -1011,11 +1032,11 @@ class _HomeScreenState extends State<HomeScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(22),
             ),
-            title: const Row(
+            title: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Icon(Icons.waves_rounded, color: Colors.deepOrangeAccent),
-                SizedBox(width: 10),
+                const Icon(Icons.waves_rounded, color: Colors.deepOrangeAccent),
+                const SizedBox(width: 10),
                 Text(
                   '  سەرچاوەکانی  (USGS)',
                   textAlign: TextAlign.right,
@@ -1070,9 +1091,9 @@ class _HomeScreenState extends State<HomeScreen>
                   }).toList();
 
                   if (earthquakes.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(20.0),
+                        padding: const EdgeInsets.all(20.0),
                         child: Text(
                           'هیچ بومەلەرزەیەک لە هەرێمی کوردستان تۆمار نەکراوە لە ٤٨ سەعاتی ڕابردوودا',
                           textAlign: TextAlign.center,
@@ -1091,7 +1112,7 @@ class _HomeScreenState extends State<HomeScreen>
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
+                        Text(
                           '  بومەلەرزەکان لە هەرێمی کوردستان وعێراق (٤٨ سەعاتی ڕابردوو):',
                           textAlign: TextAlign.right,
                           style: TextStyle(
@@ -1142,7 +1163,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'لیستی بومەلەرزەکان لە هەرێمی کوردستان و عێراق:',
                           textAlign: TextAlign.right,
                           style: TextStyle(
@@ -1160,18 +1181,7 @@ class _HomeScreenState extends State<HomeScreen>
                               decoration: BoxDecoration(
                                 color: _background,
                                 borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    offset: const Offset(-3, -3),
-                                    blurRadius: 6,
-                                  ),
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    offset: const Offset(3, 3),
-                                    blurRadius: 6,
-                                  ),
-                                ],
+                                boxShadow: _neuShadowsSmall,
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1200,7 +1210,7 @@ class _HomeScreenState extends State<HomeScreen>
 
                                       return Text(
                                         'شوێن: $placeName',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w900,
                                           fontSize: 13,
                                           color: _darkText,
@@ -1229,7 +1239,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   const SizedBox(height: 4),
                                   Text(
                                     'کات و بەروار: ${eq.time}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 11,
                                       color: _secondaryText,
@@ -1347,14 +1357,14 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 Text(
                   'کەشوهەوای کاتژمێری ($dayName)',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
                     color: _darkText,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: _purple),
+                  icon: Icon(Icons.close_rounded, color: _purple),
                   onPressed: () => Navigator.pop(dialogContext),
                 ),
               ],
@@ -1363,7 +1373,7 @@ class _HomeScreenState extends State<HomeScreen>
               width: double.maxFinite,
               height: 340,
               child: filteredIndices.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         'داتای سەعات بە سەعات بەردەست نییە بۆ ئەم ڕۆژە.',
                         style: TextStyle(
@@ -1432,18 +1442,7 @@ class _HomeScreenState extends State<HomeScreen>
                           decoration: BoxDecoration(
                             color: _background,
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                offset: const Offset(-3, -3),
-                                blurRadius: 6,
-                              ),
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                offset: const Offset(3, 3),
-                                blurRadius: 6,
-                              ),
-                            ],
+                            boxShadow: _neuShadowsSmall,
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -1454,7 +1453,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 children: [
                                   Text(
                                     formattedTime12,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w900,
                                       fontSize: 11,
                                       color: _darkText,
@@ -1474,7 +1473,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 children: [
                                   Text(
                                     '${temp.round()}°C',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w900,
                                       fontSize: 13,
                                       color: _purple,
@@ -1489,7 +1488,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                       Text(
                                         ' ${rain.toStringAsFixed(1)}ملم',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w800,
                                           color: _secondaryText,
@@ -1513,7 +1512,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                       Text(
                                         ' ${wind.round()}کم/س',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w800,
                                           color: _secondaryText,
@@ -1530,7 +1529,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                       Text(
                                         ' %$humidity',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w800,
                                           color: _secondaryText,
@@ -1549,7 +1548,7 @@ class _HomeScreenState extends State<HomeScreen>
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
+                child: Text(
                   'باشە',
                   textAlign: TextAlign.right,
                   style: TextStyle(color: _purple, fontWeight: FontWeight.w900),
@@ -1573,18 +1572,7 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: BoxDecoration(
         color: customColor ?? _background,
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.85),
-            offset: const Offset(-5, -5),
-            blurRadius: 10,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            offset: const Offset(5, 5),
-            blurRadius: 10,
-          ),
-        ],
+        boxShadow: _neuShadows,
       ),
       child: child,
     );
@@ -1599,34 +1587,34 @@ class _HomeScreenState extends State<HomeScreen>
     required bool wideScreen,
   }) {
     return _buildNeuContainer(
-      radius: 10,
+      radius: 14,
       customColor: cardColor,
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       child: Directionality(
         textDirection: TextDirection.ltr,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: iconColor, size: 13),
-            const SizedBox(width: 3),
+            Icon(icon, color: iconColor, size: 22),
+            const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
                     color: _secondaryText,
                   ),
                 ),
-                const SizedBox(height: 0.5),
+                const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 10,
+                  style: TextStyle(
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
                     color: _darkText,
                   ),
@@ -1654,9 +1642,7 @@ class _HomeScreenState extends State<HomeScreen>
             future: _weatherData,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: _purple),
-                );
+                return Center(child: CircularProgressIndicator(color: _purple));
               }
 
               if (snapshot.hasError) {
@@ -1731,7 +1717,7 @@ class _HomeScreenState extends State<HomeScreen>
                           vertical: 14,
                         ),
                         children: [
-                          // HEADER (تایبەت بە لۆکەیشن و کارتەی بەرزی زەوی لە لای چەپ)
+                          // HEADER (تایبەت بە لۆکەیشن، ئایکۆنی دۆخی تاریک/ڕووناک و کارتی بەرزی زەوی)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -1769,7 +1755,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       Text(
                                         _cityName,
                                         textAlign: TextAlign.right,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w900,
                                           fontSize: 12,
                                           color: _darkText,
@@ -1777,7 +1763,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                       const SizedBox(width: 4),
                                       // ئایکۆنێکی بچووکی تیر یان گۆڕین بۆ نیشاندانی ئەوەی دەتوانرێت داگیرسێنرێت
-                                      const Icon(
+                                      Icon(
                                         Icons.unfold_more_rounded,
                                         size: 14,
                                         color: _secondaryText,
@@ -1788,47 +1774,78 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               const SizedBox(width: 10),
 
-                              // کارتی GPS و بەرزی زەوی بە شێوەی زۆر هەستیار
-                              _buildNeuContainer(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                radius: 14,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.terrain_rounded,
-                                      color: Colors.teal,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '${_elevation.toStringAsFixed(2)} م', // پیشاندانی گۆڕانکاری بە پۆینتەوە
-                                      textAlign: TextAlign.right,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 12,
-                                        color: _darkText,
+                              // کارتی GPS، بەرزی زەوی و ئایکۆنی گۆڕینی Dark Mode / Light Mode
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // ئایکۆنی گۆڕینی دۆخ لە کەناری کارتی GPS
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _isDarkMode = !_isDarkMode;
+                                      });
+                                    },
+                                    child: _buildNeuContainer(
+                                      padding: const EdgeInsets.all(8),
+                                      radius: 14,
+                                      child: Icon(
+                                        _isDarkMode
+                                            ? Icons.wb_sunny_rounded
+                                            : Icons.dark_mode_rounded,
+                                        color: _isDarkMode
+                                            ? Colors.amber
+                                            : _purple,
+                                        size: 20,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // کارتی GPS و بەرزی زەوی
+                                  _buildNeuContainer(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    radius: 14,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.terrain_rounded,
+                                          color: Colors.teal,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '${_elevation.toStringAsFixed(2)} م', // پیشاندانی گۆڕانکاری بە پۆینتەوە
+                                          textAlign: TextAlign.right,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 12,
+                                            color: _darkText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
 
                           const SizedBox(height: 14),
 
-                          // SUMMARY CARDS
+                          // SUMMARY CARDS (ڕەنگە نیۆمۆرفیکییەکان بۆ سێ کارتی سەرەوە)
                           Row(
                             children: [
                               Expanded(
                                 child: _buildSummaryCard(
                                   icon: Icons.thermostat_rounded,
                                   iconColor: Colors.redAccent,
-                                  cardColor: _background,
+                                  cardColor: _isDarkMode
+                                      ? const Color(0xFF252D38)
+                                      : const Color(0xFFE8EEF5),
                                   title: 'بەرزترین',
                                   value: '${todayMax.round()}°',
                                   wideScreen: wideScreen,
@@ -1839,7 +1856,9 @@ class _HomeScreenState extends State<HomeScreen>
                                 child: _buildSummaryCard(
                                   icon: Icons.ac_unit_rounded,
                                   iconColor: Colors.blueAccent,
-                                  cardColor: _background,
+                                  cardColor: _isDarkMode
+                                      ? const Color(0xFF252D38)
+                                      : const Color(0xFFE8EEF5),
                                   title: 'نزمترین',
                                   value: '${todayMin.round()}°',
                                   wideScreen: wideScreen,
@@ -1849,11 +1868,13 @@ class _HomeScreenState extends State<HomeScreen>
                               Expanded(
                                 child: _buildSummaryCard(
                                   icon: Icons.water_drop_rounded,
-                                  iconColor: Colors.indigo,
-                                  cardColor: _background,
+                                  iconColor: Colors.cyan,
+                                  cardColor: _isDarkMode
+                                      ? const Color(0xFF252D38)
+                                      : const Color(0xFFE8EEF5),
                                   title: 'باران',
                                   value:
-                                      '${todayRainSum.toStringAsFixed(1)}  mm ',
+                                      '${todayRainSum.toStringAsFixed(1)} mm',
                                   wideScreen: wideScreen,
                                 ),
                               ),
@@ -1862,12 +1883,12 @@ class _HomeScreenState extends State<HomeScreen>
 
                           const SizedBox(height: 16),
 
-                          // NEUMORPHIC METEOGRAM CARD (بۆدی چارت و میتۆگرام بە ڕەنگی ناسک و هێمن)
+                          // NEUMORPHIC METEOGRAM CARD (بۆدی چارت و میتۆگرام بە ڕەنگی گونجاو لەگەڵ هەردوو دۆخەکە)
                           _buildNeuContainer(
                             radius: 24,
-                            customColor: const Color(
-                              0xFFE6ECF5,
-                            ), // ڕەنگێکی ناسک و گونجاو لەگەڵ سیستەمەکە
+                            customColor: _isDarkMode
+                                ? const Color(0xFF232A34)
+                                : const Color(0xFFE6ECF5),
                             padding: const EdgeInsets.all(12),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1892,7 +1913,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         const SizedBox(width: 6),
                                         Text(
                                           '${data.currentTemp.round()}°C - ${_getWeatherDescription(currentCode)}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w900,
                                             color: _darkText,
@@ -1900,7 +1921,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         ),
                                       ],
                                     ),
-                                    const Text(
+                                    Text(
                                       ' ',
                                       style: TextStyle(
                                         fontSize: 10,
@@ -2022,7 +2043,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                     space: 2,
                                                     child: Text(
                                                       timeOnly,
-                                                      style: const TextStyle(
+                                                      style: TextStyle(
                                                         fontSize: 7,
                                                         fontWeight:
                                                             FontWeight.w800,
@@ -2141,35 +2162,20 @@ class _HomeScreenState extends State<HomeScreen>
                                   decoration: BoxDecoration(
                                     color: _background,
                                     borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.8,
-                                        ),
-                                        offset: const Offset(-2, -2),
-                                        blurRadius: 4,
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.05,
-                                        ),
-                                        offset: const Offset(2, 2),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
+                                    boxShadow: _neuShadowsSmall,
                                   ),
                                   child: Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceAround,
                                     children: List.generate(8, (index) {
                                       return Column(
-                                        children: const [
+                                        children: [
                                           Icon(
                                             Icons.arrow_outward_rounded,
                                             size: 10,
                                             color: _darkText,
                                           ),
-                                          SizedBox(height: 1),
+                                          const SizedBox(height: 1),
                                           Text(
                                             '٢ م/س',
                                             style: TextStyle(
@@ -2245,14 +2251,14 @@ class _HomeScreenState extends State<HomeScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Row(
+                                        Row(
                                           children: [
                                             Icon(
                                               Icons.psychology_rounded,
                                               size: 18,
                                               color: _purple,
                                             ),
-                                            SizedBox(width: 4),
+                                            const SizedBox(width: 4),
                                             Text(
                                               'کەشوهەوا ',
                                               style: TextStyle(
@@ -2279,22 +2285,9 @@ class _HomeScreenState extends State<HomeScreen>
                                             decoration: BoxDecoration(
                                               color: _background,
                                               shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withValues(alpha: 0.1),
-                                                  offset: const Offset(2, 2),
-                                                  blurRadius: 4,
-                                                ),
-                                                BoxShadow(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.9),
-                                                  offset: const Offset(-2, -2),
-                                                  blurRadius: 4,
-                                                ),
-                                              ],
+                                              boxShadow: _neuShadowsSmall,
                                             ),
-                                            child: const Icon(
+                                            child: Icon(
                                               Icons.touch_app_rounded,
                                               size: 12,
                                               color: _purple,
@@ -2321,14 +2314,14 @@ class _HomeScreenState extends State<HomeScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Row(
+                                        Row(
                                           children: [
-                                            Icon(
+                                            const Icon(
                                               Icons.water_drop_rounded,
                                               size: 18,
                                               color: Colors.blueAccent,
                                             ),
-                                            SizedBox(width: 4),
+                                            const SizedBox(width: 4),
                                             Text(
                                               'بڕی باران',
                                               style: TextStyle(
@@ -2355,20 +2348,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             decoration: BoxDecoration(
                                               color: _background,
                                               shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withValues(alpha: 0.1),
-                                                  offset: const Offset(2, 2),
-                                                  blurRadius: 4,
-                                                ),
-                                                BoxShadow(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.9),
-                                                  offset: const Offset(-2, -2),
-                                                  blurRadius: 4,
-                                                ),
-                                              ],
+                                              boxShadow: _neuShadowsSmall,
                                             ),
                                             child: const Icon(
                                               Icons.touch_app_rounded,
@@ -2397,14 +2377,14 @@ class _HomeScreenState extends State<HomeScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Row(
+                                        Row(
                                           children: [
-                                            Icon(
+                                            const Icon(
                                               Icons.waves_rounded,
                                               size: 18,
                                               color: Colors.deepOrangeAccent,
                                             ),
-                                            SizedBox(width: 4),
+                                            const SizedBox(width: 4),
                                             Text(
                                               'بومەلەرزە',
                                               style: TextStyle(
@@ -2431,20 +2411,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             decoration: BoxDecoration(
                                               color: _background,
                                               shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withValues(alpha: 0.1),
-                                                  offset: const Offset(2, 2),
-                                                  blurRadius: 4,
-                                                ),
-                                                BoxShadow(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.9),
-                                                  offset: const Offset(-2, -2),
-                                                  blurRadius: 4,
-                                                ),
-                                              ],
+                                              boxShadow: _neuShadowsSmall,
                                             ),
                                             child: const Icon(
                                               Icons.touch_app_rounded,
@@ -2483,7 +2450,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     const SizedBox(width: 6),
                                     Text(
                                       'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w900,
                                         color: _darkText,
@@ -2506,7 +2473,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     const SizedBox(width: 6),
                                     Text(
                                       'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w900,
                                         color: _darkText,
@@ -2563,20 +2530,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               color: cardTint,
                                               borderRadius:
                                                   BorderRadius.circular(12),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.9),
-                                                  offset: const Offset(-2, -2),
-                                                  blurRadius: 4,
-                                                ),
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withValues(alpha: 0.08),
-                                                  offset: const Offset(2, 2),
-                                                  blurRadius: 4,
-                                                ),
-                                              ],
+                                              boxShadow: _neuShadowsSmall,
                                             ),
                                             child: Icon(
                                               _getWeatherIcon(code, 1),
@@ -2594,7 +2548,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             children: [
                                               Text(
                                                 dayName,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontWeight: FontWeight.w900,
                                                   fontSize: 13,
                                                   color: _darkText,
@@ -2622,7 +2576,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             children: [
                                               Text(
                                                 '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontWeight: FontWeight.w900,
                                                   fontSize: 13,
                                                   color: _darkText,
@@ -2631,7 +2585,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               const SizedBox(height: 2),
                                               Text(
                                                 _getWeatherDescription(code),
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontWeight: FontWeight.w800,
                                                   fontSize: 11,
                                                   color: _secondaryText,
@@ -2656,28 +2610,9 @@ class _HomeScreenState extends State<HomeScreen>
                                               decoration: BoxDecoration(
                                                 color: cardTint,
                                                 shape: BoxShape.circle,
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.black
-                                                        .withValues(alpha: 0.1),
-                                                    offset: const Offset(
-                                                      1.5,
-                                                      1.5,
-                                                    ),
-                                                    blurRadius: 3,
-                                                  ),
-                                                  BoxShadow(
-                                                    color: Colors.white
-                                                        .withValues(alpha: 0.9),
-                                                    offset: const Offset(
-                                                      -1.5,
-                                                      -1.5,
-                                                    ),
-                                                    blurRadius: 3,
-                                                  ),
-                                                ],
+                                                boxShadow: _neuShadowsSmall,
                                               ),
-                                              child: const Icon(
+                                              child: Icon(
                                                 Icons.touch_app_rounded,
                                                 size: 14,
                                                 color: _purple,
@@ -2696,7 +2631,7 @@ class _HomeScreenState extends State<HomeScreen>
                           const SizedBox(height: 16),
 
                           // MAP PREVIEW
-                          const Text(
+                          Text(
                             'شوێنەکەت لەسەر نەخشە      -        پڕۆگرامساز: ژیر مەستەکانــ©2026ـــی',
                             style: TextStyle(
                               fontSize: 10,
@@ -2708,18 +2643,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  offset: const Offset(-5, -5),
-                                  blurRadius: 10,
-                                ),
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.12),
-                                  offset: const Offset(5, 5),
-                                  blurRadius: 10,
-                                ),
-                              ],
+                              boxShadow: _neuShadows,
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(20),
