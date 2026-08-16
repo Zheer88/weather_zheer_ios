@@ -6,7 +6,7 @@
 
 android {
     namespace = "com.example.weather_zheer"
-    compileSdk = 34
+    compileSdk = 37
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -16,7 +16,7 @@ android {
     defaultConfig {
         applicationId = "com.example.weather_zheer"
         minSdk = flutter.minSdkVersion
-        targetSdk = 34
+        targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
