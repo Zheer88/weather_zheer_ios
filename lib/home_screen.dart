@@ -1671,10 +1671,6 @@ class _HomeScreenState extends State<HomeScreen>
 
               final WeatherModel data = snapshot.data!;
 
-              final currentCode = data.weatherCodes.isNotEmpty
-                  ? data.weatherCodes[0]
-                  : 0;
-
               final double todayMax = data.maxTemps.isNotEmpty
                   ? data.maxTemps[0]
                   : data.currentTemp.toDouble();
@@ -1788,14 +1784,34 @@ class _HomeScreenState extends State<HomeScreen>
                                     child: _buildNeuContainer(
                                       padding: const EdgeInsets.all(8),
                                       radius: 14,
-                                      child: Icon(
-                                        _isDarkMode
-                                            ? Icons.wb_sunny_rounded
-                                            : Icons.dark_mode_rounded,
-                                        color: _isDarkMode
-                                            ? Colors.amber
-                                            : _purple,
-                                        size: 20,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.circle_outlined,
+                                            color: _isDarkMode
+                                                ? Colors.amber
+                                                : _purple,
+                                            size: 20,
+                                          ),
+                                          Positioned(
+                                            right: 0,
+                                            child: ClipRect(
+                                              child: Align(
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                widthFactor: 0.5,
+                                                child: Icon(
+                                                  Icons.circle,
+                                                  color: _isDarkMode
+                                                      ? Colors.amber
+                                                      : _purple,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -1883,7 +1899,7 @@ class _HomeScreenState extends State<HomeScreen>
 
                           const SizedBox(height: 16),
 
-                          // NEUMORPHIC METEOGRAM CARD (بۆدی چارت و میتۆگرام بە ڕەنگی گونجاو لەگەڵ هەردوو دۆخەکە)
+                          // NEUMORPHIC METEOGRAM CARD (بە هەندەڵکردنی ئایکۆنەکان و ڕەنگدانی خوارەوەی هێڵەکە هاوشیوەی وێنەکە)
                           _buildNeuContainer(
                             radius: 24,
                             customColor: _isDarkMode
@@ -1893,49 +1909,85 @@ class _HomeScreenState extends State<HomeScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          _getWeatherIcon(
-                                            currentCode,
-                                            data.isDay,
-                                          ),
-                                          color: _getWeatherIconColor(
-                                            currentCode,
-                                            data.isDay,
-                                          ),
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          '${data.currentTemp.round()}°C - ${_getWeatherDescription(currentCode)}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w900,
-                                            color: _darkText,
-                                          ),
-                                        ),
-                                      ],
+                                // بەشی سەرەوەی کارتەکە کە کات و ئایکۆنی ڕاستەقینەی کەشوهەوای تێدایە هاوشێوەی وێنەکە
+                                SizedBox(
+                                  height: 38,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: min(
+                                      24,
+                                      data.hourlyTemperatures.length,
                                     ),
-                                    Text(
-                                      ' ',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                        color: _secondaryText,
-                                      ),
-                                    ),
-                                  ],
+                                    itemBuilder: (context, index) {
+                                      if (index % 3 != 0) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      String fullTime =
+                                          (data.hourlyTimes.isNotEmpty &&
+                                              data.hourlyTimes.length > index)
+                                          ? data.hourlyTimes[index]
+                                          : '00:00';
+                                      String timeOnly = fullTime.contains('T')
+                                          ? fullTime
+                                                .split('T')[1]
+                                                .substring(0, 5)
+                                          : fullTime;
+
+                                      int hour24 =
+                                          int.tryParse(
+                                            timeOnly.split(':')[0],
+                                          ) ??
+                                          0;
+                                      String period = hour24 >= 12
+                                          ? 'PM'
+                                          : 'AM';
+                                      int hour12 = hour24 % 12;
+                                      if (hour12 == 0) hour12 = 12;
+                                      String formattedTime = '$hour12 $period';
+
+                                      int hCode =
+                                          (data.hourlyWeatherCodes.isNotEmpty &&
+                                              data.hourlyWeatherCodes.length >
+                                                  index)
+                                          ? data.hourlyWeatherCodes[index]
+                                          : 0;
+                                      int isDayTime =
+                                          (hour24 >= 6 && hour24 < 19) ? 1 : 0;
+
+                                      return Container(
+                                        width: 52,
+                                        alignment: Alignment.center,
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              formattedTime,
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w800,
+                                                color: _secondaryText,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Icon(
+                                              _getWeatherIcon(hCode, isDayTime),
+                                              color: _getWeatherIconColor(
+                                                hCode,
+                                                isDayTime,
+                                              ),
+                                              size: 16,
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 6),
 
                                 SizedBox(
-                                  height:
-                                      75, // بچووککردنەوەی بەرزی چارتەکە لە 100 بۆ 75
+                                  height: 85,
                                   child: LineChart(
                                     LineChartData(
                                       minX: 0,
@@ -1972,23 +2024,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       titlesData: FlTitlesData(
                                         rightTitles: AxisTitles(
                                           sideTitles: SideTitles(
-                                            showTitles: true,
-                                            reservedSize: 28,
-                                            getTitlesWidget: (value, meta) {
-                                              if (value == 0 ||
-                                                  value == 10 ||
-                                                  value == 20) {
-                                                return Text(
-                                                  '${value ~/ 2} ملم',
-                                                  style: const TextStyle(
-                                                    fontSize: 7,
-                                                    color: Colors.blue,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                );
-                                              }
-                                              return const SizedBox.shrink();
-                                            },
+                                            showTitles: false,
                                           ),
                                         ),
                                         topTitles: AxisTitles(
@@ -1998,63 +2034,12 @@ class _HomeScreenState extends State<HomeScreen>
                                         ),
                                         leftTitles: AxisTitles(
                                           sideTitles: SideTitles(
-                                            showTitles: true,
-                                            reservedSize: 28,
-                                            getTitlesWidget: (value, meta) {
-                                              if (value >= 15 &&
-                                                  value <= 35 &&
-                                                  value % 5 == 0) {
-                                                return Text(
-                                                  '${value.toInt()}°',
-                                                  style: const TextStyle(
-                                                    fontSize: 7,
-                                                    color: Colors.red,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                );
-                                              }
-                                              return const SizedBox.shrink();
-                                            },
+                                            showTitles: false,
                                           ),
                                         ),
                                         bottomTitles: AxisTitles(
                                           sideTitles: SideTitles(
-                                            showTitles: true,
-                                            reservedSize: 20,
-                                            getTitlesWidget: (value, meta) {
-                                              int idx = value.toInt();
-                                              if (idx >= 0 &&
-                                                  idx <
-                                                      (data
-                                                          .hourlyTimes
-                                                          .length)) {
-                                                String fullTime =
-                                                    data.hourlyTimes[idx];
-                                                String timeOnly =
-                                                    fullTime.contains('T')
-                                                    ? fullTime
-                                                          .split('T')[1]
-                                                          .substring(0, 5)
-                                                    : fullTime;
-
-                                                if (idx % 3 == 0) {
-                                                  return SideTitleWidget(
-                                                    axisSide: meta.axisSide,
-                                                    space: 2,
-                                                    child: Text(
-                                                      timeOnly,
-                                                      style: TextStyle(
-                                                        fontSize: 7,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        color: _secondaryText,
-                                                      ),
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                              return const SizedBox.shrink();
-                                            },
+                                            showTitles: false,
                                           ),
                                         ),
                                       ),
@@ -2078,153 +2063,20 @@ class _HomeScreenState extends State<HomeScreen>
                                             },
                                           ),
                                           isCurved: true,
-                                          color: Colors.red,
+                                          color: Colors.orange,
                                           barWidth: 2.5,
                                           isStrokeCapRound: true,
-                                          dotData: FlDotData(
-                                            show: true,
-                                            getDotPainter: (spot, percent, barData, index) {
-                                              int idx = spot.x.toInt();
-                                              int hCode =
-                                                  (data
-                                                          .hourlyWeatherCodes
-                                                          .isNotEmpty &&
-                                                      data
-                                                              .hourlyWeatherCodes
-                                                              .length >
-                                                          idx)
-                                                  ? data.hourlyWeatherCodes[idx]
-                                                  : 0;
-
-                                              String fullTime =
-                                                  (data
-                                                          .hourlyTimes
-                                                          .isNotEmpty &&
-                                                      data.hourlyTimes.length >
-                                                          idx)
-                                                  ? data.hourlyTimes[idx]
-                                                  : '00:00';
-                                              String timeOnly =
-                                                  fullTime.contains('T')
-                                                  ? fullTime
-                                                        .split('T')[1]
-                                                        .substring(0, 5)
-                                                  : fullTime;
-                                              int hourVal =
-                                                  int.tryParse(
-                                                    timeOnly.split(':')[0],
-                                                  ) ??
-                                                  0;
-                                              int isDayTime =
-                                                  (hourVal >= 6 && hourVal < 19)
-                                                  ? 1
-                                                  : 0;
-
-                                              if (idx % 3 == 0) {
-                                                return _CustomWeatherDotPainter(
-                                                  icon: _getWeatherIcon(
-                                                    hCode,
-                                                    isDayTime,
-                                                  ),
-                                                  color: _getWeatherIconColor(
-                                                    hCode,
-                                                    isDayTime,
-                                                  ),
-                                                  radius:
-                                                      12, // زیادکردنی قەبارەی ئایکۆنەکان لە 8 بۆ 12
-                                                );
-                                              } else {
-                                                return FlDotCirclePainter(
-                                                  radius: 1.5,
-                                                  color: Colors.red,
-                                                  strokeWidth: 1,
-                                                  strokeColor: Colors.white,
-                                                );
-                                              }
-                                            },
-                                          ),
+                                          dotData: FlDotData(show: false),
                                           belowBarData: BarAreaData(
-                                            show: false,
+                                            show: true,
+                                            color: Colors.orange.withValues(
+                                              alpha: 0.2,
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 4,
-                                    horizontal: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _background,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: _neuShadowsSmall,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceAround,
-                                    children: List.generate(8, (index) {
-                                      return Column(
-                                        children: [
-                                          Icon(
-                                            Icons.arrow_outward_rounded,
-                                            size: 10,
-                                            color: _darkText,
-                                          ),
-                                          const SizedBox(height: 1),
-                                          Text(
-                                            '٢ م/س',
-                                            style: TextStyle(
-                                              fontSize: 7,
-                                              color: _secondaryText,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    }),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 6),
-
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(
-                                      Icons.square,
-                                      color: Colors.red,
-                                      size: 10,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'پلەی گەرمی (°C)',
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    SizedBox(width: 14),
-                                    Icon(
-                                      Icons.square,
-                                      color: Colors.blue,
-                                      size: 10,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'باران بارین (ملم)',
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        color: Colors.blue,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               ],
                             ),
@@ -2701,59 +2553,6 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-}
-
-class _CustomWeatherDotPainter extends FlDotPainter {
-  final IconData icon;
-  final Color color;
-  final double radius;
-
-  _CustomWeatherDotPainter({
-    required this.icon,
-    required this.color,
-    required this.radius,
-  });
-
-  @override
-  void draw(Canvas canvas, FlSpot spot, Offset offset) {
-    final TextPainter textPainter = TextPainter(
-      text: TextSpan(
-        text: String.fromCharCode(icon.codePoint),
-        style: TextStyle(
-          fontSize: radius * 1.8,
-          fontFamily: icon.fontFamily,
-          package: icon.fontPackage,
-          color: color,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        offset.dx - textPainter.width / 2,
-        offset.dy - textPainter.height / 2,
-      ),
-    );
-  }
-
-  @override
-  Color get mainColor => color;
-
-  @override
-  FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t) {
-    return this;
-  }
-
-  @override
-  Size getSize(FlSpot spot) {
-    return Size(radius * 2, radius * 2);
-  }
-
-  @override
-  List<Object?> get props => [icon, color, radius];
 }
 
 class WeatherModel {
