@@ -2481,22 +2481,25 @@ class _HomeScreenState extends State<HomeScreen>
                           }),
 
                           const SizedBox(height: 16),
-
                           // MAP PREVIEW
-                          Text(
-                            'شوێنەکەت لەسەر نەخشە      -        پڕۆگرامساز: ژیر مەستەکانــ©2026ـــی',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              color: _darkText,
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '    Programmer: Zheer Mastakany ©2026    ',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: _darkText,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 14),
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: _neuShadows,
                             ),
+
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(20),
                               child: SizedBox(
