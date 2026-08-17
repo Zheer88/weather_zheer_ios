@@ -1,3 +1,4 @@
+
 name: weather_zheer
 description: "A new Flutter project."
 
@@ -18,10 +19,10 @@ dependencies:
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
   geolocator: ^14.0.3
-  geocoding: ^3.0.0
+  geocoding: ^5.0.0
   url_launcher: ^6.2.5
   translator: ^1.0.4+1
-  fl_chart: ^0.68.0  # یان هەر وەشانێکی نوێی گونجاو
+  fl_chart: ^0.68.0
 
 dev_dependencies:
   flutter_test:
@@ -36,5 +37,3 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/app_icon.png"
-
-  
