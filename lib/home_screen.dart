@@ -29,13 +29,16 @@ class _HomeScreenState extends State<HomeScreen>
   // گۆڕاوی ڕاگرتنی دۆخی تاریک (Dark Mode)
   bool _isDarkMode = false;
 
-  final MapController _mapController = MapController();
+  final MapController _fullscreenMapController = MapController();
 
   double _latitude = 35.5558;
   double _longitude = 45.4351;
   double _elevation = 850.0; // گۆڕاوی نوێ بۆ بەرزی زەوی لە ئاستی ڕووی دەریا
 
   String _cityName = 'سلێمانی';
+
+  // گۆڕاوی نوێ بۆ جۆری پیشاندانی نەخشە
+  String _mapLayerType = 'normal'; // normal, satellite, animated, temp
 
   // dynamic Color getters based on current mode
   Color get _background =>
@@ -85,14 +88,12 @@ class _HomeScreenState extends State<HomeScreen>
   // Animation controller for the interactive touch indicator icon
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-  // گۆڕاوی نوێ بۆ جووڵەی سەرنجڕاکێشی ئایکۆنی لۆکەیشن
   late Animation<double> _locationBounceAnimation;
+  late Animation<double> _mapIconBounceAnimation;
 
-  // گۆڕاوێک بۆ بەدواداچوونی جووڵەی ئامێر بە بەردەوامی
   StreamSubscription<Position>? _positionStreamSubscription;
-  Position? _lastFetchedPosition; // بۆ کۆنترۆڵکردنی نوێکردنەوەی کەشوهەوا
+  Position? _lastFetchedPosition;
 
-  // گۆڕاوێک بۆ هەڵگرتنی ناوەکان تا خێراتر بێت و سێرڤەر بلۆکمان نەکات
   final Map<String, String> _placeNameCache = {};
   Timer? _refreshTimer;
 
@@ -102,12 +103,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
     _earthquakeData = EarthquakeService.getRecentEarthquakes();
-    _fetchElevation(
-      _latitude,
-      _longitude,
-    ); // هێنانی بەرزی سەرەتایی (تەنها وەک یەدەگ)
+    _fetchElevation(_latitude, _longitude);
 
-    // نوێکردنەوەی خۆکارانەی داتاکان هەموو ٦ کاتژمێر جارێک
     _refreshTimer = Timer.periodic(const Duration(hours: 6), (timer) {
       if (mounted) {
         setState(() {
@@ -125,14 +122,17 @@ class _HomeScreenState extends State<HomeScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // دروستکردنی جووڵەی نەرم بۆ ئایکۆنی لۆکەیشن
     _locationBounceAnimation = Tween<double>(begin: -3.0, end: 3.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _mapIconBounceAnimation = Tween<double>(begin: -5.0, end: 5.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initLiveLocation();
-      _startLocationStream(); // دەستپێکردنی بەدواداچونی جووڵەی ئامێر بە هەستیاری زۆرەوە
+      _startLocationStream();
     });
   }
 
@@ -144,14 +144,10 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // LIVE LOCATION STREAM (چاودێریکردنی بەردەوامی جووڵەی ئامێر بە هەستیارییەکی جیوەیی)
-  // ---------------------------------------------------------------------------
   void _startLocationStream() {
     const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.bestForNavigation, // بەرزترین ئاستی وردی GPS
-      distanceFilter:
-          0, // سفر کراوە بۆ ئەوەی بچووکترین جووڵەی مۆبایلەکە هەست پێبکات
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 0,
     );
 
     _positionStreamSubscription =
@@ -169,14 +165,11 @@ class _HomeScreenState extends State<HomeScreen>
       _latitude = position.latitude;
       _longitude = position.longitude;
 
-      // ڕاستەوخۆ وەرگرتنی بەرزی لە هەستەوەرەکانی مۆبایلەکەوە بەبێ چاوەڕێکردنی ئینتەرنێت
       if (position.altitude != 0.0) {
         _elevation = position.altitude;
       }
     });
 
-    // بۆ ئەوەی لەگەڵ هەر بەرزکردنەوەیەکی دەستتدا سێرڤەری کەشوهەوا لۆد نەکرێت و بلۆک نەبیت:
-    // تەنها کاتێک کەشوهەوا نوێ دەکەینەوە کە زیاتر لە ٥ کیلۆمەتر جووڵابیت.
     if (_lastFetchedPosition == null ||
         Geolocator.distanceBetween(
               _lastFetchedPosition!.latitude,
@@ -224,9 +217,6 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // FETCH ELEVATION METHOD (وەک یەدەگ بەکاردێت کاتێک لە نەخشە شارێک هەڵدەبژێریت)
-  // ---------------------------------------------------------------------------
   Future<void> _fetchElevation(double lat, double lon) async {
     try {
       final url = Uri.parse(
@@ -248,10 +238,6 @@ class _HomeScreenState extends State<HomeScreen>
       }
     } catch (_) {}
   }
-
-  // ---------------------------------------------------------------------------
-  // MAP LOCATION NAME GETTER (REVERSE GEOCODING)
-  // ---------------------------------------------------------------------------
 
   String _translateEarthquakePlace(String englishPlace) {
     String text = englishPlace;
@@ -316,7 +302,6 @@ class _HomeScreenState extends State<HomeScreen>
         final data = json.decode(response.body);
         if (data['address'] != null) {
           final addr = data['address'];
-
           String place =
               addr['village'] ??
               addr['town'] ??
@@ -324,7 +309,6 @@ class _HomeScreenState extends State<HomeScreen>
               addr['county'] ??
               addr['state'] ??
               'عێراق';
-
           final finalName = 'لەنزیک $place';
           _placeNameCache[cacheKey] = finalName;
           return finalName;
@@ -335,16 +319,11 @@ class _HomeScreenState extends State<HomeScreen>
     return _translateEarthquakePlace(fallbackName);
   }
 
-  // ---------------------------------------------------------------------------
-  // WEATHER / LOCATION
-  // ---------------------------------------------------------------------------
-
   Future<WeatherModel> _loadWeatherForCoordinates(
     double latitude,
     double longitude,
   ) async {
     final json = await LocationWeatherService.getWeather(latitude, longitude);
-
     return WeatherModel.fromJson(json);
   }
 
@@ -364,7 +343,6 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final Position position =
           await LocationWeatherService.getCurrentLocation();
-
       _updateLiveElevationAndLocation(position);
 
       if (mounted && showError) {
@@ -383,21 +361,12 @@ class _HomeScreenState extends State<HomeScreen>
       }
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _isLocationLoading = false;
       });
 
       if (showError) {
         String errorMsg = e.toString().replaceFirst('Exception: ', '');
-
-        if (errorMsg.contains('Origin') ||
-            errorMsg.contains('secure') ||
-            errorMsg.contains('permission')) {
-          errorMsg =
-              'بۆ GPS لە Flutter Web ـدا ئەپەکە دەبێت لە HTTPS یان localhost بێت.';
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: _background,
@@ -415,8 +384,618 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ---------------------------------------------------------------------------
-  // LOCATION DIALOG
+  // پەنجەرەی تایبەت بە ئاستی دەریا (Sea Level Details Dialog) بە شێوازی جیوەی جوڵاو و نەخشەی بەرزی
   // ---------------------------------------------------------------------------
+  void _showSeaLevelDetailsDialog(BuildContext context) {
+    double seaLevelPressure = 1013.25 - (_elevation * 0.12);
+    double standardElevation = 850.0;
+    double elevationDiff = _elevation - standardElevation;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: _background,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Icon(Icons.waves_rounded, color: Colors.teal, size: 26),
+                const SizedBox(width: 10),
+                Text(
+                  'وردەکاری ئاستی دەریا و GPS Elevation',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: _darkText,
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.85,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // شێوازی پلەپێوی جیوەی جوڵاو (Animated Mercury Tube Indicator)
+                    Container(
+                      height: 120,
+                      width: 60,
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _background,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: _neuShadowsSmall,
+                      ),
+                      child: Stack(
+                        alignment: Alignment.bottomCenter,
+                        children: [
+                          Container(
+                            width: 14,
+                            decoration: BoxDecoration(
+                              color: _secondaryText.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                          ),
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(
+                              begin: 0.0,
+                              end: (_elevation / 3000.0).clamp(0.1, 1.0),
+                            ),
+                            duration: const Duration(milliseconds: 1200),
+                            builder: (context, value, child) {
+                              return FractionallySizedBox(
+                                heightFactor: value,
+                                child: Container(
+                                  width: 14,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Colors.tealAccent, Colors.teal],
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                    ),
+                                    borderRadius: BorderRadius.circular(7),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: Colors.teal,
+                                shape: BoxShape.circle,
+                                boxShadow: _neuShadowsSmall,
+                              ),
+                              child: const Icon(
+                                Icons.terrain,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // پیشاندانی نەخشەی بەرزی (Elevation Map) لە ناو پەنجەرەکەدا
+                    Text(
+                      'Elevation Map — نەخشەی بەرزی ناوچە',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: _secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: SizedBox(
+                        height: 150,
+                        child: FlutterMap(
+                          options: MapOptions(
+                            initialCenter: LatLng(_latitude, _longitude),
+                            initialZoom: 11.0,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                              subdomains: const ['a', 'b', 'c'],
+                              userAgentPackageName: 'com.zheer.weatherapp',
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: LatLng(_latitude, _longitude),
+                                  width: 40,
+                                  height: 40,
+                                  child: const Icon(
+                                    Icons.location_pin,
+                                    color: Colors.redAccent,
+                                    size: 32,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // زانیارییە وردەکان
+                    _buildSeaLevelRow(
+                      title: 'ژمارەی ڕاستەقینەی GPS Elevation',
+                      value: '${_elevation.toStringAsFixed(2)} متر',
+                      icon: Icons.gps_fixed,
+                      color: Colors.teal,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildSeaLevelRow(
+                      title: 'فشاری ئاستی دەریا',
+                      value: '${seaLevelPressure.toStringAsFixed(1)} hPa',
+                      icon: Icons.speed,
+                      color: Colors.orangeAccent,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildSeaLevelRow(
+                      title: 'جیاوازی ئاست لە ئاستی ئاسایی',
+                      value:
+                          '${elevationDiff >= 0 ? '+' : ''}${elevationDiff.toStringAsFixed(1)} متر',
+                      icon: Icons.compare_arrows,
+                      color: Colors.blueAccent,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(
+                  'داخستن',
+                  style: TextStyle(color: _purple, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSeaLevelRow({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _background,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: _neuShadowsSmall,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: _darkText,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // FULLSCREEN MAP DIALOG (نەخشەی پڕ شاشە لەگەڵ ئایکۆنەکانی گۆڕینی جۆری نەخشە لەلای ڕاست)
+  // ---------------------------------------------------------------------------
+
+  void _showFullscreenMapDialog(BuildContext context) {
+    final List<Map<String, dynamic>> mapCities = [
+      {
+        'name': 'سلێمانی',
+        'lat': 35.5558,
+        'lon': 45.4351,
+        'temp': 31,
+        'code': 0,
+        'wind': 3,
+      },
+      {
+        'name': 'هەولێر',
+        'lat': 36.1901,
+        'lon': 44.0091,
+        'temp': 34,
+        'code': 0,
+        'wind': 4,
+      },
+      {
+        'name': 'دهۆک',
+        'lat': 36.8679,
+        'lon': 42.9885,
+        'temp': 30,
+        'code': 1,
+        'wind': 2,
+      },
+      {
+        'name': 'هەڵەبجە',
+        'lat': 35.1772,
+        'lon': 45.9877,
+        'temp': 29,
+        'code': 2,
+        'wind': 3,
+      },
+      {
+        'name': 'کەرکووک',
+        'lat': 35.4681,
+        'lon': 44.3922,
+        'temp': 37,
+        'code': 0,
+        'wind': 5,
+      },
+      {
+        'name': 'بەغدا',
+        'lat': 33.3152,
+        'lon': 44.3661,
+        'temp': 40,
+        'code': 0,
+        'wind': 4,
+      },
+      {
+        'name': 'موسڵ',
+        'lat': 36.3400,
+        'lon': 43.1300,
+        'temp': 36,
+        'code': 0,
+        'wind': 3,
+      },
+      {
+        'name': 'کەلار',
+        'lat': 34.6231,
+        'lon': 45.3136,
+        'temp': 38,
+        'code': 0,
+        'wind': 6,
+      },
+      {
+        'name': 'ڕانیە',
+        'lat': 36.2559,
+        'lon': 44.8859,
+        'temp': 28,
+        'code': 2,
+        'wind': 2,
+      },
+    ];
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            String tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+            if (_mapLayerType == 'satellite') {
+              tileUrl =
+                  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+            } else if (_mapLayerType == 'animated' ||
+                _mapLayerType == 'interactive') {
+              tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+            } else if (_mapLayerType == 'temp') {
+              tileUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: EdgeInsets.zero,
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Container(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  color: _background,
+                  padding: const EdgeInsets.all(12),
+                  child: SafeArea(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _background,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: _neuShadows,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        children: [
+                          FlutterMap(
+                            mapController: _fullscreenMapController,
+                            options: MapOptions(
+                              initialCenter: LatLng(_latitude, _longitude),
+                              initialZoom: 7.0,
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate: tileUrl,
+                                userAgentPackageName: 'com.zheer.weatherapp',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(_latitude, _longitude),
+                                    width: 60,
+                                    height: 60,
+                                    child: AnimatedBuilder(
+                                      animation: _mapIconBounceAnimation,
+                                      builder: (context, child) {
+                                        return Transform.translate(
+                                          offset: Offset(
+                                            0,
+                                            _mapIconBounceAnimation.value,
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.redAccent,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              _cityName,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.location_pin,
+                                            color: Colors.redAccent,
+                                            size: 32,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  ...mapCities.map((city) {
+                                    final int code = city['code'];
+                                    final IconData wIcon = _getWeatherIcon(
+                                      code,
+                                      1,
+                                    );
+                                    final Color wColor = _getWeatherIconColor(
+                                      code,
+                                      1,
+                                    );
+
+                                    return Marker(
+                                      point: LatLng(city['lat'], city['lon']),
+                                      width: 75,
+                                      height: 55,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _latitude = city['lat'];
+                                            _longitude = city['lon'];
+                                            _cityName = city['name'];
+                                            _weatherData =
+                                                _loadWeatherForCoordinates(
+                                                  _latitude,
+                                                  _longitude,
+                                                );
+                                          });
+                                          _fetchElevation(
+                                            _latitude,
+                                            _longitude,
+                                          );
+                                          Navigator.pop(dialogContext);
+                                        },
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  wIcon,
+                                                  color: wColor,
+                                                  size: 18,
+                                                ),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  '${city['temp']}°',
+                                                  style: TextStyle(
+                                                    color: _darkText,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 12,
+                                                    shadows: const [
+                                                      Shadow(
+                                                        color: Colors.white,
+                                                        blurRadius: 2,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 1),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 4,
+                                                    vertical: 1,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: _background.withValues(
+                                                  alpha: 0.85,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                                boxShadow: _neuShadowsSmall,
+                                              ),
+                                              child: Text(
+                                                city['name'],
+                                                style: TextStyle(
+                                                  color: _darkText,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Positioned(
+                            top: 16,
+                            left: 16,
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(dialogContext),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: _background,
+                                  shape: BoxShape.circle,
+                                  boxShadow: _neuShadowsSmall,
+                                ),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: _darkText,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: _background.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: _neuShadowsSmall,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildMapLayerButton(
+                                    icon: Icons.play_circle_fill_rounded,
+                                    label: 'Animated Weather Map',
+                                    type: 'animated',
+                                    setStateDialog: setStateDialog,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildMapLayerButton(
+                                    icon: Icons.satellite_alt_rounded,
+                                    label: 'Satellite Weather Map',
+                                    type: 'satellite',
+                                    setStateDialog: setStateDialog,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildMapLayerButton(
+                                    icon: Icons.touch_app_rounded,
+                                    label: 'Interactive Animated Weather Map',
+                                    type: 'interactive',
+                                    setStateDialog: setStateDialog,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildMapLayerButton(
+                                    icon: Icons.thermostat_rounded,
+                                    label: 'Temperature Map',
+                                    type: 'temp',
+                                    setStateDialog: setStateDialog,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMapLayerButton({
+    required IconData icon,
+    required String label,
+    required String type,
+    required StateSetter setStateDialog,
+  }) {
+    final bool isSelected = _mapLayerType == type;
+    return Tooltip(
+      message: label,
+      child: GestureDetector(
+        onTap: () {
+          setStateDialog(() {
+            _mapLayerType = type;
+          });
+          setState(() {
+            _mapLayerType = type;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isSelected ? _purple : _background,
+            shape: BoxShape.circle,
+            boxShadow: _neuShadowsSmall,
+          ),
+          child: Icon(
+            icon,
+            color: isSelected ? Colors.white : _darkText,
+            size: 22,
+          ),
+        ),
+      ),
+    );
+  }
 
   void _showLocationPickerDialog(BuildContext context) {
     showDialog(
@@ -547,12 +1126,10 @@ class _HomeScreenState extends State<HomeScreen>
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-
         setState(() {
           _latitude = lat;
           _longitude = lon;
           _cityName = name;
-
           _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
         });
         _fetchElevation(lat, lon);
@@ -576,10 +1153,6 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-
-  // ---------------------------------------------------------------------------
-  // SUN TIMES
-  // ---------------------------------------------------------------------------
 
   Map<String, String> _getSunTimes(String dateStr) {
     try {
@@ -635,10 +1208,6 @@ class _HomeScreenState extends State<HomeScreen>
       return {'sunrise': '05:30 AM', 'sunset': '07:15 PM'};
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // WEATHER HELPERS
-  // ---------------------------------------------------------------------------
 
   IconData _getWeatherIcon(int code, int isDay) {
     if (code == 0) {
@@ -731,10 +1300,6 @@ class _HomeScreenState extends State<HomeScreen>
     ];
     return kurdishDays[date.weekday - 1];
   }
-
-  // ---------------------------------------------------------------------------
-  // REPORTS
-  // ---------------------------------------------------------------------------
 
   void _showDetailedAIReportDialog(BuildContext context, WeatherModel data) {
     String report = '';
@@ -906,7 +1471,7 @@ class _HomeScreenState extends State<HomeScreen>
                 const Icon(Icons.waves_rounded, color: Colors.deepOrangeAccent),
                 const SizedBox(width: 10),
                 Text(
-                  '  سەرچاوەکانی  (USGS)',
+                  'سەرچاوەکانی (USGS)',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontSize: 17,
@@ -948,7 +1513,6 @@ class _HomeScreenState extends State<HomeScreen>
                   final earthquakes = allEarthquakes.where((eq) {
                     final isIraq = eq.place.toLowerCase().contains('iraq');
                     if (!isIraq) return false;
-
                     try {
                       final eqTime = DateTime.parse(eq.time);
                       final difference = now.difference(eqTime).inHours;
@@ -981,7 +1545,7 @@ class _HomeScreenState extends State<HomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          '  بومەلەرزەکان لە هەرێمی کوردستان وعێراق (٤٨ سەعاتی ڕابردوو):',
+                          'بومەلەرزەکان لە هەرێمی کوردستان وعێراق (٤٨ سەعاتی ڕابردوو):',
                           textAlign: TextAlign.right,
                           style: TextStyle(
                             fontSize: 13,
@@ -1072,10 +1636,8 @@ class _HomeScreenState extends State<HomeScreen>
                                           ),
                                         );
                                       }
-
                                       final placeName =
                                           snapshot.data ?? 'نەناسراو';
-
                                       return Text(
                                         'شوێن: $placeName',
                                         style: TextStyle(
@@ -1143,9 +1705,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ===========================================================================
-  // خشتەی گەورە و پڕی شاشەی مۆبایل بۆ وردەکارییەکانی کەشوهەوا
-  // ===========================================================================
   void _showDayDetailDialog(
     BuildContext context,
     String date,
@@ -1155,7 +1714,6 @@ class _HomeScreenState extends State<HomeScreen>
     WeatherModel data,
   ) {
     final String dayName = _getKurdishDayName(date);
-
     String searchDate = date.trim();
     if (searchDate.contains('T')) {
       searchDate = searchDate.split('T').first;
@@ -1181,11 +1739,9 @@ class _HomeScreenState extends State<HomeScreen>
           }
         } catch (_) {}
       }
-
       if (!isMatch && data.hourlyTimes[i].contains(searchDate)) {
         isMatch = true;
       }
-
       if (isMatch) {
         matchedIndices.add(i);
       }
@@ -1223,9 +1779,8 @@ class _HomeScreenState extends State<HomeScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
-            // بەکارهێنانی insetPadding بۆ فراوانکردنی دیالۆگەکە بە قەبارەی تەواوی شاشە
             insetPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
+              horizontal: 16,
               vertical: 24,
             ),
             title: Row(
@@ -1233,7 +1788,7 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 Flexible(
                   child: Text(
-                    'خشتەی کەشوهەوا ($dayName)',
+                    'وردەکاری کەشوهەوا ($dayName)',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -1249,9 +1804,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             content: SizedBox(
               width: MediaQuery.of(context).size.width * 0.95,
-              height:
-                  MediaQuery.of(context).size.height *
-                  0.70, // قەبارەی گەورە و بەقەد شاشەی مۆبایل
+              height: MediaQuery.of(context).size.height * 0.70,
               child: filteredIndices.isEmpty
                   ? Center(
                       child: Text(
@@ -1262,20 +1815,11 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                     )
-                  : GridView.builder(
+                  : ListView.builder(
                       itemCount: filteredIndices.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2, // دوو کارت لە هەر ڕیزێکدا
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio:
-                                0.80, // پانتایی گونجاو بۆ هەموو زانیارییەکان
-                          ),
                       itemBuilder: (context, index) {
                         final realIdx = filteredIndices[index];
                         final String fullTime = data.hourlyTimes[realIdx];
-
                         final String timeOnly = fullTime.contains('T')
                             ? fullTime.split('T')[1].substring(0, 5)
                             : fullTime;
@@ -1292,7 +1836,6 @@ class _HomeScreenState extends State<HomeScreen>
                         final double temp = data.hourlyTemperatures[realIdx];
                         final int hCode = data.hourlyWeatherCodes[realIdx];
                         final double rain = data.hourlyPrecipitations[realIdx];
-
                         double snow = 0.0;
                         try {
                           if (data.snowfallSums.isNotEmpty &&
@@ -1302,7 +1845,6 @@ class _HomeScreenState extends State<HomeScreen>
                         } catch (_) {}
 
                         final double wind = data.hourlyWindSpeeds[realIdx];
-
                         int humidity = 0;
                         try {
                           if (data.hourlyHumidities.isNotEmpty &&
@@ -1315,7 +1857,6 @@ class _HomeScreenState extends State<HomeScreen>
                         final int isDayTime = (hourVal >= 6 && hourVal < 19)
                             ? 1
                             : 0;
-
                         final Color weatherColor = _getWeatherIconColor(
                           hCode,
                           isDayTime,
@@ -1326,139 +1867,120 @@ class _HomeScreenState extends State<HomeScreen>
                         );
 
                         return Container(
-                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: _background,
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: _neuShadowsSmall,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // سەری کارت: کات + ئایکۆنی دۆخی کەشوهەوا
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    formattedTime12,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 13,
-                                      color: _darkText,
-                                    ),
-                                  ),
                                   Icon(
                                     weatherIcon,
                                     color: weatherColor,
-                                    size: 24,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        formattedTime12,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 14,
+                                          color: _darkText,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        'گەرمی: ${temp.round()}°C',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                          color: _purple,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              const Divider(height: 8),
-                              // پلەی گەرمی
-                              Row(
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  const Icon(
-                                    Icons.thermostat_rounded,
-                                    size: 15,
-                                    color: Colors.orangeAccent,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'گەرمی: ${temp.round()}°C',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 12,
-                                        color: _purple,
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${rain.toStringAsFixed(1)} مم',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: _secondaryText,
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // بڕی باران
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.water_drop,
-                                    size: 15,
-                                    color: Colors.blueAccent,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'باران: ${rain.toStringAsFixed(1)} ملم',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: _secondaryText,
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.water_drop,
+                                        size: 14,
+                                        color: Colors.blueAccent,
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // بڕی بەفر
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.ac_unit_rounded,
-                                    size: 15,
-                                    color: Colors.lightBlueAccent,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'بەفر: ${snow.toStringAsFixed(1)} سم',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: _secondaryText,
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        '${snow.toStringAsFixed(1)} سم',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: _secondaryText,
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // خێرای با
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.air,
-                                    size: 15,
-                                    color: Colors.teal,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'با: ${wind.round()} کم/س',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: _secondaryText,
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.ac_unit_rounded,
+                                        size: 14,
+                                        color: Colors.lightBlueAccent,
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              // ڕادەی شێ
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.water,
-                                    size: 15,
-                                    color: Colors.lightBlue,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'شێ: %$humidity',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: _secondaryText,
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${wind.round()} کم/س',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: _secondaryText,
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.air,
+                                        size: 14,
+                                        color: Colors.teal,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        '%$humidity',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: _secondaryText,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.water,
+                                        size: 14,
+                                        color: Colors.lightBlue,
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -1550,10 +2072,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // BUILD
-  // ---------------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1593,24 +2111,19 @@ class _HomeScreenState extends State<HomeScreen>
               }
 
               final WeatherModel data = snapshot.data!;
-
               final double todayMax = data.maxTemps.isNotEmpty
                   ? data.maxTemps[0]
                   : data.currentTemp.toDouble();
-
               final double todayMin = data.minTemps.isNotEmpty
                   ? data.minTemps[0]
                   : data.currentTemp.toDouble();
-
               final double todayRainSum = data.precipitationSums.isNotEmpty
                   ? data.precipitationSums[0]
                   : 0.0;
               final String todayDate = data.times.isNotEmpty
                   ? data.times[0]
                   : DateTime.now().toIso8601String().split('T').first;
-
               final Map<String, String> sunTimes = _getSunTimes(todayDate);
-
               final int forecastDays = min(
                 6,
                 min(
@@ -1691,69 +2204,188 @@ class _HomeScreenState extends State<HomeScreen>
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  // ١. ئایکۆنی نەخشە گۆڕدرا بۆ ئایکۆنی زەوی (Icons.public_rounded) وەک داواکارییەکەت
+                                  GestureDetector(
+                                    onTap: () =>
+                                        _showFullscreenMapDialog(context),
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: _background,
+                                            shape: BoxShape.circle,
+                                            boxShadow: _neuShadowsSmall,
+                                          ),
+                                          child: const Icon(
+                                            Icons.public_rounded,
+                                            color: Colors.blueAccent,
+                                            size: 20,
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: -4,
+                                          right: -4,
+                                          child: AnimatedBuilder(
+                                            animation: _pulseAnimation,
+                                            builder: (context, child) {
+                                              return Transform.translate(
+                                                offset: Offset(
+                                                  _pulseAnimation.value * 0.4,
+                                                  0,
+                                                ),
+                                                child: child,
+                                              );
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(3),
+                                              decoration: BoxDecoration(
+                                                color: _background,
+                                                shape: BoxShape.circle,
+                                                boxShadow: _neuShadowsSmall,
+                                              ),
+                                              child: const Icon(
+                                                Icons.touch_app_rounded,
+                                                size: 11,
+                                                color: Colors.blueAccent,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  // ٢. ئایکۆنی گۆڕینی کۆد / دۆخی تاریک لەگەڵ هێمای پەنجەی جوڵاو
                                   GestureDetector(
                                     onTap: () {
                                       setState(() {
                                         _isDarkMode = !_isDarkMode;
                                       });
                                     },
-                                    child: _buildNeuContainer(
-                                      padding: const EdgeInsets.all(8),
-                                      radius: 14,
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.circle_outlined,
-                                            color: _isDarkMode
-                                                ? Colors.amber
-                                                : _purple,
-                                            size: 20,
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: _background,
+                                            shape: BoxShape.circle,
+                                            boxShadow: _neuShadowsSmall,
                                           ),
-                                          Positioned(
-                                            right: 0,
-                                            child: ClipRect(
-                                              child: Align(
-                                                alignment:
-                                                    Alignment.centerRight,
-                                                widthFactor: 0.5,
-                                                child: Icon(
-                                                  Icons.circle,
-                                                  color: _isDarkMode
-                                                      ? Colors.amber
-                                                      : _purple,
-                                                  size: 20,
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.circle_outlined,
+                                                color: _isDarkMode
+                                                    ? Colors.amber
+                                                    : _purple,
+                                                size: 20,
+                                              ),
+                                              Positioned(
+                                                right: 0,
+                                                child: ClipRect(
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.centerRight,
+                                                    widthFactor: 0.5,
+                                                    child: Icon(
+                                                      Icons.circle,
+                                                      color: _isDarkMode
+                                                          ? Colors.amber
+                                                          : _purple,
+                                                      size: 20,
+                                                    ),
+                                                  ),
                                                 ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: -4,
+                                          right: -4,
+                                          child: AnimatedBuilder(
+                                            animation: _pulseAnimation,
+                                            builder: (context, child) {
+                                              return Transform.translate(
+                                                offset: Offset(
+                                                  _pulseAnimation.value * 0.4,
+                                                  0,
+                                                ),
+                                                child: child,
+                                              );
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(3),
+                                              decoration: BoxDecoration(
+                                                color: _background,
+                                                shape: BoxShape.circle,
+                                                boxShadow: _neuShadowsSmall,
+                                              ),
+                                              child: Icon(
+                                                Icons.touch_app_rounded,
+                                                size: 11,
+                                                color: _isDarkMode
+                                                    ? Colors.amber
+                                                    : _purple,
                                               ),
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  _buildNeuContainer(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    radius: 14,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                  const SizedBox(width: 14),
+                                  // ٣. ئایکۆنی بەرزی ئاستی دەریا لەگەڵ هێمای پەنجەی جوڵاو
+                                  GestureDetector(
+                                    onTap: () =>
+                                        _showSeaLevelDetailsDialog(context),
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
                                       children: [
-                                        const Icon(
-                                          Icons.terrain_rounded,
-                                          color: Colors.teal,
-                                          size: 24,
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: _background,
+                                            shape: BoxShape.circle,
+                                            boxShadow: _neuShadowsSmall,
+                                          ),
+                                          child: const Icon(
+                                            Icons.terrain_rounded,
+                                            color: Colors.teal,
+                                            size: 20,
+                                          ),
                                         ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          '${_elevation.toStringAsFixed(2)} م',
-                                          textAlign: TextAlign.right,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 12,
-                                            color: _darkText,
+                                        Positioned(
+                                          bottom: -4,
+                                          right: -4,
+                                          child: AnimatedBuilder(
+                                            animation: _pulseAnimation,
+                                            builder: (context, child) {
+                                              return Transform.translate(
+                                                offset: Offset(
+                                                  _pulseAnimation.value * 0.4,
+                                                  0,
+                                                ),
+                                                child: child,
+                                              );
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(3),
+                                              decoration: BoxDecoration(
+                                                color: _background,
+                                                shape: BoxShape.circle,
+                                                boxShadow: _neuShadowsSmall,
+                                              ),
+                                              child: const Icon(
+                                                Icons.touch_app_rounded,
+                                                size: 11,
+                                                color: Colors.teal,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -1763,9 +2395,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 14),
-
                           Row(
                             children: [
                               Expanded(
@@ -1809,9 +2439,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 16),
-
                           _buildNeuContainer(
                             radius: 24,
                             customColor: _isDarkMode
@@ -1843,7 +2471,6 @@ class _HomeScreenState extends State<HomeScreen>
                                                 .split('T')[1]
                                                 .substring(0, 5)
                                           : fullTime;
-
                                       int hour24 =
                                           int.tryParse(
                                             timeOnly.split(':')[0],
@@ -1855,7 +2482,6 @@ class _HomeScreenState extends State<HomeScreen>
                                       int hour12 = hour24 % 12;
                                       if (hour12 == 0) hour12 = 12;
                                       String formattedTime = '$hour12 $period';
-
                                       int hCode =
                                           (data.hourlyWeatherCodes.isNotEmpty &&
                                               data.hourlyWeatherCodes.length >
@@ -1988,12 +2614,65 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                 ),
+                                const SizedBox(height: 10),
+                                Divider(
+                                  color: _secondaryText.withValues(alpha: 0.2),
+                                  height: 1,
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.wb_sunny_rounded,
+                                          color: Colors.orange,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            color: _darkText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      height: 16,
+                                      width: 1,
+                                      color: _secondaryText.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.wb_twilight_rounded,
+                                          color: Colors.deepOrange,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            color: _darkText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
-
                           const SizedBox(height: 16),
-
                           Row(
                             children: [
                               Expanded(
@@ -2021,7 +2700,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
-                                              'کەشوهەوا ',
+                                              'کەشوهەوا',
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w900,
@@ -2188,66 +2867,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ],
                           ),
-
-                          const SizedBox(height: 12),
-
-                          _buildNeuContainer(
-                            radius: 18,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 16,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.wb_sunny_rounded,
-                                      color: Colors.orange,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
-                                        color: _darkText,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Container(
-                                  height: 20,
-                                  width: 1,
-                                  color: _secondaryText.withValues(alpha: 0.3),
-                                ),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.wb_twilight_rounded,
-                                      color: Colors.deepOrange,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
-                                        color: _darkText,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
                           const SizedBox(height: 18),
-
-                          const SizedBox(height: 6),
                           ...List.generate(forecastDays, (i) {
                             final String date = data.times[i];
                             final String dayName = _getKurdishDayName(date);
@@ -2256,7 +2876,6 @@ class _HomeScreenState extends State<HomeScreen>
                             final int code = data.weatherCodes.length > i
                                 ? data.weatherCodes[i]
                                 : 0;
-
                             final Color cardTint = _getWeatherCardTint(code);
 
                             return Padding(
@@ -2386,7 +3005,6 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             );
                           }),
-
                           const SizedBox(height: 16),
                           Align(
                             alignment: Alignment.centerLeft,
@@ -2396,55 +3014,6 @@ class _HomeScreenState extends State<HomeScreen>
                                 fontSize: 11,
                                 fontWeight: FontWeight.w900,
                                 color: _darkText,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: _neuShadows,
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: SizedBox(
-                                height: 180,
-                                child: FlutterMap(
-                                  mapController: _mapController,
-                                  options: MapOptions(
-                                    initialCenter: LatLng(
-                                      _latitude,
-                                      _longitude,
-                                    ),
-                                    initialZoom: 12.0,
-                                    interactionOptions:
-                                        const InteractionOptions(
-                                          flags: InteractiveFlag.none,
-                                        ),
-                                  ),
-                                  children: [
-                                    TileLayer(
-                                      urlTemplate:
-                                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                      userAgentPackageName:
-                                          'com.zheer.weatherapp',
-                                    ),
-                                    MarkerLayer(
-                                      markers: [
-                                        Marker(
-                                          point: LatLng(_latitude, _longitude),
-                                          width: 40,
-                                          height: 40,
-                                          child: const Icon(
-                                            Icons.location_pin,
-                                            color: Colors.redAccent,
-                                            size: 38,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
                               ),
                             ),
                           ),
