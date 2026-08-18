@@ -365,7 +365,6 @@ class _HomeScreenState extends State<HomeScreen>
       final Position position =
           await LocationWeatherService.getCurrentLocation();
 
-      // بەکارهێنانی فانکشنی نوێ بۆ نوێکردنەوەی هەستیار و خێرا
       _updateLiveElevationAndLocation(position);
 
       if (mounted && showError) {
@@ -556,10 +555,7 @@ class _HomeScreenState extends State<HomeScreen>
 
           _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
         });
-        _fetchElevation(
-          lat,
-          lon,
-        ); // گۆڕینی بەرزی بەپێی شارەکە کاتێک لە دەرەوەی GPS ین
+        _fetchElevation(lat, lon);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -588,70 +584,46 @@ class _HomeScreenState extends State<HomeScreen>
   Map<String, String> _getSunTimes(String dateStr) {
     try {
       final DateTime date = DateTime.parse(dateStr);
-
       final int dayOfYear =
           date.difference(DateTime(date.year, 1, 1)).inDays + 1;
-
       final double lat = _latitude;
       final double lon = _longitude;
-
       final double declination =
           23.44 * sin(pi / 180 * (360 * (284 + dayOfYear) / 365));
-
       final double latRad = lat * pi / 180;
       final double decRad = declination * pi / 180;
-
       final double b = 2 * pi * (dayOfYear - 81) / 365;
-
       final double eot = 9.87 * sin(2 * b) - 7.53 * cos(b) - 1.5 * sin(b);
-
       const double timeZoneOffset = 3.0;
-
       const double zenith = 90.833 * pi / 180;
 
       double cosHourAngle =
           (cos(zenith) - sin(latRad) * sin(decRad)) /
           (cos(latRad) * cos(decRad));
-
       cosHourAngle = cosHourAngle.clamp(-1.0, 1.0);
-
       final double hourAngle = acos(cosHourAngle) * 180 / pi;
-
       final double solarNoonLocal =
           12.0 - (lon - (timeZoneOffset * 15)) / 15.0 - (eot / 60.0);
-
       final double sunriseHours = solarNoonLocal - (hourAngle / 15.0);
-
       final double sunsetHours = solarNoonLocal + (hourAngle / 15.0);
 
       String formatTime(double hours) {
         while (hours < 0) {
           hours += 24;
         }
-
         while (hours >= 24) {
           hours -= 24;
         }
-
         int h = hours.floor();
-
         int m = ((hours - h) * 60).round();
-
         if (m == 60) {
           h += 1;
           m = 0;
         }
-
         final String period = h >= 12 ? 'PM' : 'AM';
-
         int displayH = h % 12;
-
-        if (displayH == 0) {
-          displayH = 12;
-        }
-
+        if (displayH == 0) displayH = 12;
         final String displayM = m.toString().padLeft(2, '0');
-
         return '$displayH:$displayM $period';
       }
 
@@ -672,47 +644,18 @@ class _HomeScreenState extends State<HomeScreen>
     if (code == 0) {
       return isDay == 1 ? Icons.wb_sunny_rounded : Icons.nightlight_round;
     }
-
     if (code == 1) {
       return isDay == 1 ? Icons.wb_cloudy_rounded : Icons.nights_stay_rounded;
     }
-
-    if (code == 2) {
-      return Icons.wb_cloudy_rounded;
-    }
-
-    if (code == 3) {
-      return Icons.cloud_rounded;
-    }
-
-    if (code >= 45 && code <= 48) {
-      return Icons.foggy;
-    }
-
-    if (code >= 51 && code <= 57) {
-      return Icons.grain_rounded;
-    }
-
-    if (code >= 61 && code <= 67) {
-      return Icons.umbrella_rounded;
-    }
-
-    if (code >= 71 && code <= 77) {
-      return Icons.ac_unit_rounded;
-    }
-
-    if (code >= 80 && code <= 82) {
-      return Icons.umbrella_rounded;
-    }
-
-    if (code == 85 || code == 86) {
-      return Icons.ac_unit_rounded;
-    }
-
-    if (code >= 95 && code <= 99) {
-      return Icons.thunderstorm_rounded;
-    }
-
+    if (code == 2) return Icons.wb_cloudy_rounded;
+    if (code == 3) return Icons.cloud_rounded;
+    if (code >= 45 && code <= 48) return Icons.foggy;
+    if (code >= 51 && code <= 57) return Icons.grain_rounded;
+    if (code >= 61 && code <= 67) return Icons.umbrella_rounded;
+    if (code >= 71 && code <= 77) return Icons.ac_unit_rounded;
+    if (code >= 80 && code <= 82) return Icons.umbrella_rounded;
+    if (code == 85 || code == 86) return Icons.ac_unit_rounded;
+    if (code >= 95 && code <= 99) return Icons.thunderstorm_rounded;
     return isDay == 1 ? Icons.wb_sunny_rounded : Icons.nightlight_round;
   }
 
@@ -720,35 +663,15 @@ class _HomeScreenState extends State<HomeScreen>
     if (code == 0) {
       return isDay == 1 ? Colors.orangeAccent : Colors.indigoAccent;
     }
-
     if (code == 1 || code == 2 || code == 3) {
       return isDay == 1 ? Colors.blueGrey : Colors.indigo;
     }
-
-    if (code >= 45 && code <= 48) {
-      return Colors.grey;
-    }
-
-    if (code >= 51 && code <= 67) {
-      return Colors.blueAccent;
-    }
-
-    if (code >= 71 && code <= 77) {
-      return Colors.lightBlueAccent;
-    }
-
-    if (code >= 80 && code <= 82) {
-      return Colors.blueAccent;
-    }
-
-    if (code == 85 || code == 86) {
-      return Colors.lightBlueAccent;
-    }
-
-    if (code >= 95 && code <= 99) {
-      return Colors.deepPurpleAccent;
-    }
-
+    if (code >= 45 && code <= 48) return Colors.grey;
+    if (code >= 51 && code <= 67) return Colors.blueAccent;
+    if (code >= 71 && code <= 77) return Colors.lightBlueAccent;
+    if (code >= 80 && code <= 82) return Colors.blueAccent;
+    if (code == 85 || code == 86) return Colors.lightBlueAccent;
+    if (code >= 95 && code <= 99) return Colors.deepPurpleAccent;
     return isDay == 1 ? Colors.orangeAccent : Colors.indigoAccent;
   }
 
@@ -767,78 +690,36 @@ class _HomeScreenState extends State<HomeScreen>
       return _background;
     }
 
-    if (code == 0) {
-      return const Color(0xFFF7F3EA);
-    }
-    if (code >= 1 && code <= 3) {
-      return const Color(0xFFE8EEF3);
-    }
-    if (code >= 45 && code <= 48) {
-      return const Color(0xFFECEFF1);
-    }
+    if (code == 0) return const Color(0xFFF7F3EA);
+    if (code >= 1 && code <= 3) return const Color(0xFFE8EEF3);
+    if (code >= 45 && code <= 48) return const Color(0xFFECEFF1);
     if (code >= 51 && code <= 67 || code >= 80 && code <= 82) {
       return const Color(0xFFE3EDF6);
     }
     if (code >= 71 && code <= 77 || code == 85 || code == 86) {
       return const Color(0xFFEEF4F8);
     }
-    if (code >= 95 && code <= 99) {
-      return const Color(0xFFEFEAF4);
-    }
+    if (code >= 95 && code <= 99) return const Color(0xFFEFEAF4);
     return _background;
   }
 
   String _getWeatherDescription(int code) {
-    if (code == 0) {
-      return 'ساماڵ و ڕووناک';
-    }
-
-    if (code == 1) {
-      return 'کەمێک هەور';
-    }
-
-    if (code == 2) {
-      return 'نیمچە هەور';
-    }
-
-    if (code == 3) {
-      return 'هەوراوی';
-    }
-
-    if (code >= 45 && code <= 48) {
-      return 'تەمومژاوی';
-    }
-
-    if (code >= 51 && code <= 57) {
-      return 'بارانی سووک';
-    }
-
-    if (code >= 61 && code <= 67) {
-      return 'باراناوی';
-    }
-
-    if (code >= 71 && code <= 77) {
-      return 'بەفربارین';
-    }
-
-    if (code >= 80 && code <= 82) {
-      return 'ڕەگبار';
-    }
-
-    if (code == 85 || code == 86) {
-      return 'بەفری ڕەگبار';
-    }
-
-    if (code >= 95 && code <= 99) {
-      return 'هەورەبروسکە و زریان';
-    }
-
+    if (code == 0) return 'ساماڵ و ڕووناک';
+    if (code == 1) return 'کەمێک هەور';
+    if (code == 2) return 'نیمچە هەور';
+    if (code == 3) return 'هەوراوی';
+    if (code >= 45 && code <= 48) return 'تەمومژاوی';
+    if (code >= 51 && code <= 57) return 'بارانی سووک';
+    if (code >= 61 && code <= 67) return 'باراناوی';
+    if (code >= 71 && code <= 77) return 'بەفربارین';
+    if (code >= 80 && code <= 82) return 'ڕەگبار';
+    if (code == 85 || code == 86) return 'بەفری ڕەگبار';
+    if (code >= 95 && code <= 99) return 'هەورەبروسکە و زریان';
     return 'کەشوهەوای ئاسایی';
   }
 
   String _getKurdishDayName(String dateStr) {
     final DateTime date = DateTime.parse(dateStr);
-
     const List<String> kurdishDays = [
       'دووشەممە',
       'سێشەممە',
@@ -848,7 +729,6 @@ class _HomeScreenState extends State<HomeScreen>
       'شەممە',
       'یەکشەممە',
     ];
-
     return kurdishDays[date.weekday - 1];
   }
 
@@ -858,36 +738,26 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _showDetailedAIReportDialog(BuildContext context, WeatherModel data) {
     String report = '';
-
     final int totalDays = min(6, data.times.length);
 
     for (int i = 0; i < totalDays; i++) {
       final String dayName = _getKurdishDayName(data.times[i]);
-
       final String date = data.times[i];
-
       final dynamic maxT = data.maxTemps[i];
-
       final dynamic minT = data.minTemps[i];
-
       final int weatherCode = data.weatherCodes.length > i
           ? data.weatherCodes[i]
           : 0;
 
       final double tempSun = maxT is num ? maxT.toDouble() : 35.0;
-
       final double tempShadow = tempSun - 3.5;
 
       report +=
           '📅 ڕۆژ: $dayName ($date)\n'
-          '🌤️ دۆخی کەش: '
-          '${_getWeatherDescription(weatherCode)}\n'
-          '☀️ پلەی گەرمی لە بەرخۆر: '
-          '${tempSun.toStringAsFixed(1)} °C\n'
-          '🌳 پلەی گەرمی لە سێبەر: '
-          '${tempShadow.toStringAsFixed(1)} °C\n'
-          '❄️ نزمترین پلەی گەرمی: '
-          '$minT °C\n\n'
+          '🌤️ دۆخی کەش: ${_getWeatherDescription(weatherCode)}\n'
+          '☀️ پلەی گەرمی لە بەرخۆر: ${tempSun.toStringAsFixed(1)} °C\n'
+          '🌳 پلەی گەرمی لە سێبەر: ${tempShadow.toStringAsFixed(1)} °C\n'
+          '❄️ نزمترین پلەی گەرمی: $minT °C\n\n'
           '-----------------------------\n\n';
     }
 
@@ -943,28 +813,26 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _showRainReportDialog(BuildContext context, WeatherModel data) {
     String rainReport = '';
-
     final int totalDays = min(6, data.times.length);
 
     for (int i = 0; i < totalDays; i++) {
       final String dayName = _getKurdishDayName(data.times[i]);
-
       final String date = data.times[i];
-
       final dynamic rainAmount = data.precipitationSums.length > i
           ? data.precipitationSums[i]
           : 0.0;
-
+      final dynamic snowAmount = data.snowfallSums.length > i
+          ? data.snowfallSums[i]
+          : 0.0;
       final dynamic rainProb = data.precipitationProbabilities.length > i
           ? data.precipitationProbabilities[i]
           : 0;
 
       rainReport +=
           '📅 ڕۆژ: $dayName ($date)\n'
-          '🌧️ بڕی بارانبارین: '
-          '$rainAmount ملم\n'
-          '📊 ئەگەری بارین: '
-          '$rainProb٪\n\n'
+          '🌧️ بڕی بارانبارین: $rainAmount ملم\n'
+          '❄️ بڕی بەفربارین: $snowAmount سم\n'
+          '📊 ئەگەری بارین: $rainProb٪\n\n'
           '-----------------------------\n\n';
     }
 
@@ -981,10 +849,10 @@ class _HomeScreenState extends State<HomeScreen>
             title: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.water_drop_rounded, color: Colors.blueAccent),
+                const Icon(Icons.ac_unit_rounded, color: Colors.blueAccent),
                 const SizedBox(width: 10),
                 Text(
-                  'بڕی باران بارین',
+                  'بڕی باران و بەفر بارین',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontSize: 17,
@@ -1275,6 +1143,9 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // ===========================================================================
+  // خشتەی گەورە و پڕی شاشەی مۆبایل بۆ وردەکارییەکانی کەشوهەوا
+  // ===========================================================================
   void _showDayDetailDialog(
     BuildContext context,
     String date,
@@ -1324,7 +1195,7 @@ class _HomeScreenState extends State<HomeScreen>
     for (int idx in matchedIndices) {
       try {
         DateTime hDt = DateTime.parse(data.hourlyTimes[idx]).toLocal();
-        if (hDt.hour % 4 == 0) {
+        if (hDt.hour % 3 == 0) {
           filteredIndices.add(idx);
         }
       } catch (_) {
@@ -1332,14 +1203,14 @@ class _HomeScreenState extends State<HomeScreen>
             ? data.hourlyTimes[idx].split('T')[1]
             : data.hourlyTimes[idx].split(' ')[1];
         int hour = int.tryParse(timeOnly.split(':')[0]) ?? 0;
-        if (hour % 4 == 0) {
+        if (hour % 3 == 0) {
           filteredIndices.add(idx);
         }
       }
     }
 
-    if (filteredIndices.length > 8) {
-      filteredIndices = filteredIndices.take(8).toList();
+    if (filteredIndices.isEmpty) {
+      filteredIndices = matchedIndices;
     }
 
     showDialog(
@@ -1352,15 +1223,22 @@ class _HomeScreenState extends State<HomeScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
+            // بەکارهێنانی insetPadding بۆ فراوانکردنی دیالۆگەکە بە قەبارەی تەواوی شاشە
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 24,
+            ),
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'کەشوهەوای کاتژمێری ($dayName)',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: _darkText,
+                Flexible(
+                  child: Text(
+                    'خشتەی کەشوهەوا ($dayName)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: _darkText,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -1370,8 +1248,10 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
             content: SizedBox(
-              width: double.maxFinite,
-              height: 340,
+              width: MediaQuery.of(context).size.width * 0.95,
+              height:
+                  MediaQuery.of(context).size.height *
+                  0.70, // قەبارەی گەورە و بەقەد شاشەی مۆبایل
               child: filteredIndices.isEmpty
                   ? Center(
                       child: Text(
@@ -1386,10 +1266,11 @@ class _HomeScreenState extends State<HomeScreen>
                       itemCount: filteredIndices.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 1.5,
+                            crossAxisCount: 2, // دوو کارت لە هەر ڕیزێکدا
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio:
+                                0.80, // پانتایی گونجاو بۆ هەموو زانیارییەکان
                           ),
                       itemBuilder: (context, index) {
                         final realIdx = filteredIndices[index];
@@ -1411,6 +1292,15 @@ class _HomeScreenState extends State<HomeScreen>
                         final double temp = data.hourlyTemperatures[realIdx];
                         final int hCode = data.hourlyWeatherCodes[realIdx];
                         final double rain = data.hourlyPrecipitations[realIdx];
+
+                        double snow = 0.0;
+                        try {
+                          if (data.snowfallSums.isNotEmpty &&
+                              data.snowfallSums.length > (realIdx ~/ 24)) {
+                            snow = data.snowfallSums[realIdx ~/ 24] / 24;
+                          }
+                        } catch (_) {}
+
                         final double wind = data.hourlyWindSpeeds[realIdx];
 
                         int humidity = 0;
@@ -1419,9 +1309,7 @@ class _HomeScreenState extends State<HomeScreen>
                               data.hourlyHumidities.length > realIdx) {
                             humidity = data.hourlyHumidities[realIdx];
                           }
-                        } catch (_) {
-                          humidity = 0;
-                        }
+                        } catch (_) {}
 
                         final int hourVal = int.parse(timeOnly.split(':')[0]);
                         final int isDayTime = (hourVal >= 6 && hourVal < 19)
@@ -1438,15 +1326,17 @@ class _HomeScreenState extends State<HomeScreen>
                         );
 
                         return Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: _background,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(18),
                             boxShadow: _neuShadowsSmall,
                           ),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              // سەری کارت: کات + ئایکۆنی دۆخی کەشوهەوا
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -1455,87 +1345,120 @@ class _HomeScreenState extends State<HomeScreen>
                                     formattedTime12,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 11,
+                                      fontSize: 13,
                                       color: _darkText,
                                     ),
                                   ),
                                   Icon(
                                     weatherIcon,
                                     color: weatherColor,
-                                    size: 22,
+                                    size: 24,
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
+                              const Divider(height: 8),
+                              // پلەی گەرمی
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    '${temp.round()}°C',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 13,
-                                      color: _purple,
+                                  const Icon(
+                                    Icons.thermostat_rounded,
+                                    size: 15,
+                                    color: Colors.orangeAccent,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'گەرمی: ${temp.round()}°C',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 12,
+                                        color: _purple,
+                                      ),
                                     ),
                                   ),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.water_drop,
-                                        size: 9,
-                                        color: Colors.blueAccent,
+                                ],
+                              ),
+                              // بڕی باران
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.water_drop,
+                                    size: 15,
+                                    color: Colors.blueAccent,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'باران: ${rain.toStringAsFixed(1)} ملم',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: _secondaryText,
                                       ),
-                                      Text(
-                                        ' ${rain.toStringAsFixed(1)}ملم',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                          color: _secondaryText,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
+                              // بڕی بەفر
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.air,
-                                        size: 9,
-                                        color: Colors.teal,
-                                      ),
-                                      Text(
-                                        ' ${wind.round()}کم/س',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                          color: _secondaryText,
-                                        ),
-                                      ),
-                                    ],
+                                  const Icon(
+                                    Icons.ac_unit_rounded,
+                                    size: 15,
+                                    color: Colors.lightBlueAccent,
                                   ),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.water,
-                                        size: 9,
-                                        color: Colors.lightBlue,
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'بەفر: ${snow.toStringAsFixed(1)} سم',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: _secondaryText,
                                       ),
-                                      Text(
-                                        ' %$humidity',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                          color: _secondaryText,
-                                        ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // خێرای با
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.air,
+                                    size: 15,
+                                    color: Colors.teal,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'با: ${wind.round()} کم/س',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: _secondaryText,
                                       ),
-                                    ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // ڕادەی شێ
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.water,
+                                    size: 15,
+                                    color: Colors.lightBlue,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'شێ: %$humidity',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: _secondaryText,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1549,7 +1472,7 @@ class _HomeScreenState extends State<HomeScreen>
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
                 child: Text(
-                  'باشە',
+                  'داخستن',
                   textAlign: TextAlign.right,
                   style: TextStyle(color: _purple, fontWeight: FontWeight.w900),
                 ),
@@ -1699,7 +1622,6 @@ class _HomeScreenState extends State<HomeScreen>
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final bool wideScreen = constraints.maxWidth >= 900;
-
                   final double maxContentWidth = wideScreen
                       ? 1120
                       : double.infinity;
@@ -1713,7 +1635,6 @@ class _HomeScreenState extends State<HomeScreen>
                           vertical: 14,
                         ),
                         children: [
-                          // HEADER (تایبەت بە لۆکەیشن، ئایکۆنی دۆخی تاریک/ڕووناک و کارتی بەرزی زەوی)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -1729,7 +1650,6 @@ class _HomeScreenState extends State<HomeScreen>
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      // جووڵاندنی ئایکۆنی لۆکەیشن بۆ سەرنجڕاکێشانی بەکارهێنەر
                                       AnimatedBuilder(
                                         animation: _locationBounceAnimation,
                                         builder: (context, child) {
@@ -1758,7 +1678,6 @@ class _HomeScreenState extends State<HomeScreen>
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      // ئایکۆنێکی بچووکی تیر یان گۆڕین بۆ نیشاندانی ئەوەی دەتوانرێت داگیرسێنرێت
                                       Icon(
                                         Icons.unfold_more_rounded,
                                         size: 14,
@@ -1769,12 +1688,9 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ),
                               const SizedBox(width: 10),
-
-                              // کارتی GPS، بەرزی زەوی و ئایکۆنی گۆڕینی Dark Mode / Light Mode
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // ئایکۆنی گۆڕینی دۆخ لە کەناری کارتی GPS
                                   GestureDetector(
                                     onTap: () {
                                       setState(() {
@@ -1816,8 +1732,6 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-
-                                  // کارتی GPS و بەرزی زەوی
                                   _buildNeuContainer(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
@@ -1834,7 +1748,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
-                                          '${_elevation.toStringAsFixed(2)} م', // پیشاندانی گۆڕانکاری بە پۆینتەوە
+                                          '${_elevation.toStringAsFixed(2)} م',
                                           textAlign: TextAlign.right,
                                           style: TextStyle(
                                             fontWeight: FontWeight.w900,
@@ -1852,7 +1766,6 @@ class _HomeScreenState extends State<HomeScreen>
 
                           const SizedBox(height: 14),
 
-                          // SUMMARY CARDS (ڕەنگە نیۆمۆرفیکییەکان بۆ سێ کارتی سەرەوە)
                           Row(
                             children: [
                               Expanded(
@@ -1899,7 +1812,6 @@ class _HomeScreenState extends State<HomeScreen>
 
                           const SizedBox(height: 16),
 
-                          // NEUMORPHIC METEOGRAM CARD (بە هەندەڵکردنی ئایکۆنەکان و ڕەنگدانی خوارەوەی هێڵەکە هاوشیوەی وێنەکە)
                           _buildNeuContainer(
                             radius: 24,
                             customColor: _isDarkMode
@@ -1909,7 +1821,6 @@ class _HomeScreenState extends State<HomeScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // بەشی سەرەوەی کارتەکە کە کات و ئایکۆنی ڕاستەقینەی کەشوهەوای تێدایە هاوشێوەی وێنەکە
                                 SizedBox(
                                   height: 38,
                                   child: ListView.builder(
@@ -1985,7 +1896,6 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-
                                 SizedBox(
                                   height: 85,
                                   child: LineChart(
@@ -2084,7 +1994,6 @@ class _HomeScreenState extends State<HomeScreen>
 
                           const SizedBox(height: 16),
 
-                          // ACTION BUTTONS
                           Row(
                             children: [
                               Expanded(
@@ -2282,7 +2191,6 @@ class _HomeScreenState extends State<HomeScreen>
 
                           const SizedBox(height: 12),
 
-                          // SUNRISE & SUNSET
                           _buildNeuContainer(
                             radius: 18,
                             padding: const EdgeInsets.symmetric(
@@ -2339,7 +2247,6 @@ class _HomeScreenState extends State<HomeScreen>
 
                           const SizedBox(height: 18),
 
-                          // FORECAST LIST
                           const SizedBox(height: 6),
                           ...List.generate(forecastDays, (i) {
                             final String date = data.times[i];
@@ -2481,7 +2388,6 @@ class _HomeScreenState extends State<HomeScreen>
                           }),
 
                           const SizedBox(height: 16),
-                          // MAP PREVIEW
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
@@ -2499,7 +2405,6 @@ class _HomeScreenState extends State<HomeScreen>
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: _neuShadows,
                             ),
-
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(20),
                               child: SizedBox(
@@ -2567,6 +2472,7 @@ class WeatherModel {
   final List<int> weatherCodes;
   final List<double> precipitationSums;
   final List<int> precipitationProbabilities;
+  final List<double> snowfallSums;
 
   final List<String> hourlyTimes;
   final List<double> hourlyTemperatures;
@@ -2584,6 +2490,7 @@ class WeatherModel {
     required this.weatherCodes,
     required this.precipitationSums,
     required this.precipitationProbabilities,
+    required this.snowfallSums,
     required this.hourlyTimes,
     required this.hourlyTemperatures,
     required this.hourlyWeatherCodes,
@@ -2621,7 +2528,6 @@ class WeatherModel {
               ?.toDouble() ??
           0.0,
       isDay: (currentWeather['is_day'] as num?)?.toInt() ?? 1,
-
       times: parseStringList(daily['time']),
       maxTemps: parseDoubleList(daily['temperature_2m_max']),
       minTemps: parseDoubleList(daily['temperature_2m_min']),
@@ -2630,7 +2536,7 @@ class WeatherModel {
       precipitationProbabilities: parseIntList(
         daily['precipitation_probability_max'],
       ),
-
+      snowfallSums: parseDoubleList(daily['snowfall_sum']),
       hourlyTimes: parseStringList(hourly['time']),
       hourlyTemperatures: parseDoubleList(hourly['temperature_2m']),
       hourlyWeatherCodes: parseIntList(

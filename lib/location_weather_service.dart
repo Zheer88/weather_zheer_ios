@@ -78,7 +78,8 @@ class LocationWeatherService {
       '&current='
       'temperature_2m,'
       'weather_code,'
-      'is_day'
+      'is_day,'
+      'snowfall' // <-- زیادکرا بۆ کارتی کەشوهەوای ئێستا
       '&hourly='
       'temperature_2m,'
       'relative_humidity_2m,'
@@ -93,7 +94,8 @@ class LocationWeatherService {
       'precipitation_probability_max,'
       'sunrise,'
       'sunset,'
-      'windspeed_10m_max'
+      'windspeed_10m_max,'
+      'snowfall_sum' // <-- زیادکرا بۆ کارتی ٦ ڕۆژە و بڕی باران و بەفر
       '&timezone=auto'
       '&forecast_days=12',
     );

@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 
 class WeatherService {
@@ -17,7 +16,8 @@ class WeatherService {
       'temperature_2m,'
       'weather_code,'
       'is_day,'
-      'wind_speed_10m'
+      'wind_speed_10m,'
+      'snowfall'
       '&hourly='
       'temperature_2m,'
       'relative_humidity_2m,'
@@ -32,7 +32,8 @@ class WeatherService {
       'sunset,'
       'precipitation_sum,'
       'precipitation_probability_max,'
-      'wind_speed_10m_max'
+      'wind_speed_10m_max,'
+      'snowfall_sum'
       '&timezone=auto'
       '&forecast_days=12',
     );
