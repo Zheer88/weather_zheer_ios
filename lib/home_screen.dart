@@ -1,16 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
-import 'dart:async';
-import 'location_weather_service.dart';
-import 'earthquake_service.dart';
-import 'models/earthquake_model.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:fl_chart/fl_chart.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'earthquake_service.dart';
+import 'location_weather_service.dart';
+import 'models/earthquake_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,8 +26,6 @@ class _HomeScreenState extends State<HomeScreen>
   late Future<List<EarthquakeModel>> _earthquakeData;
 
   bool _isLocationLoading = false;
-
-  // گۆڕاوی ڕاگرتنی دۆخی تاریک (Dark Mode)
   bool _isDarkMode = false;
 
   final MapController _fullscreenMapController = MapController();
@@ -36,7 +35,6 @@ class _HomeScreenState extends State<HomeScreen>
   double _elevation = 850.0;
 
   String _cityName = 'سلێمانی';
-
   String _mapLayerType = 'normal';
 
   Color get _background =>
@@ -241,57 +239,75 @@ class _HomeScreenState extends State<HomeScreen>
   ) async {
     try {
       final url = Uri.parse(
-        'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,european_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone',
+        'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&timezone=auto',
       );
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['current'];
+        if (data != null && data['current'] != null) {
+          return data['current'] as Map<String, dynamic>;
+        }
       }
     } catch (_) {}
     return null;
+  }
+
+  int _calculateRealAqi(Map<String, dynamic>? data) {
+    if (data == null) return 0;
+    if (data['us_aqi'] != null) {
+      return (data['us_aqi'] as num).toInt();
+    }
+    final double pm25 = (data['pm2_5'] as num?)?.toDouble() ?? 0.0;
+    if (pm25 <= 12.0) {
+      return ((50 / 12.0) * pm25).round();
+    } else if (pm25 <= 35.4) {
+      return (51 + ((49 / 23.3) * (pm25 - 12.1))).round();
+    } else if (pm25 <= 55.4) {
+      return (101 + ((49 / 19.9) * (pm25 - 35.5))).round();
+    } else if (pm25 <= 150.4) {
+      return (151 + ((49 / 94.9) * (pm25 - 55.5))).round();
+    } else {
+      return (201 + ((99 / 99.5) * (pm25 - 150.5))).round().clamp(0, 500);
+    }
   }
 
   Map<String, dynamic> _getAqiStatus(int aqi) {
     if (aqi <= 50) {
       return {
         'status': 'پاک',
-        'color': Colors.greenAccent,
+        'color': const Color(0xFF4ADE80),
         'desc': 'کوالێتی هەوا زۆر باشە و هیچ مەترسییەکی تەندروستی نییە.',
       };
     } else if (aqi <= 100) {
       return {
-        'status': 'مامناوەند',
-        'color': const Color(0xFF4ADE80),
+        'status': 'ئاسایی',
+        'color': const Color(0xFFFBBF24),
         'desc':
-            'کوالێتی هەوا پەسەندە، بەڵام بۆ کەسانی هەستیار کەمێک کاریگەری دەبێت.',
+            'کوالێتی هەوا پەسەندە، بەڵام بۆ کەسانی هەستیار کاریگەری کەم دەبێت.',
       };
     } else if (aqi <= 150) {
       return {
-        'status': 'ئاسایی',
-        'color': Colors.orangeAccent,
+        'status': 'ناپاکی بۆ هەستیار',
+        'color': const Color(0xFFF97316),
         'desc': 'کەسانی خاوەن نەخۆشییەکانی هەناسە و منداڵان دەبێت ئاگاداربن.',
       };
     } else if (aqi <= 200) {
       return {
-        'status': 'ناپاکی',
-        'color': Colors.deepOrangeAccent,
+        'status': 'ناپاک',
+        'color': const Color(0xFFEF4444),
         'desc':
             'هەموو کەسێک لەوانەیە هەست بە کاریگەرییە نەرێنییەکانی هەوا بکات.',
       };
     } else {
       return {
         'status': 'مەترسیدار',
-        'color': Colors.redAccent,
+        'color': const Color(0xFFDC2626),
         'desc':
-            'ئاگاداری تەندروستی گشتی، هەوای دەرەوە بە تەواوی ژەهراویی و پیسە.',
+            'ئاگاداری تەندروستی گشتی، هەوای دەرەوە بە تەواوی پیس و ژەهراوییە.',
       };
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // ستایلی مۆدێرنی iOS Weather بۆ پەنجەرەی کوالێتیی هەوا (Air Quality)
-  // ---------------------------------------------------------------------------
   void _showAirQualityDialog(BuildContext context) {
     final bool isDark = _isDarkMode;
     final Color iosCardBg = isDark
@@ -353,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'نەتوانرا داتای کوالێتیی هەوا بۆ ئەم شوێنە بهێنرێت.',
+                              'داتای GPS و کوالێتیی هەوا بۆ ئەم ناوچەیە لە بارکردندایە...',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: _darkText,
@@ -378,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen>
                     }
 
                     final aqiData = snapshot.data!;
-                    final int usAqi = (aqiData['us_aqi'] as num?)?.toInt() ?? 0;
+                    final int usAqi = _calculateRealAqi(aqiData);
                     final dynamic pm25 = aqiData['pm2_5'] ?? 0;
                     final dynamic pm10 = aqiData['pm10'] ?? 0;
                     final dynamic co = aqiData['carbon_monoxide'] ?? 0;
@@ -394,7 +410,6 @@ class _HomeScreenState extends State<HomeScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // سەردێڕ
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -436,8 +451,6 @@ class _HomeScreenState extends State<HomeScreen>
                             ],
                           ),
                           const SizedBox(height: 16),
-
-                          // کارتی سەرەکی گەورە (iOS Header Box)
                           Container(
                             padding: const EdgeInsets.all(18),
                             decoration: BoxDecoration(
@@ -466,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           ),
                                         ),
                                         Text(
-                                          'ئاستی AQI (پێوەری ئەمریکی)',
+                                          'ئاستی ڕاستەقینەی AQI (پێوەری CAMS)',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w800,
@@ -519,8 +532,6 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                           ),
                           const SizedBox(height: 14),
-
-                          // کارتەکانی داتای گاز و تەنۆلکە زیانبەخشەکان
                           GridView.count(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -664,16 +675,13 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // کارتی خوارەوەی کەشوهەوا (بەبێ دەرکەوتنی ژمارەی AQI)
-  // ---------------------------------------------------------------------------
   Widget _buildAirQualityImageBannerCard() {
     return FutureBuilder<Map<String, dynamic>?>(
       future: _fetchAirQualityData(_latitude, _longitude),
       builder: (context, snapshot) {
-        int aqi = 42;
+        int aqi = 0;
         if (snapshot.hasData && snapshot.data != null) {
-          aqi = (snapshot.data!['us_aqi'] as num?)?.toInt() ?? 42;
+          aqi = _calculateRealAqi(snapshot.data);
         }
 
         final statusInfo = _getAqiStatus(aqi);
@@ -1913,9 +1921,6 @@ class _HomeScreenState extends State<HomeScreen>
     return kurdishDays[date.weekday - 1];
   }
 
-  // ---------------------------------------------------------------------------
-  // ستایلی مۆدێرنی iOS Weather بۆ پەنجەرەی ڕاپۆرتی کەشوهەوا (AI Report)
-  // ---------------------------------------------------------------------------
   void _showDetailedAIReportDialog(BuildContext context, WeatherModel data) {
     final int totalDays = min(6, data.times.length);
     final bool isDark = _isDarkMode;
@@ -2122,8 +2127,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // ستایلی مۆدێرنی iOS Weather بۆ ڕاپۆرتی باران و بەفر
   void _showRainReportDialog(BuildContext context, WeatherModel data) {
     final int totalDays = min(6, data.times.length);
     final bool isDark = _isDarkMode;
@@ -3441,7 +3444,6 @@ class _HomeScreenState extends State<HomeScreen>
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // ١. دوگمەی نەخشە
                                   GestureDetector(
                                     onTap: () =>
                                         _showFullscreenMapDialog(context),
@@ -3460,7 +3462,6 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                   const SizedBox(width: 14),
-                                  // ٢. دوگمەی کوالێتیی هەوا
                                   GestureDetector(
                                     onTap: () => _showAirQualityDialog(context),
                                     child: Container(
@@ -3478,7 +3479,6 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                   const SizedBox(width: 14),
-                                  // ٣. دوگمەی دۆخی تاریک/ڕووناک
                                   GestureDetector(
                                     onTap: () {
                                       setState(() {
@@ -3524,7 +3524,6 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                   const SizedBox(width: 14),
-                                  // ٤. دوگمەی بەرزی لە ئاستی دەریا
                                   GestureDetector(
                                     onTap: () =>
                                         _showSeaLevelDetailsDialog(context),
@@ -4157,9 +4156,7 @@ class _HomeScreenState extends State<HomeScreen>
                             );
                           }),
                           const SizedBox(height: 14),
-
                           _buildAirQualityImageBannerCard(),
-
                           const SizedBox(height: 16),
                           Align(
                             alignment: Alignment.centerLeft,
