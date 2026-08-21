@@ -520,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           const SizedBox(height: 14),
 
-                          // کارتەکانی داتای گاز و تەنۆلکە زیانبەخشەکان بە شێوازی iOS Weather Grid
+                          // کارتەکانی داتای گاز و تەنۆلکە زیانبەخشەکان
                           GridView.count(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -664,6 +664,9 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // کارتی خوارەوەی کەشوهەوا (بەبێ دەرکەوتنی ژمارەی AQI)
+  // ---------------------------------------------------------------------------
   Widget _buildAirQualityImageBannerCard() {
     return FutureBuilder<Map<String, dynamic>?>(
       future: _fetchAirQualityData(_latitude, _longitude),
@@ -677,213 +680,164 @@ class _HomeScreenState extends State<HomeScreen>
         final Color statusColor = statusInfo['color'] as Color;
         final String statusName = statusInfo['status'] as String;
 
-        return GestureDetector(
-          onTap: () => _showAirQualityDialog(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: _isDarkMode
-                  ? const Color(0xFF1E252D)
-                  : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: GestureDetector(
+            onTap: () => _showAirQualityDialog(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
                 color: _isDarkMode
-                    ? Colors.white.withValues(alpha: 0.18)
-                    : Colors.black.withValues(alpha: 0.12),
-                width: 1.2,
+                    ? const Color(0xFF1E252D)
+                    : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _isDarkMode
+                      ? Colors.white.withValues(alpha: 0.18)
+                      : Colors.black.withValues(alpha: 0.12),
+                  width: 1.2,
+                ),
+                boxShadow: _neuShadowsSmall,
               ),
-              boxShadow: _neuShadowsSmall,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.air_rounded,
-                          color: Color(0xFF4ADE80),
-                          size: 26,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.air_rounded,
+                            color: Color(0xFF4ADE80),
+                            size: 28,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'کوالیتی هەوا ($_cityName)',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              color: _darkText,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'کوالیتی هەوا ($_cityName)',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: _darkText,
+                        decoration: BoxDecoration(
+                          color: _isDarkMode
+                              ? Colors.black.withValues(alpha: 0.3)
+                              : Colors.white.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: statusColor.withValues(alpha: 0.6),
+                            width: 1.5,
                           ),
                         ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _isDarkMode
-                            ? Colors.black.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: statusColor.withValues(alpha: 0.5),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Text(
-                        statusName,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: statusColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '$aqi',
+                        child: Text(
+                          statusName,
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 16,
                             fontWeight: FontWeight.w900,
                             color: statusColor,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'AQI',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: _secondaryText,
-                          ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Column(
+                    children: [
+                      Container(
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: _isDarkMode
+                              ? Colors.black45
+                              : Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: statusColor.withValues(alpha: 0.5),
-                            ),
-                          ),
-                          child: Text(
-                            statusName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              color: statusColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Container(
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: _isDarkMode
-                                  ? Colors.black45
-                                  : Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    decoration: const BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Color(0xFF4ADE80),
-                                          Color(0xFFFBBF24),
-                                          Color(0xFFF97316),
-                                          Color(0xFFEF4444),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: FractionallySizedBox(
-                                      widthFactor:
-                                          (1.0 -
-                                          (aqi / 250.0).clamp(0.05, 1.0)),
-                                      child: Container(
-                                        color: _isDarkMode
-                                            ? const Color(
-                                                0xFF1E252D,
-                                              ).withValues(alpha: 0.8)
-                                            : Colors.grey.shade300.withValues(
-                                                alpha: 0.85,
-                                              ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Stack(
                             children: [
-                              Text(
-                                '0 پاک',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF4ADE80),
+                              Container(
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF4ADE80),
+                                      Color(0xFFFBBF24),
+                                      Color(0xFFF97316),
+                                      Color(0xFFEF4444),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              Text(
-                                '50 ئاسایی',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFFFBBF24),
-                                ),
-                              ),
-                              Text(
-                                '100 ناپاک',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFFF97316),
-                                ),
-                              ),
-                              Text(
-                                '200+ مەترسیدار',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFFEF4444),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: FractionallySizedBox(
+                                  widthFactor:
+                                      (1.0 - (aqi / 250.0).clamp(0.05, 1.0)),
+                                  child: Container(
+                                    color: _isDarkMode
+                                        ? const Color(
+                                            0xFF1E252D,
+                                          ).withValues(alpha: 0.8)
+                                        : Colors.grey.shade300.withValues(
+                                            alpha: 0.85,
+                                          ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: const [
+                          Text(
+                            '0 پاک',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF4ADE80),
+                            ),
+                          ),
+                          Text(
+                            '50 ئاسایی',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFFBBF24),
+                            ),
+                          ),
+                          Text(
+                            '100 ناپاک',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFF97316),
+                            ),
+                          ),
+                          Text(
+                            '200+ مەترسیدار',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -2170,7 +2124,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ---------------------------------------------------------------------------
   // ستایلی مۆدێرنی iOS Weather بۆ ڕاپۆرتی باران و بەفر
-  // ---------------------------------------------------------------------------
   void _showRainReportDialog(BuildContext context, WeatherModel data) {
     final int totalDays = min(6, data.times.length);
     final bool isDark = _isDarkMode;
@@ -2237,7 +2190,6 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // سەردێڕ
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -2279,8 +2231,6 @@ class _HomeScreenState extends State<HomeScreen>
                           ],
                         ),
                         const SizedBox(height: 12),
-
-                        // ڕیزبەندی کارتی ڕۆژەکان بە شێوازی ئاسۆیی خێرا (iOS Weather Style)
                         SizedBox(
                           height: 175,
                           child: ListView.separated(
@@ -2415,10 +2365,7 @@ class _HomeScreenState extends State<HomeScreen>
                             },
                           ),
                         ),
-
                         const SizedBox(height: 12),
-
-                        // کارتی کۆی گشتی و سەرچاوەی فەرمی
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
