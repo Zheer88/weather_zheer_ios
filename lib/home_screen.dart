@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen>
   ) async {
     try {
       final url = Uri.parse(
-        'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&domains=cams_global&timezone=auto',
+        'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&timezone=auto',
       );
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -309,203 +309,366 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _showAirQualityDialog(BuildContext context) {
+    final bool isDark = _isDarkMode;
+    final Color iosCardBg = isDark
+        ? const Color(0xFF1E2638).withValues(alpha: 0.85)
+        : const Color(0xFFE2EAF4).withValues(alpha: 0.95);
+    final Color iosBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.08);
+
     showDialog(
       context: context,
       builder: (dialogContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: _background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.air_rounded, color: Colors.cyan, size: 24),
-                    const SizedBox(width: 8),
-                    Text(
-                      'کوالێتیی هەوا ($_cityName)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _darkText,
-                      ),
-                    ),
-                  ],
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 440),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF161E2E), const Color(0xFF0F172A)]
+                      : [const Color(0xFFE9F1FA), const Color(0xFFD5E3F4)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(dialogContext),
-                  child: Icon(Icons.close, color: _secondaryText, size: 22),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: FutureBuilder<Map<String, dynamic>?>(
-                future: _fetchAirQualityData(_latitude, _longitude),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 180,
-                      child: Center(
-                        child: CircularProgressIndicator(color: Colors.cyan),
-                      ),
-                    );
-                  }
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.15),
+                    blurRadius: 25,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+                border: Border.all(color: iosBorderColor, width: 1.5),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: FutureBuilder<Map<String, dynamic>?>(
+                  future: _fetchAirQualityData(_latitude, _longitude),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 220,
+                        child: Center(
+                          child: CircularProgressIndicator(color: Colors.cyan),
+                        ),
+                      );
+                    }
 
-                  if (!snapshot.hasData || snapshot.data == null) {
-                    return Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        'داتای کوالێتی هەوا بۆ ئەم شوێنە بەردەست نییە.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: _darkText, fontSize: 14),
-                      ),
-                    );
-                  }
+                    if (!snapshot.hasData || snapshot.data == null) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'داتای جۆری و کوالێتیی هەوا بۆ ئەم ناوچەیە لە بارکردندایە',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _darkText,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogContext),
+                              child: Text(
+                                'داخستن',
+                                style: TextStyle(
+                                  color: _purple,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
 
-                  final aqiData = snapshot.data!;
-                  final int usAqi = _calculateRealAqi(aqiData);
-                  final dynamic pm25 = aqiData['pm2_5'] ?? 0;
-                  final dynamic pm10 = aqiData['pm10'] ?? 0;
-                  final dynamic co = aqiData['carbon_monoxide'] ?? 0;
-                  final dynamic no2 = aqiData['nitrogen_dioxide'] ?? 0;
-                  final dynamic so2 = aqiData['sulphur_dioxide'] ?? 0;
-                  final dynamic o3 = aqiData['ozone'] ?? 0;
+                    final aqiData = snapshot.data!;
+                    final int usAqi = _calculateRealAqi(aqiData);
+                    final dynamic pm25 = aqiData['pm2_5'] ?? 0;
+                    final dynamic pm10 = aqiData['pm10'] ?? 0;
+                    final dynamic co = aqiData['carbon_monoxide'] ?? 0;
+                    final dynamic no2 = aqiData['nitrogen_dioxide'] ?? 0;
+                    final dynamic so2 = aqiData['sulphur_dioxide'] ?? 0;
+                    final dynamic o3 = aqiData['ozone'] ?? 0;
 
-                  final statusInfo = _getAqiStatus(usAqi);
-                  final Color statusColor = statusInfo['color'] as Color;
+                    final statusInfo = _getAqiStatus(usAqi);
+                    final Color statusColor = statusInfo['color'] as Color;
 
-                  return SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: _background,
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: _neuShadowsSmall,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'پلەی AQI: $usAqi',
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                      color: statusColor,
-                                    ),
+                                  const Icon(
+                                    Icons.air_rounded,
+                                    color: Colors.cyan,
+                                    size: 26,
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: statusColor.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      statusInfo['status'] as String,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: statusColor,
-                                      ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'کوالێتیی هەوا — $_cityName',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                      color: _darkText,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                statusInfo['desc'] as String,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _secondaryText,
+                              GestureDetector(
+                                onTap: () => Navigator.pop(dialogContext),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white12
+                                        : Colors.black.withValues(alpha: 0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    color: _darkText,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        _buildStandardAqiRow(
-                          'تەنی زیانبەخش (PM2.5)',
-                          '$pm25 µg/m³',
-                        ),
-                        _buildStandardAqiRow(
-                          'تۆز و گەردیلە (PM10)',
-                          '$pm10 µg/m³',
-                        ),
-                        _buildStandardAqiRow('گازی ئۆزۆن (O3)', '$o3 µg/m³'),
-                        _buildStandardAqiRow('نایترۆجین (NO2)', '$no2 µg/m³'),
-                        _buildStandardAqiRow(
-                          'کاربۆن مۆنۆکسید (CO)',
-                          '$co µg/m³',
-                        ),
-                        _buildStandardAqiRow(
-                          'دوانۆکسیدی گۆگرد (SO2)',
-                          '$so2 µg/m³',
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(
-                  'داخستن',
-                  style: TextStyle(color: _purple, fontWeight: FontWeight.bold),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: iosCardBg,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: iosBorderColor),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '$usAqi',
+                                          style: TextStyle(
+                                            fontSize: 48,
+                                            fontWeight: FontWeight.w900,
+                                            color: statusColor,
+                                            height: 1.1,
+                                          ),
+                                        ),
+                                        Text(
+                                          'ئاستی ڕاستەقینە',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: _secondaryText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: statusColor.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        statusInfo['status'] as String,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w900,
+                                          color: statusColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Divider(color: iosBorderColor, height: 1),
+                                const SizedBox(height: 10),
+                                Text(
+                                  statusInfo['desc'] as String,
+                                  textAlign: TextAlign.start,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    height: 1.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: _darkText.withValues(alpha: 0.9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 1.35,
+                            children: [
+                              _buildIosAirQualityGridItem(
+                                title: 'تەنی زیانبەخش',
+                                value: '$pm25',
+                                unit: 'مایکروگرام',
+                                icon: Icons.grain_rounded,
+                                iconColor: Colors.deepOrangeAccent,
+                                cardBg: iosCardBg,
+                                borderColor: iosBorderColor,
+                              ),
+                              _buildIosAirQualityGridItem(
+                                title: 'تۆز و گەردیلە',
+                                value: '$pm10',
+                                unit: 'مایکروگرام',
+                                icon: Icons.blur_on_rounded,
+                                iconColor: Colors.amber.shade800,
+                                cardBg: iosCardBg,
+                                borderColor: iosBorderColor,
+                              ),
+                              _buildIosAirQualityGridItem(
+                                title: 'گازی ئۆزۆن',
+                                value: '$o3',
+                                unit: 'مایکروگرام',
+                                icon: Icons.wb_sunny_outlined,
+                                iconColor: Colors.blueAccent,
+                                cardBg: iosCardBg,
+                                borderColor: iosBorderColor,
+                              ),
+                              _buildIosAirQualityGridItem(
+                                title: 'نایترۆجین',
+                                value: '$no2',
+                                unit: 'مایکروگرام',
+                                icon: Icons.science_outlined,
+                                iconColor: Colors.purpleAccent,
+                                cardBg: iosCardBg,
+                                borderColor: iosBorderColor,
+                              ),
+                              _buildIosAirQualityGridItem(
+                                title: 'کاربۆن مۆنۆکسید',
+                                value: '$co',
+                                unit: 'مایکروگرام',
+                                icon: Icons.cloud_outlined,
+                                iconColor: Colors.teal,
+                                cardBg: iosCardBg,
+                                borderColor: iosBorderColor,
+                              ),
+                              _buildIosAirQualityGridItem(
+                                title: 'دوانۆکسیدی گۆگرد',
+                                value: '$so2',
+                                unit: 'مایکروگرام',
+                                icon: Icons.warning_amber_rounded,
+                                iconColor: Colors.redAccent,
+                                cardBg: iosCardBg,
+                                borderColor: iosBorderColor,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildStandardAqiRow(String title, String value) {
+  Widget _buildIosAirQualityGridItem({
+    required String title,
+    required String value,
+    required String unit,
+    required IconData icon,
+    required Color iconColor,
+    required Color cardBg,
+    required Color borderColor,
+  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _background,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: _neuShadowsSmall,
+        color: cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _darkText,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: _secondaryText,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-              color: _secondaryText,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: _darkText,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                unit,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: _secondaryText,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -559,10 +722,10 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'کوالیتی هەوا ($_cityName)',
+                            'کوالێتی هەوا: $_cityName',
                             style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
                               color: _darkText,
                             ),
                           ),
@@ -570,23 +733,20 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
+                          horizontal: 10,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _isDarkMode
-                              ? Colors.black.withValues(alpha: 0.3)
-                              : Colors.white.withValues(alpha: 0.85),
+                          color: statusColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: statusColor.withValues(alpha: 0.6),
-                            width: 1.2,
+                            color: statusColor.withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
                           statusName,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.w900,
                             color: statusColor,
                           ),
@@ -594,86 +754,104 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: _isDarkMode
-                              ? Colors.black45
-                              : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Stack(
-                            children: [
-                              Container(
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF4ADE80),
-                                      Color(0xFFFBBF24),
-                                      Color(0xFFF97316),
-                                      Color(0xFFEF4444),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: FractionallySizedBox(
-                                  widthFactor:
-                                      (1.0 - (aqi / 250.0).clamp(0.05, 1.0)),
-                                  child: Container(
-                                    color: _isDarkMode
-                                        ? const Color(
-                                            0xFF1E252D,
-                                          ).withValues(alpha: 0.8)
-                                        : Colors.grey.shade300.withValues(
-                                            alpha: 0.85,
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'بارودۆخ: $statusName',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: statusColor,
+                            ),
                           ),
-                        ),
+                          Text(
+                            'ڕێژە: $aqi',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: List.generate(5, (index) {
+                          final bool isActive = aqi >= (index * 50);
+                          Color segColor = const Color(0xFF4ADE80);
+                          if (index == 1) segColor = const Color(0xFFFBBF24);
+                          if (index == 2) segColor = const Color(0xFFF97316);
+                          if (index == 3 || index == 4) {
+                            segColor = const Color(0xFFEF4444);
+                          }
+
+                          return Expanded(
+                            child: Container(
+                              height: 10,
+                              margin: EdgeInsets.only(
+                                right: index == 0 ? 0 : 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? segColor
+                                    : (_isDarkMode
+                                          ? Colors.black45
+                                          : Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${(index + 1) * 50}',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w900,
+                                  color: isActive
+                                      ? Colors.white
+                                      : _secondaryText,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                       const SizedBox(height: 6),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: const [
                           Text(
-                            '0 پاک',
+                            '٠ پاک',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w900,
                               color: Color(0xFF4ADE80),
                             ),
                           ),
                           Text(
-                            '50 ئاسایی',
+                            '٥٠ ئاسایی',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w900,
                               color: Color(0xFFFBBF24),
                             ),
                           ),
                           Text(
-                            '100 ناپاک',
+                            '١٠٠ ناپاک',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w900,
                               color: Color(0xFFF97316),
                             ),
                           ),
                           Text(
-                            '200+ مەترسیدار',
+                            '٢٠٠+ مەترسیدار',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w900,
                               color: Color(0xFFEF4444),
                             ),
                           ),
@@ -863,7 +1041,7 @@ class _HomeScreenState extends State<HomeScreen>
                 const Icon(Icons.waves_rounded, color: Colors.teal, size: 28),
                 const SizedBox(width: 10),
                 Text(
-                  'وردەکاری ئاستی دەریا و GPS Elevation',
+                  'وردەکاری ئاستی دەریا و بەرزی',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontSize: 17,
@@ -943,7 +1121,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Elevation Map — نەخشەی بەرزی ناوچە',
+                      'نەخشەی بەرزی ناوچە',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
@@ -987,15 +1165,16 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 16),
                     _buildSeaLevelRow(
-                      title: 'ژمارەی ڕاستەقینەی GPS Elevation',
-                      value: '${_elevation.toStringAsFixed(2)} متر',
+                      title: 'ژمارەی ڕاستەقینەی بەرزی',
+                      value: '${_elevation.toStringAsFixed(2)} مەتر',
                       icon: Icons.gps_fixed,
                       color: Colors.teal,
                     ),
                     const SizedBox(height: 10),
                     _buildSeaLevelRow(
                       title: 'فشاری ئاستی دەریا',
-                      value: '${seaLevelPressure.toStringAsFixed(1)} hPa',
+                      value:
+                          '${seaLevelPressure.toStringAsFixed(1)} هەکتۆپاسکاڵ',
                       icon: Icons.speed,
                       color: Colors.orangeAccent,
                     ),
@@ -1003,7 +1182,7 @@ class _HomeScreenState extends State<HomeScreen>
                     _buildSeaLevelRow(
                       title: 'جیاوازی ئاست لە ئاستی ئاسایی',
                       value:
-                          '${elevationDiff >= 0 ? '+' : ''}${elevationDiff.toStringAsFixed(1)} متر',
+                          '${elevationDiff >= 0 ? '+' : ''}${elevationDiff.toStringAsFixed(1)} مەتر',
                       icon: Icons.compare_arrows,
                       color: Colors.blueAccent,
                     ),
@@ -1373,28 +1552,28 @@ class _HomeScreenState extends State<HomeScreen>
                                 children: [
                                   _buildMapLayerButton(
                                     icon: Icons.play_circle_fill_rounded,
-                                    label: 'Animated Weather Map',
+                                    label: '',
                                     type: 'animated',
                                     setStateDialog: setStateDialog,
                                   ),
                                   const SizedBox(height: 8),
                                   _buildMapLayerButton(
                                     icon: Icons.satellite_alt_rounded,
-                                    label: 'Satellite Weather Map',
+                                    label: '',
                                     type: 'satellite',
                                     setStateDialog: setStateDialog,
                                   ),
                                   const SizedBox(height: 8),
                                   _buildMapLayerButton(
                                     icon: Icons.touch_app_rounded,
-                                    label: 'Interactive Animated Weather Map',
+                                    label: '',
                                     type: 'interactive',
                                     setStateDialog: setStateDialog,
                                   ),
                                   const SizedBox(height: 8),
                                   _buildMapLayerButton(
                                     icon: Icons.thermostat_rounded,
-                                    label: 'Temperature Map',
+                                    label: '',
                                     type: 'temp',
                                     setStateDialog: setStateDialog,
                                   ),
@@ -1516,7 +1695,7 @@ class _HomeScreenState extends State<HomeScreen>
                               child: Text(
                                 _isLocationLoading
                                     ? 'لە دۆزینەوەی شوێن...'
-                                    : 'دیاریکردنی لۆکەیشن بە GPS و کەشوهەوا',
+                                    : 'دیاریکردنی لۆکەیشن بە جی پی ئێس و کەشوهەوا',
                                 textAlign: TextAlign.right,
                                 style: TextStyle(
                                   fontSize: 16,
@@ -1650,7 +1829,7 @@ class _HomeScreenState extends State<HomeScreen>
           h += 1;
           m = 0;
         }
-        final String period = h >= 12 ? 'PM' : 'AM';
+        final String period = h >= 12 ? 'پاشنیوەڕۆ' : 'بەیانی';
         int displayH = h % 12;
         if (displayH == 0) displayH = 12;
         final String displayM = m.toString().padLeft(2, '0');
@@ -1662,7 +1841,7 @@ class _HomeScreenState extends State<HomeScreen>
         'sunset': formatTime(sunsetHours),
       };
     } catch (_) {
-      return {'sunrise': '05:30 AM', 'sunset': '07:15 PM'};
+      return {'sunrise': '٠٥:٣٠ بەیانی', 'sunset': '٠٧:١٥ پاشنیوەڕۆ'};
     }
   }
 
@@ -1760,143 +1939,205 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _showDetailedAIReportDialog(BuildContext context, WeatherModel data) {
     final int totalDays = min(6, data.times.length);
-    final Color cardBg = _background;
+    final bool isDark = _isDarkMode;
+    final Color iosCardBg = isDark
+        ? const Color(0xFF1E2638).withValues(alpha: 0.85)
+        : const Color(0xFFE2EAF4).withValues(alpha: 0.95);
+    final Color iosBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.08);
 
     showDialog(
       context: context,
       builder: (dialogContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: _background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.psychology_rounded, color: _purple, size: 24),
-                    const SizedBox(width: 8),
-                    Text(
-                      'ڕاپۆرتی کەشوهەوا ($_cityName)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _darkText,
-                      ),
-                    ),
-                  ],
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF161E2E), const Color(0xFF0F172A)]
+                      : [const Color(0xFFE9F1FA), const Color(0xFFD5E3F4)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(dialogContext),
-                  child: Icon(Icons.close, color: _secondaryText, size: 22),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(totalDays, (i) {
-                    final String dayName = _getKurdishDayName(data.times[i]);
-                    final String date = data.times[i];
-                    final dynamic maxT = data.maxTemps[i];
-                    final dynamic minT = data.minTemps[i];
-                    final int weatherCode = data.weatherCodes.length > i
-                        ? data.weatherCodes[i]
-                        : 0;
-
-                    final double tempSun = maxT is num ? maxT.toDouble() : 35.0;
-                    final double tempShadow = tempSun - 3.5;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: _neuShadowsSmall,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.15),
+                    blurRadius: 25,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+                border: Border.all(color: iosBorderColor, width: 1.5),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(
+                                Icons.psychology_rounded,
+                                color: _purple,
+                                size: 26,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'ڕاپۆرتی کەشوهەوا ($_cityName)',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: _darkText,
+                                ),
+                              ),
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(dialogContext),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white12
+                                    : Colors.black.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: _darkText,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ...List.generate(totalDays, (i) {
+                        final String dayName = _getKurdishDayName(
+                          data.times[i],
+                        );
+                        final String date = data.times[i];
+                        final dynamic maxT = data.maxTemps[i];
+                        final dynamic minT = data.minTemps[i];
+                        final int weatherCode = data.weatherCodes.length > i
+                            ? data.weatherCodes[i]
+                            : 0;
+
+                        final double tempSun = maxT is num
+                            ? maxT.toDouble()
+                            : 35.0;
+                        final double tempShadow = tempSun - 3.5;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: iosCardBg,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: iosBorderColor),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Icon(
-                                    _getWeatherIcon(weatherCode, 1),
-                                    color: _getWeatherIconColor(weatherCode, 1),
-                                    size: 22,
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _getWeatherIcon(weatherCode, 1),
+                                        color: _getWeatherIconColor(
+                                          weatherCode,
+                                          1,
+                                        ),
+                                        size: 26,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            dayName,
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: _darkText,
+                                            ),
+                                          ),
+                                          Text(
+                                            date,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                              color: _secondaryText,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 6),
                                   Text(
-                                    '$dayName ($date)',
+                                    _getWeatherDescription(weatherCode),
                                     style: TextStyle(
                                       fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: _darkText,
+                                      fontWeight: FontWeight.w900,
+                                      color: _purple,
                                     ),
                                   ),
                                 ],
                               ),
-                              Text(
-                                _getWeatherDescription(weatherCode),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: _purple,
-                                ),
+                              const SizedBox(height: 10),
+                              Divider(color: iosBorderColor, height: 1),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _buildIosReportStat(
+                                    icon: Icons.wb_sunny_rounded,
+                                    iconColor: Colors.orangeAccent,
+                                    title: 'لە بەرخۆر',
+                                    value: '${tempSun.toStringAsFixed(1)} پلە',
+                                  ),
+                                  _buildIosReportStat(
+                                    icon: Icons.park_rounded,
+                                    iconColor: Colors.teal,
+                                    title: 'لە سێبەر',
+                                    value:
+                                        '${tempShadow.toStringAsFixed(1)} پلە',
+                                  ),
+                                  _buildIosReportStat(
+                                    icon: Icons.ac_unit_rounded,
+                                    iconColor: Colors.blueAccent,
+                                    title: 'نزمترین',
+                                    value: '${minT?.round() ?? 0} پلە',
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'لە بەرخۆر: ${tempSun.toStringAsFixed(1)}°C',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _secondaryText,
-                                ),
-                              ),
-                              Text(
-                                'سێبەر: ${tempShadow.toStringAsFixed(1)}°C',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _secondaryText,
-                                ),
-                              ),
-                              Text(
-                                'نزمترین: ${minT?.round() ?? 0}°C',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _secondaryText,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
+                        );
+                      }),
+                    ],
+                  ),
                 ),
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(
-                  'داخستن',
-                  style: TextStyle(color: _purple, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
           ),
         );
       },
@@ -1905,12 +2146,23 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _showRainReportDialog(BuildContext context, WeatherModel data) {
     final int totalDays = min(6, data.times.length);
+    final bool isDark = _isDarkMode;
+    final Color iosCardBg = isDark
+        ? const Color(0xFF1E2638).withValues(alpha: 0.85)
+        : const Color(0xFFE2EAF4).withValues(alpha: 0.95);
+    final Color iosBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.08);
 
     double sumTotalRain = 0.0;
+    double sumTotalSnow = 0.0;
 
     for (int i = 0; i < totalDays; i++) {
       if (data.precipitationSums.length > i) {
         sumTotalRain += data.precipitationSums[i];
+      }
+      if (data.snowfallSums.length > i) {
+        sumTotalSnow += data.snowfallSums[i];
       }
     }
 
@@ -1919,135 +2171,407 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (dialogContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: _background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.water_drop_rounded,
-                      color: Colors.blueAccent,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'پێشبینی باران و بەفر',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _darkText,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF161E2E), const Color(0xFF0F172A)]
+                        : [const Color(0xFFE9F1FA), const Color(0xFFD5E3F4)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(26),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.6 : 0.15,
                       ),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
                     ),
                   ],
+                  border: Border.all(color: iosBorderColor, width: 1.5),
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(dialogContext),
-                  child: Icon(Icons.close, color: _secondaryText, size: 22),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ...List.generate(totalDays, (i) {
-                      final String dayName = _getKurdishDayName(data.times[i]);
-                      final String date = data.times[i].split('T')[0];
-                      final dynamic rainAmount =
-                          data.precipitationSums.length > i
-                          ? data.precipitationSums[i]
-                          : 0.0;
-                      final dynamic rainProb =
-                          data.precipitationProbabilities.length > i
-                          ? data.precipitationProbabilities[i]
-                          : 0;
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _background,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: _neuShadowsSmall,
-                        ),
-                        child: Row(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(26),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              '$dayName ($date)',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: _darkText,
-                              ),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.water_drop_rounded,
+                                  color: Colors.blueAccent,
+                                  size: 26,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'پێشبینی باران و بەفر',
+                                  style: TextStyle(
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w900,
+                                    color: _darkText,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              '$rainProb% | $rainAmount مم',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blueAccent,
+                            GestureDetector(
+                              onTap: () => Navigator.pop(dialogContext),
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white12
+                                      : Colors.black.withValues(alpha: 0.08),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: _darkText,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    }),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _background,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: _neuShadowsSmall,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'کۆی گشتی باران:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _darkText,
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 175,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: totalDays,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (context, i) {
+                              final String dayName = _getKurdishDayName(
+                                data.times[i],
+                              );
+                              final String date = data.times[i].split('T')[0];
+                              final dynamic rainAmount =
+                                  data.precipitationSums.length > i
+                                  ? data.precipitationSums[i]
+                                  : 0.0;
+                              final dynamic snowAmount =
+                                  data.snowfallSums.length > i
+                                  ? data.snowfallSums[i]
+                                  : 0.0;
+                              final dynamic rainProb =
+                                  data.precipitationProbabilities.length > i
+                                  ? data.precipitationProbabilities[i]
+                                  : 0;
+
+                              return Container(
+                                width: 110,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                  horizontal: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: iosCardBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: iosBorderColor),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      children: [
+                                        Text(
+                                          dayName,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            color: _darkText,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          date.length > 5
+                                              ? date.substring(5)
+                                              : date,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: _secondaryText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blueAccent.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '$rainProb٪',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.blueAccent,
+                                        ),
+                                      ),
+                                    ),
+                                    Column(
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.water_drop_rounded,
+                                              size: 14,
+                                              color: Colors.blueAccent,
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Text(
+                                              '$rainAmount مم',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.ac_unit_rounded,
+                                              size: 14,
+                                              color: Colors.lightBlueAccent,
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Text(
+                                              '$snowAmount سم',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(
+                                    0xFF132038,
+                                  ).withValues(alpha: 0.95)
+                                : Colors.blue.shade50.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.blueAccent.withValues(alpha: 0.35),
+                              width: 1.5,
                             ),
                           ),
-                          Text(
-                            '${sumTotalRain.toStringAsFixed(1)} مم',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blueAccent,
-                              fontSize: 15,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.analytics_rounded,
+                                    color: Colors.blueAccent,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'کۆی گشتی پێشبینیکراوی ($totalDays ڕۆژ)',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      color: _darkText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                        horizontal: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: iosCardBg,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: iosBorderColor,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'کۆی باران',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: _secondaryText,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            '${sumTotalRain.toStringAsFixed(1)} ملم',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.blueAccent,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                        horizontal: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: iosCardBg,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: iosBorderColor,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'کۆی بەفر',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: _secondaryText,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            '${sumTotalSnow.toStringAsFixed(1)} سم',
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: isDark
+                                                  ? Colors.lightBlueAccent
+                                                  : Colors.blue.shade700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.verified_rounded,
+                                    size: 15,
+                                    color: Colors.greenAccent.shade700,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'سەرچاوە: مۆدێلە جیهانییەکان',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: _secondaryText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(
-                  'داخستن',
-                  style: TextStyle(color: _purple, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildIosReportStat({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18, color: iconColor),
+        const SizedBox(width: 5),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: _secondaryText,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: _darkText,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -2072,7 +2596,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'سەرچاوەکانی (USGS)',
+                  'سەرچاوەی بومەلەرزە',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontSize: 19,
@@ -2150,7 +2674,7 @@ class _HomeScreenState extends State<HomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'بومەلەرزەکان لە هەرێمی کوردستان وعێراق (٤٨ سەعاتی ڕابردوو):',
+                          'بومەلەرزەکان لە هەرێمی کوردستان و عێراق (٤٨ سەعاتی ڕابردوو):',
                           textAlign: TextAlign.right,
                           style: TextStyle(
                             fontSize: 15,
@@ -2361,6 +2885,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     double totalRain = 0.0;
+    double totalSnow = 0.0;
     double maxWind = 0.0;
     int avgHumidity = 0;
 
@@ -2380,83 +2905,354 @@ class _HomeScreenState extends State<HomeScreen>
       avgHumidity = (avgHumidity / matchedIndices.length).round();
     }
 
+    int dayIdx = data.times.indexOf(searchDate);
+    if (dayIdx != -1 && data.snowfallSums.length > dayIdx) {
+      totalSnow = data.snowfallSums[dayIdx];
+    }
+
+    final bool isDark = _isDarkMode;
+    final Color iosCardBg = isDark
+        ? const Color(0xFF1E2638).withValues(alpha: 0.85)
+        : const Color(0xFFE2EAF4).withValues(alpha: 0.95);
+    final Color iosBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.08);
+
     showDialog(
       context: context,
       builder: (dialogContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: _background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '$_cityName — $dayName ($date)',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: _darkText,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF161E2E), const Color(0xFF0F172A)]
+                      : [const Color(0xFFE9F1FA), const Color(0xFFD5E3F4)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.15),
+                    blurRadius: 25,
+                    offset: const Offset(0, 10),
                   ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(dialogContext),
-                  child: Icon(Icons.close, color: _secondaryText, size: 22),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _getWeatherIcon(weatherCode, 1),
-                      color: _getWeatherIconColor(weatherCode, 1),
-                      size: 48,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: _darkText,
+                ],
+                border: Border.all(color: iosBorderColor, width: 1.5),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$_cityName — $dayName',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: _darkText,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                date,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: _secondaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(dialogContext),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white12
+                                    : Colors.black.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: _darkText,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      _getWeatherDescription(weatherCode),
-                      style: TextStyle(fontSize: 14, color: _secondaryText),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildStandardAqiRow(
-                      'بارانبارین',
-                      '${totalRain.toStringAsFixed(1)} مم',
-                    ),
-                    _buildStandardAqiRow(
-                      'خێرایی با',
-                      '${maxWind.round()} کم/س',
-                    ),
-                    _buildStandardAqiRow('تێکڕای شێ', '%$avgHumidity'),
-                  ],
+                      const SizedBox(height: 16),
+                      Column(
+                        children: [
+                          Icon(
+                            _getWeatherIcon(weatherCode, 1),
+                            color: _getWeatherIconColor(weatherCode, 1),
+                            size: 54,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${maxT?.round() ?? 0}°',
+                            style: TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.w900,
+                              color: _darkText,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                          Text(
+                            _getWeatherDescription(weatherCode),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: _secondaryText,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'بەرزترین: ${maxT?.round() ?? 0}°  •  نزمترین: ${minT?.round() ?? 0}°',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: _darkText.withValues(alpha: 0.85),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: iosCardBg,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: iosBorderColor),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time_rounded,
+                                  size: 16,
+                                  color: _secondaryText,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'پێشبینی کاتژمێری',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: _secondaryText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Divider(color: iosBorderColor, height: 1),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 105,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: matchedIndices.length,
+                                separatorBuilder: (context, i) =>
+                                    const SizedBox(width: 14),
+                                itemBuilder: (context, index) {
+                                  final realIdx = matchedIndices[index];
+                                  final String fullTime =
+                                      data.hourlyTimes[realIdx];
+                                  final String timeOnly = fullTime.contains('T')
+                                      ? fullTime.split('T')[1].substring(0, 5)
+                                      : fullTime;
+
+                                  String formattedTime12 = timeOnly;
+                                  int hour24 = 0;
+                                  try {
+                                    hour24 = int.parse(timeOnly.split(':')[0]);
+                                    String period = hour24 >= 12
+                                        ? 'پاشنیوەڕۆ'
+                                        : 'بەیانی';
+                                    int hour12 = hour24 % 12;
+                                    if (hour12 == 0) hour12 = 12;
+                                    formattedTime12 = '$hour12 $period';
+                                  } catch (_) {}
+
+                                  final double temp =
+                                      data.hourlyTemperatures[realIdx];
+                                  final int hCode =
+                                      data.hourlyWeatherCodes[realIdx];
+                                  final int isDayTime =
+                                      (hour24 >= 6 && hour24 < 19) ? 1 : 0;
+
+                                  return Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        formattedTime12,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w900,
+                                          color: _darkText,
+                                        ),
+                                      ),
+                                      Icon(
+                                        _getWeatherIcon(hCode, isDayTime),
+                                        color: _getWeatherIconColor(
+                                          hCode,
+                                          isDayTime,
+                                        ),
+                                        size: 26,
+                                      ),
+                                      Text(
+                                        '${temp.round()}°',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                          color: _darkText,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1.35,
+                        children: [
+                          _buildIosInfoCard(
+                            title: 'بارانبارین',
+                            value: '${totalRain.toStringAsFixed(1)} مم',
+                            subtitle: 'بڕی پێشبینیکراو بۆ ئەمڕۆ',
+                            icon: Icons.water_drop_rounded,
+                            iconColor: Colors.blueAccent,
+                            cardBg: iosCardBg,
+                            borderColor: iosBorderColor,
+                          ),
+                          _buildIosInfoCard(
+                            title: 'بڕی بەفر',
+                            value: '${totalSnow.toStringAsFixed(1)} سم',
+                            subtitle: 'کۆی بەفربارینی ڕۆژەکە',
+                            icon: Icons.ac_unit_rounded,
+                            iconColor: Colors.lightBlueAccent,
+                            cardBg: iosCardBg,
+                            borderColor: iosBorderColor,
+                          ),
+                          _buildIosInfoCard(
+                            title: 'خێرایی با',
+                            value: '${maxWind.round()} کم/س',
+                            subtitle: 'بەرزترین کاتی هەڵکردن',
+                            icon: Icons.air_rounded,
+                            iconColor: Colors.tealAccent.shade700,
+                            cardBg: iosCardBg,
+                            borderColor: iosBorderColor,
+                          ),
+                          _buildIosInfoCard(
+                            title: 'شێی هەوا',
+                            value: '%$avgHumidity',
+                            subtitle: 'تێکڕای ڕێژەی شێ',
+                            icon: Icons.water_rounded,
+                            iconColor: Colors.cyan,
+                            cardBg: iosCardBg,
+                            borderColor: iosBorderColor,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(
-                  'داخستن',
-                  style: TextStyle(color: _purple, fontWeight: FontWeight.bold),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildIosInfoCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required Color cardBg,
+    required Color borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: _secondaryText,
                 ),
               ),
             ],
           ),
-        );
-      },
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: _darkText,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: _secondaryText,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
@@ -2806,7 +3602,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       : const Color(0xFFE8EEF5),
                                   title: 'باران',
                                   value:
-                                      '${todayRainSum.toStringAsFixed(1)} mm',
+                                      '${todayRainSum.toStringAsFixed(1)} مم',
                                   wideScreen: wideScreen,
                                 ),
                               ),
@@ -2850,8 +3646,8 @@ class _HomeScreenState extends State<HomeScreen>
                                           ) ??
                                           0;
                                       String period = hour24 >= 12
-                                          ? 'PM'
-                                          : 'AM';
+                                          ? 'پاشنیوەڕۆ'
+                                          : 'بەیانی';
                                       int hour12 = hour24 % 12;
                                       if (hour12 == 0) hour12 = 12;
                                       String formattedTime = '$hour12 $period';
@@ -3384,7 +4180,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              '    Programmer: Zheer Mastakany ©2026    ',
+                              '    گەشەپێدەر: زێر مەستاکانی ©٢٠٢٦    ',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w900,
