@@ -252,6 +252,22 @@ class _HomeScreenState extends State<HomeScreen>
     return null;
   }
 
+  Future<List<dynamic>> _searchCityByName(String query) async {
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=6&accept-language=ckb,ku,ar',
+      );
+      final response = await http.get(
+        url,
+        headers: {'User-Agent': 'com.zheer.weatherapp'},
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      }
+    } catch (_) {}
+    return [];
+  }
+
   int _calculateRealAqi(Map<String, dynamic>? data) {
     if (data == null) return 0;
     if (data['us_aqi'] != null) {
@@ -724,7 +740,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             'کوالێتی هەوا: $_cityName',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 14,
                               fontWeight: FontWeight.w900,
                               color: _darkText,
                             ),
@@ -746,7 +762,7 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Text(
                           statusName,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w900,
                             color: statusColor,
                           ),
@@ -764,7 +780,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             'بارودۆخ: $statusName',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w900,
                               color: statusColor,
                             ),
@@ -772,7 +788,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             'ڕێژە: $aqi',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w900,
                               color: statusColor,
                             ),
@@ -808,7 +824,7 @@ class _HomeScreenState extends State<HomeScreen>
                               child: Text(
                                 '${(index + 1) * 50}',
                                 style: TextStyle(
-                                  fontSize: 8,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w900,
                                   color: isActive
                                       ? Colors.white
@@ -826,7 +842,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             '٠ پاک',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF4ADE80),
                             ),
@@ -834,7 +850,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             '٥٠ ئاسایی',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFFBBF24),
                             ),
@@ -842,7 +858,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             '١٠٠ ناپاک',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFF97316),
                             ),
@@ -850,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             '٢٠٠+ مەترسیدار',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFEF4444),
                             ),
@@ -984,7 +1000,7 @@ class _HomeScreenState extends State<HomeScreen>
               textDirection: TextDirection.rtl,
               style: TextStyle(
                 color: _darkText,
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1009,7 +1025,7 @@ class _HomeScreenState extends State<HomeScreen>
               textDirection: TextDirection.rtl,
               style: TextStyle(
                 color: _darkText,
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1025,184 +1041,164 @@ class _HomeScreenState extends State<HomeScreen>
     double standardElevation = 850.0;
     double elevationDiff = _elevation - standardElevation;
 
+    final bool isDark = _isDarkMode;
+    final Color iosCardBg = isDark
+        ? const Color(0xFF1E2638).withValues(alpha: 0.85)
+        : const Color(0xFFE2EAF4).withValues(alpha: 0.95);
+    final Color iosBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.08);
+
     showDialog(
       context: context,
       builder: (dialogContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: _background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 20,
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Icon(Icons.waves_rounded, color: Colors.teal, size: 28),
-                const SizedBox(width: 10),
-                Text(
-                  'وردەکاری ئاستی دەریا و بەرزی',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: _darkText,
-                  ),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 480),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF161E2E), const Color(0xFF0F172A)]
+                      : [const Color(0xFFE9F1FA), const Color(0xFFD5E3F4)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-              ],
-            ),
-            content: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.85,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      height: 120,
-                      width: 60,
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: _background,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: _neuShadowsSmall,
-                      ),
-                      child: Stack(
-                        alignment: Alignment.bottomCenter,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.15),
+                    blurRadius: 25,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+                border: Border.all(color: iosBorderColor, width: 1.5),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            width: 14,
-                            decoration: BoxDecoration(
-                              color: _secondaryText.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(7),
-                            ),
-                          ),
-                          TweenAnimationBuilder<double>(
-                            tween: Tween<double>(
-                              begin: 0.0,
-                              end: (_elevation / 3000.0).clamp(0.1, 1.0),
-                            ),
-                            duration: const Duration(milliseconds: 1200),
-                            builder: (context, value, child) {
-                              return FractionallySizedBox(
-                                heightFactor: value,
-                                child: Container(
-                                  width: 14,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Colors.tealAccent, Colors.teal],
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                    ),
-                                    borderRadius: BorderRadius.circular(7),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.terrain_rounded,
                                 color: Colors.teal,
-                                shape: BoxShape.circle,
-                                boxShadow: _neuShadowsSmall,
+                                size: 28,
                               ),
-                              child: const Icon(
-                                Icons.terrain,
-                                color: Colors.white,
-                                size: 16,
+                              const SizedBox(width: 8),
+                              Text(
+                                'وردەکاری ئاستی دەریا و بەرزی',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: _darkText,
+                                ),
+                              ),
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(dialogContext),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white12
+                                    : Colors.black.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: _darkText,
+                                size: 20,
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'نەخشەی بەرزی ناوچە',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: _secondaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SizedBox(
-                        height: 150,
-                        child: FlutterMap(
-                          options: MapOptions(
-                            initialCenter: LatLng(_latitude, _longitude),
-                            initialZoom: 11.0,
+                      const SizedBox(height: 16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          height: 180,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: iosBorderColor),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          children: [
-                            TileLayer(
-                              urlTemplate:
-                                  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-                              subdomains: const ['a', 'b', 'c'],
-                              userAgentPackageName: 'com.zheer.weatherapp',
+                          child: FlutterMap(
+                            options: MapOptions(
+                              initialCenter: LatLng(_latitude, _longitude),
+                              initialZoom: 11.0,
                             ),
-                            MarkerLayer(
-                              markers: [
-                                Marker(
-                                  point: LatLng(_latitude, _longitude),
-                                  width: 40,
-                                  height: 40,
-                                  child: const Icon(
-                                    Icons.location_pin,
-                                    color: Colors.redAccent,
-                                    size: 32,
+                            children: [
+                              TileLayer(
+                                urlTemplate:
+                                    'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                                subdomains: const ['a', 'b', 'c'],
+                                userAgentPackageName: 'com.zheer.weatherapp',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(_latitude, _longitude),
+                                    width: 40,
+                                    height: 40,
+                                    child: const Icon(
+                                      Icons.location_pin,
+                                      color: Colors.redAccent,
+                                      size: 36,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSeaLevelRow(
-                      title: 'ژمارەی ڕاستەقینەی بەرزی',
-                      value: '${_elevation.toStringAsFixed(2)} مەتر',
-                      icon: Icons.gps_fixed,
-                      color: Colors.teal,
-                    ),
-                    const SizedBox(height: 10),
-                    _buildSeaLevelRow(
-                      title: 'فشاری ئاستی دەریا',
-                      value:
-                          '${seaLevelPressure.toStringAsFixed(1)} هەکتۆپاسکاڵ',
-                      icon: Icons.speed,
-                      color: Colors.orangeAccent,
-                    ),
-                    const SizedBox(height: 10),
-                    _buildSeaLevelRow(
-                      title: 'جیاوازی ئاست لە ئاستی ئاسایی',
-                      value:
-                          '${elevationDiff >= 0 ? '+' : ''}${elevationDiff.toStringAsFixed(1)} مەتر',
-                      icon: Icons.compare_arrows,
-                      color: Colors.blueAccent,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(
-                  'داخستن',
-                  style: TextStyle(
-                    color: _purple,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                      const SizedBox(height: 16),
+                      _buildSeaLevelRow(
+                        title: 'بەرزی لە ئاستی دەریا',
+                        value: '${_elevation.toStringAsFixed(1)} مەتر',
+                        icon: Icons.gps_fixed_rounded,
+                        color: Colors.teal,
+                        cardBg: iosCardBg,
+                        borderColor: iosBorderColor,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildSeaLevelRow(
+                        title: 'فشاری بەرگەهەوا',
+                        value: '${seaLevelPressure.toStringAsFixed(1)} hPa',
+                        icon: Icons.speed_rounded,
+                        color: Colors.orangeAccent,
+                        cardBg: iosCardBg,
+                        borderColor: iosBorderColor,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildSeaLevelRow(
+                        title: 'جیاوازی لەگەڵ ئاستی ئاسایی',
+                        value:
+                            '${elevationDiff >= 0 ? '+' : ''}${elevationDiff.toStringAsFixed(1)} مەتر',
+                        icon: Icons.compare_arrows_rounded,
+                        color: Colors.blueAccent,
+                        cardBg: iosCardBg,
+                        borderColor: iosBorderColor,
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         );
       },
@@ -1214,26 +1210,28 @@ class _HomeScreenState extends State<HomeScreen>
     required String value,
     required IconData icon,
     required Color color,
+    required Color cardBg,
+    required Color borderColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: _background,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: _neuShadowsSmall,
+        color: cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 10),
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
                   color: _darkText,
                 ),
               ),
@@ -1241,8 +1239,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           Text(
             value,
+            textDirection: TextDirection.ltr,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.w900,
               color: color,
             ),
@@ -1253,80 +1252,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _showFullscreenMapDialog(BuildContext context) {
-    final List<Map<String, dynamic>> mapCities = [
-      {
-        'name': 'سلێمانی',
-        'lat': 35.5558,
-        'lon': 45.4351,
-        'temp': 31,
-        'code': 0,
-        'wind': 3,
-      },
-      {
-        'name': 'هەولێر',
-        'lat': 36.1901,
-        'lon': 44.0091,
-        'temp': 34,
-        'code': 0,
-        'wind': 4,
-      },
-      {
-        'name': 'دهۆک',
-        'lat': 36.8679,
-        'lon': 42.9885,
-        'temp': 30,
-        'code': 1,
-        'wind': 2,
-      },
-      {
-        'name': 'هەڵەبجە',
-        'lat': 35.1772,
-        'lon': 45.9877,
-        'temp': 29,
-        'code': 2,
-        'wind': 3,
-      },
-      {
-        'name': 'کەرکووک',
-        'lat': 35.4681,
-        'lon': 44.3922,
-        'temp': 37,
-        'code': 0,
-        'wind': 5,
-      },
-      {
-        'name': 'بەغدا',
-        'lat': 33.3152,
-        'lon': 44.3661,
-        'temp': 40,
-        'code': 0,
-        'wind': 4,
-      },
-      {
-        'name': 'موسڵ',
-        'lat': 36.3400,
-        'lon': 43.1300,
-        'temp': 36,
-        'code': 0,
-        'wind': 3,
-      },
-      {
-        'name': 'کەلار',
-        'lat': 34.6231,
-        'lon': 45.3136,
-        'temp': 38,
-        'code': 0,
-        'wind': 6,
-      },
-      {
-        'name': 'ڕانیە',
-        'lat': 36.2559,
-        'lon': 44.8859,
-        'temp': 28,
-        'code': 2,
-        'wind': 2,
-      },
-    ];
+    String mapSearchQuery = '';
+    List<dynamic> mapSearchResults = [];
+    bool isMapSearching = false;
+    Timer? mapDebounce;
+    final TextEditingController mapSearchController = TextEditingController();
 
     showDialog(
       context: context,
@@ -1423,100 +1353,11 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                     ),
                                   ),
-                                  ...mapCities.map((city) {
-                                    final int code = city['code'];
-                                    final IconData wIcon = _getWeatherIcon(
-                                      code,
-                                      1,
-                                    );
-                                    final Color wColor = _getWeatherIconColor(
-                                      code,
-                                      1,
-                                    );
-
-                                    return Marker(
-                                      point: LatLng(city['lat'], city['lon']),
-                                      width: 85,
-                                      height: 60,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _latitude = city['lat'];
-                                            _longitude = city['lon'];
-                                            _cityName = city['name'];
-                                            _weatherData =
-                                                _loadWeatherForCoordinates(
-                                                  _latitude,
-                                                  _longitude,
-                                                );
-                                          });
-                                          _fetchElevation(
-                                            _latitude,
-                                            _longitude,
-                                          );
-                                          Navigator.pop(dialogContext);
-                                        },
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  wIcon,
-                                                  color: wColor,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 3),
-                                                Text(
-                                                  '${city['temp']}°',
-                                                  style: TextStyle(
-                                                    color: _darkText,
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize: 14,
-                                                    shadows: const [
-                                                      Shadow(
-                                                        color: Colors.white,
-                                                        blurRadius: 2,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: _background.withValues(
-                                                  alpha: 0.85,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                                boxShadow: _neuShadowsSmall,
-                                              ),
-                                              child: Text(
-                                                city['name'],
-                                                style: TextStyle(
-                                                  color: _darkText,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }),
                                 ],
                               ),
                             ],
                           ),
+
                           Positioned(
                             top: 16,
                             left: 16,
@@ -1537,6 +1378,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ),
                           ),
+
                           Positioned(
                             top: 16,
                             right: 16,
@@ -1579,6 +1421,200 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ],
                               ),
+                            ),
+                          ),
+
+                          Positioned(
+                            top: 16,
+                            left: 65,
+                            right: 65,
+                            child: Column(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: _background.withValues(alpha: 0.95),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: _neuShadowsSmall,
+                                  ),
+                                  child: TextField(
+                                    controller: mapSearchController,
+                                    style: TextStyle(
+                                      color: _darkText,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'گەران بۆ شار...',
+                                      hintStyle: TextStyle(
+                                        color: _secondaryText.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        fontSize: 14,
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        color: _purple,
+                                      ),
+                                      suffixIcon: mapSearchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(
+                                                Icons.clear_rounded,
+                                                color: _secondaryText,
+                                              ),
+                                              onPressed: () {
+                                                mapSearchController.clear();
+                                                setStateDialog(() {
+                                                  mapSearchQuery = '';
+                                                  mapSearchResults = [];
+                                                });
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            vertical: 14,
+                                          ),
+                                    ),
+                                    onChanged: (value) {
+                                      setStateDialog(() {
+                                        mapSearchQuery = value;
+                                      });
+
+                                      if (mapDebounce != null &&
+                                          mapDebounce!.isActive) {
+                                        mapDebounce!.cancel();
+                                      }
+
+                                      mapDebounce = Timer(
+                                        const Duration(milliseconds: 800),
+                                        () async {
+                                          if (value.trim().isEmpty) {
+                                            setStateDialog(() {
+                                              mapSearchResults = [];
+                                              isMapSearching = false;
+                                            });
+                                            return;
+                                          }
+                                          setStateDialog(() {
+                                            isMapSearching = true;
+                                          });
+                                          final results =
+                                              await _searchCityByName(value);
+                                          setStateDialog(() {
+                                            mapSearchResults = results;
+                                            isMapSearching = false;
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ),
+                                if (isMapSearching)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: _background,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: _neuShadowsSmall,
+                                    ),
+                                    child: CircularProgressIndicator(
+                                      color: _purple,
+                                    ),
+                                  ),
+                                if (!isMapSearching &&
+                                    mapSearchResults.isNotEmpty)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    constraints: BoxConstraints(
+                                      maxHeight:
+                                          MediaQuery.of(context).size.height *
+                                          0.4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _background.withValues(
+                                        alpha: 0.95,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: _neuShadowsSmall,
+                                    ),
+                                    child: ListView.separated(
+                                      shrinkWrap: true,
+                                      itemCount: mapSearchResults.length,
+                                      separatorBuilder: (context, index) =>
+                                          Divider(
+                                            color: _secondaryText.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            height: 1,
+                                          ),
+                                      itemBuilder: (context, index) {
+                                        final result = mapSearchResults[index];
+                                        final fullName =
+                                            result['display_name'] as String;
+                                        final shortName =
+                                            result['name'] as String? ??
+                                            fullName.split(',').first;
+
+                                        return ListTile(
+                                          title: Text(
+                                            shortName,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 16,
+                                              color: _darkText,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            fullName,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12,
+                                              color: _secondaryText,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          onTap: () {
+                                            final lat = double.parse(
+                                              result['lat'].toString(),
+                                            );
+                                            final lon = double.parse(
+                                              result['lon'].toString(),
+                                            );
+
+                                            // نوێکردنەوەی زانیارییەکان
+                                            setState(() {
+                                              _latitude = lat;
+                                              _longitude = lon;
+                                              _cityName = shortName;
+                                              _weatherData =
+                                                  _loadWeatherForCoordinates(
+                                                    lat,
+                                                    lon,
+                                                  );
+                                            });
+                                            _fetchElevation(lat, lon);
+
+                                            // بردنی نەخشەکە بۆ شوێنە نوێیەکە
+                                            _fullscreenMapController.move(
+                                              LatLng(lat, lon),
+                                              10.0,
+                                            );
+
+                                            // خاوێنکردنەوەی گەڕان
+                                            mapSearchController.clear();
+                                            setStateDialog(() {
+                                              mapSearchQuery = '';
+                                              mapSearchResults = [];
+                                            });
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -1629,7 +1665,13 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _showLocationPickerDialog(BuildContext context) {
+  void _showLocationSearchDialog(BuildContext context) {
+    String searchQuery = '';
+    List<dynamic> searchResults = [];
+    bool isSearching = false;
+    Timer? debounce;
+    final TextEditingController searchController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -1638,104 +1680,295 @@ class _HomeScreenState extends State<HomeScreen>
           child: AlertDialog(
             backgroundColor: _background,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(28),
             ),
-            title: Text(
-              'گۆڕینی لۆکەیشن / هەڵبژاردنی شار',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-                color: _darkText,
-              ),
+            contentPadding: const EdgeInsets.all(20),
+            titlePadding: const EdgeInsets.only(top: 20, left: 20, right: 20),
+            title: Row(
+              children: [
+                Icon(Icons.search_rounded, color: _purple, size: 28),
+                const SizedBox(width: 10),
+                Text(
+                  'گەڕان بۆ ناوچەکان',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: _darkText,
+                  ),
+                ),
+              ],
             ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: GestureDetector(
-                      onTap: _isLocationLoading
-                          ? null
-                          : () async {
-                              Navigator.pop(dialogContext);
-                              await _getCurrentLocationAndWeather();
-                            },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 16,
-                        ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: StatefulBuilder(
+                builder: (context, setStateDialog) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
                         decoration: BoxDecoration(
-                          color: _background,
+                          color: _isDarkMode
+                              ? const Color(0xFF252D38)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: _neuShadowsSmall,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _isLocationLoading
-                                ? SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: _purple,
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.my_location_rounded,
-                                    size: 22,
-                                    color: _purple,
-                                  ),
-                            const SizedBox(width: 10),
-                            Flexible(
-                              child: Text(
-                                _isLocationLoading
-                                    ? 'لە دۆزینەوەی شوێن...'
-                                    : 'دیاریکردنی لۆکەیشن بە جی پی ئێس و کەشوهەوا',
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  color: _darkText,
-                                ),
-                              ),
+                        child: TextField(
+                          controller: searchController,
+                          style: TextStyle(
+                            color: _darkText,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'ناوی شار یان وڵات بنووسە...',
+                            hintStyle: TextStyle(
+                              color: _secondaryText.withValues(alpha: 0.7),
+                              fontSize: 15,
                             ),
-                          ],
+                            prefixIcon: Icon(
+                              Icons.location_city_rounded,
+                              color: _secondaryText,
+                            ),
+                            suffixIcon: searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.clear_rounded,
+                                      color: _secondaryText,
+                                    ),
+                                    onPressed: () {
+                                      searchController.clear();
+                                      setStateDialog(() {
+                                        searchQuery = '';
+                                        searchResults = [];
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 18,
+                            ),
+                          ),
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              searchQuery = value;
+                            });
+
+                            if (debounce != null && debounce!.isActive) {
+                              debounce!.cancel();
+                            }
+
+                            debounce = Timer(
+                              const Duration(milliseconds: 800),
+                              () async {
+                                if (value.trim().isEmpty) {
+                                  setStateDialog(() {
+                                    searchResults = [];
+                                    isSearching = false;
+                                  });
+                                  return;
+                                }
+                                setStateDialog(() {
+                                  isSearching = true;
+                                });
+                                final results = await _searchCityByName(value);
+                                setStateDialog(() {
+                                  searchResults = results;
+                                  isSearching = false;
+                                });
+                              },
+                            );
+                          },
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Divider(color: _secondaryText.withValues(alpha: 0.2)),
-                  const SizedBox(height: 12),
-                  Text(
-                    'یان شارێکی خێرا هەڵبژێرە:',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: _darkText,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    alignment: WrapAlignment.end,
-                    children: [
-                      _buildCityChip('سلێمانی', 35.5558, 45.4351),
-                      _buildCityChip('هەولێر', 36.1901, 44.0091),
-                      _buildCityChip('دهۆک', 36.8679, 42.9885),
-                      _buildCityChip('هەڵەبجە', 35.1772, 45.9877),
-                      _buildCityChip('کەرکووک', 35.4681, 44.3922),
-                      _buildCityChip('سیدصادق', 35.354339, 45.867086),
+                      const SizedBox(height: 20),
+
+                      if (searchQuery.isEmpty)
+                        GestureDetector(
+                          onTap: _isLocationLoading
+                              ? null
+                              : () async {
+                                  Navigator.pop(dialogContext);
+                                  await _getCurrentLocationAndWeather();
+                                },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 16,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _purple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _purple.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _isLocationLoading
+                                    ? SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: _purple,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.my_location_rounded,
+                                        size: 24,
+                                        color: _purple,
+                                      ),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    _isLocationLoading
+                                        ? 'لە دۆزینەوەی شوێن...'
+                                        : 'دۆزینەوەی شوێنی ئێستام',
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      color: _purple,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      if (searchQuery.isEmpty) const SizedBox(height: 24),
+                      if (searchQuery.isEmpty)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'شارە باوەکان:',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: _secondaryText,
+                            ),
+                          ),
+                        ),
+                      if (searchQuery.isEmpty) const SizedBox(height: 12),
+                      if (searchQuery.isEmpty)
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          alignment: WrapAlignment.start,
+                          children: [
+                            _buildCityChip('سلێمانی', 35.5558, 45.4351),
+                            _buildCityChip('هەولێر', 36.1901, 44.0091),
+                            _buildCityChip('دهۆک', 36.8679, 42.9885),
+                            _buildCityChip('هەڵەبجە', 35.1772, 45.9877),
+                            _buildCityChip('کەرکووک', 35.4681, 44.3922),
+                          ],
+                        ),
+
+                      if (searchQuery.isNotEmpty && isSearching)
+                        const Padding(
+                          padding: EdgeInsets.all(30.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+
+                      if (searchQuery.isNotEmpty &&
+                          !isSearching &&
+                          searchResults.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(30.0),
+                          child: Center(
+                            child: Text(
+                              'هیچ ناوچەیەک نەدۆزرایەوە',
+                              style: TextStyle(
+                                color: _secondaryText,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      if (searchQuery.isNotEmpty &&
+                          !isSearching &&
+                          searchResults.isNotEmpty)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.of(context).size.height * 0.4,
+                          ),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: searchResults.length,
+                            separatorBuilder: (context, index) => Divider(
+                              color: _secondaryText.withValues(alpha: 0.1),
+                            ),
+                            itemBuilder: (context, index) {
+                              final result = searchResults[index];
+                              final fullName = result['display_name'] as String;
+                              final shortName =
+                                  result['name'] as String? ??
+                                  fullName.split(',').first;
+
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: _isDarkMode
+                                        ? const Color(0xFF252D38)
+                                        : const Color(0xFFE8EEF5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.location_on_rounded,
+                                    color: Colors.redAccent,
+                                    size: 24,
+                                  ),
+                                ),
+                                title: Text(
+                                  shortName,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 17,
+                                    color: _darkText,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  fullName,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: _secondaryText,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onTap: () {
+                                  Navigator.pop(dialogContext);
+                                  setState(() {
+                                    _latitude = double.parse(
+                                      result['lat'].toString(),
+                                    );
+                                    _longitude = double.parse(
+                                      result['lon'].toString(),
+                                    );
+                                    _cityName = shortName;
+                                    _weatherData = _loadWeatherForCoordinates(
+                                      _latitude,
+                                      _longitude,
+                                    );
+                                  });
+                                  _fetchElevation(_latitude, _longitude);
+                                },
+                              );
+                            },
+                          ),
+                        ),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
             actions: [
@@ -1743,9 +1976,8 @@ class _HomeScreenState extends State<HomeScreen>
                 onPressed: () => Navigator.pop(dialogContext),
                 child: Text(
                   'داخستن',
-                  textAlign: TextAlign.right,
                   style: TextStyle(
-                    color: _purple,
+                    color: _secondaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1781,7 +2013,7 @@ class _HomeScreenState extends State<HomeScreen>
           name,
           textAlign: TextAlign.right,
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w900,
             color: _darkText,
           ),
@@ -2074,7 +2306,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           Text(
                                             dayName,
                                             style: TextStyle(
-                                              fontSize: 15,
+                                              fontSize: 16,
                                               fontWeight: FontWeight.w900,
                                               color: _darkText,
                                             ),
@@ -2082,7 +2314,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           Text(
                                             date,
                                             style: TextStyle(
-                                              fontSize: 11,
+                                              fontSize: 12,
                                               fontWeight: FontWeight.w800,
                                               color: _secondaryText,
                                             ),
@@ -2094,7 +2326,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   Text(
                                     _getWeatherDescription(weatherCode),
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w900,
                                       color: _purple,
                                     ),
@@ -2515,7 +2747,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
-                                    'سەرچاوە: مۆدێلە جیهانییەکان',
+                                    'سەرچاوە: Open-Meteo DWD / NOAA Global Models',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
@@ -2539,6 +2771,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  ////============================================
+
   Widget _buildIosReportStat({
     required IconData icon,
     required Color iconColor,
@@ -2548,7 +2782,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: iconColor),
+        Icon(icon, size: 20, color: iconColor),
         const SizedBox(width: 5),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2556,7 +2790,7 @@ class _HomeScreenState extends State<HomeScreen>
             Text(
               title,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: _secondaryText,
               ),
@@ -2564,7 +2798,7 @@ class _HomeScreenState extends State<HomeScreen>
             Text(
               value,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w900,
                 color: _darkText,
               ),
@@ -2677,7 +2911,7 @@ class _HomeScreenState extends State<HomeScreen>
                           'بومەلەرزەکان لە هەرێمی کوردستان و عێراق (٤٨ سەعاتی ڕابردوو):',
                           textAlign: TextAlign.right,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 16,
                             fontWeight: FontWeight.w900,
                             color: _secondaryText,
                           ),
@@ -2728,7 +2962,7 @@ class _HomeScreenState extends State<HomeScreen>
                           'لیستی بومەلەرزەکان لە هەرێمی کوردستان و عێراق:',
                           textAlign: TextAlign.right,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 17,
                             fontWeight: FontWeight.w900,
                             color: _darkText,
                           ),
@@ -2760,7 +2994,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           'شوێن: لە دیاریکردندایە...',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w900,
-                                            fontSize: 15,
+                                            fontSize: 16,
                                             color: Colors.grey,
                                           ),
                                         );
@@ -2771,7 +3005,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         'شوێن: $placeName',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w900,
-                                          fontSize: 15,
+                                          fontSize: 16,
                                           color: _darkText,
                                         ),
                                       );
@@ -2783,7 +3017,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     style: const TextStyle(
                                       color: Colors.deepOrange,
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 14,
+                                      fontSize: 15,
                                     ),
                                   ),
                                   const SizedBox(height: 6),
@@ -2791,7 +3025,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     'قوڵی: ${eq.depth.toStringAsFixed(1)} کم',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       color: Colors.red,
                                     ),
                                   ),
@@ -2800,7 +3034,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     'کات و بەروار: ${eq.time}',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
-                                      fontSize: 13,
+                                      fontSize: 14,
                                       color: _secondaryText,
                                     ),
                                   ),
@@ -2973,7 +3207,7 @@ class _HomeScreenState extends State<HomeScreen>
                               Text(
                                 date,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w800,
                                   color: _secondaryText,
                                 ),
@@ -2993,7 +3227,7 @@ class _HomeScreenState extends State<HomeScreen>
                               child: Icon(
                                 Icons.close_rounded,
                                 color: _darkText,
-                                size: 20,
+                                size: 24,
                               ),
                             ),
                           ),
@@ -3005,13 +3239,13 @@ class _HomeScreenState extends State<HomeScreen>
                           Icon(
                             _getWeatherIcon(weatherCode, 1),
                             color: _getWeatherIconColor(weatherCode, 1),
-                            size: 54,
+                            size: 60,
                           ),
                           const SizedBox(height: 6),
                           Text(
                             '${maxT?.round() ?? 0}°',
                             style: TextStyle(
-                              fontSize: 48,
+                              fontSize: 52,
                               fontWeight: FontWeight.w900,
                               color: _darkText,
                               letterSpacing: -1,
@@ -3020,16 +3254,16 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             _getWeatherDescription(weatherCode),
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 18,
                               fontWeight: FontWeight.w800,
                               color: _secondaryText,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Text(
                             'بەرزترین: ${maxT?.round() ?? 0}°  •  نزمترین: ${minT?.round() ?? 0}°',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 15,
                               fontWeight: FontWeight.w900,
                               color: _darkText.withValues(alpha: 0.85),
                             ),
@@ -3039,8 +3273,8 @@ class _HomeScreenState extends State<HomeScreen>
                       const SizedBox(height: 20),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                          horizontal: 12,
+                          vertical: 16,
+                          horizontal: 14,
                         ),
                         decoration: BoxDecoration(
                           color: iosCardBg,
@@ -3054,30 +3288,30 @@ class _HomeScreenState extends State<HomeScreen>
                               children: [
                                 Icon(
                                   Icons.access_time_rounded,
-                                  size: 16,
+                                  size: 18,
                                   color: _secondaryText,
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 8),
                                 Text(
                                   'پێشبینی کاتژمێری',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w900,
                                     color: _secondaryText,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 10),
-                            Divider(color: iosBorderColor, height: 1),
                             const SizedBox(height: 12),
+                            Divider(color: iosBorderColor, height: 1),
+                            const SizedBox(height: 14),
                             SizedBox(
-                              height: 105,
+                              height: 110,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: matchedIndices.length,
                                 separatorBuilder: (context, i) =>
-                                    const SizedBox(width: 14),
+                                    const SizedBox(width: 16),
                                 itemBuilder: (context, index) {
                                   final realIdx = matchedIndices[index];
                                   final String fullTime =
@@ -3112,7 +3346,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       Text(
                                         formattedTime12,
                                         style: TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 14,
                                           fontWeight: FontWeight.w900,
                                           color: _darkText,
                                         ),
@@ -3123,12 +3357,12 @@ class _HomeScreenState extends State<HomeScreen>
                                           hCode,
                                           isDayTime,
                                         ),
-                                        size: 26,
+                                        size: 28,
                                       ),
                                       Text(
                                         '${temp.round()}°',
                                         style: TextStyle(
-                                          fontSize: 16,
+                                          fontSize: 17,
                                           fontWeight: FontWeight.w900,
                                           color: _darkText,
                                         ),
@@ -3221,12 +3455,12 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: iconColor),
+              Icon(icon, size: 18, color: iconColor),
               const SizedBox(width: 6),
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w900,
                   color: _secondaryText,
                 ),
@@ -3236,7 +3470,7 @@ class _HomeScreenState extends State<HomeScreen>
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.w900,
               color: _darkText,
             ),
@@ -3244,7 +3478,7 @@ class _HomeScreenState extends State<HomeScreen>
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               color: _secondaryText,
             ),
@@ -3282,41 +3516,75 @@ class _HomeScreenState extends State<HomeScreen>
     required bool wideScreen,
   }) {
     return _buildNeuContainer(
-      radius: 14,
+      radius: 16,
       customColor: cardColor,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: iconColor, size: 24),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: iconColor, size: 28),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: _secondaryText,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: _darkText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: _buildNeuContainer(
+          radius: 18,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 30, color: color),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: _secondaryText,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w900,
                     color: _darkText,
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3346,7 +3614,7 @@ class _HomeScreenState extends State<HomeScreen>
                       textDirection: TextDirection.rtl,
                       style: const TextStyle(
                         color: Colors.red,
-                        fontSize: 17,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -3361,7 +3629,7 @@ class _HomeScreenState extends State<HomeScreen>
                     textAlign: TextAlign.right,
                     textDirection: TextDirection.rtl,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: _darkText,
                     ),
@@ -3411,51 +3679,59 @@ class _HomeScreenState extends State<HomeScreen>
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              GestureDetector(
-                                onTap: () => _showLocationPickerDialog(context),
-                                child: _buildNeuContainer(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  radius: 14,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      AnimatedBuilder(
-                                        animation: _locationBounceAnimation,
-                                        builder: (context, child) {
-                                          return Transform.translate(
-                                            offset: Offset(
-                                              0,
-                                              _locationBounceAnimation.value,
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      _showLocationSearchDialog(context),
+                                  child: _buildNeuContainer(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    radius: 14,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        AnimatedBuilder(
+                                          animation: _locationBounceAnimation,
+                                          builder: (context, child) {
+                                            return Transform.translate(
+                                              offset: Offset(
+                                                0,
+                                                _locationBounceAnimation.value,
+                                              ),
+                                              child: child,
+                                            );
+                                          },
+                                          child: const Icon(
+                                            Icons.location_on_rounded,
+                                            color: Colors.redAccent,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _cityName,
+                                            textAlign: TextAlign.right,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 16,
+                                              color: _darkText,
                                             ),
-                                            child: child,
-                                          );
-                                        },
-                                        child: const Icon(
-                                          Icons.location_on_rounded,
-                                          color: Colors.redAccent,
-                                          size: 20,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        _cityName,
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 15,
-                                          color: _darkText,
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.unfold_more_rounded,
+                                          size: 18,
+                                          color: _secondaryText,
                                         ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Icon(
-                                        Icons.unfold_more_rounded,
-                                        size: 16,
-                                        color: _secondaryText,
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -3467,7 +3743,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     onTap: () =>
                                         _showFullscreenMapDialog(context),
                                     child: Container(
-                                      padding: const EdgeInsets.all(10),
+                                      padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
                                         color: _background,
                                         shape: BoxShape.circle,
@@ -3476,28 +3752,11 @@ class _HomeScreenState extends State<HomeScreen>
                                       child: const Icon(
                                         Icons.public_rounded,
                                         color: Colors.blueAccent,
-                                        size: 20,
+                                        size: 22,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
-                                  GestureDetector(
-                                    onTap: () => _showAirQualityDialog(context),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: _background,
-                                        shape: BoxShape.circle,
-                                        boxShadow: _neuShadowsSmall,
-                                      ),
-                                      child: const Icon(
-                                        Icons.air_rounded,
-                                        color: Colors.cyan,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
+                                  const SizedBox(width: 10),
                                   GestureDetector(
                                     onTap: () {
                                       setState(() {
@@ -3505,7 +3764,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       });
                                     },
                                     child: Container(
-                                      padding: const EdgeInsets.all(10),
+                                      padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
                                         color: _background,
                                         shape: BoxShape.circle,
@@ -3519,7 +3778,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             color: _isDarkMode
                                                 ? Colors.amber
                                                 : _purple,
-                                            size: 20,
+                                            size: 22,
                                           ),
                                           Positioned(
                                             right: 0,
@@ -3533,7 +3792,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                   color: _isDarkMode
                                                       ? Colors.amber
                                                       : _purple,
-                                                  size: 20,
+                                                  size: 22,
                                                 ),
                                               ),
                                             ),
@@ -3542,12 +3801,12 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
+                                  const SizedBox(width: 10),
                                   GestureDetector(
                                     onTap: () =>
                                         _showSeaLevelDetailsDialog(context),
                                     child: Container(
-                                      padding: const EdgeInsets.all(10),
+                                      padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
                                         color: _background,
                                         shape: BoxShape.circle,
@@ -3556,7 +3815,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       child: const Icon(
                                         Icons.terrain_rounded,
                                         color: Colors.teal,
-                                        size: 20,
+                                        size: 22,
                                       ),
                                     ),
                                   ),
@@ -3564,7 +3823,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           Row(
                             children: [
                               Expanded(
@@ -3579,7 +3838,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   wideScreen: wideScreen,
                                 ),
                               ),
-                              const SizedBox(width: 9),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: _buildSummaryCard(
                                   icon: Icons.ac_unit_rounded,
@@ -3592,7 +3851,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   wideScreen: wideScreen,
                                 ),
                               ),
-                              const SizedBox(width: 9),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: _buildSummaryCard(
                                   icon: Icons.water_drop_rounded,
@@ -3608,18 +3867,18 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
                           _buildNeuContainer(
                             radius: 24,
                             customColor: _isDarkMode
                                 ? const Color(0xFF232A34)
                                 : const Color(0xFFE6ECF5),
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(14),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 SizedBox(
-                                  height: 42,
+                                  height: 48,
                                   child: ListView.builder(
                                     scrollDirection: Axis.horizontal,
                                     itemCount: min(
@@ -3661,7 +3920,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           (hour24 >= 6 && hour24 < 19) ? 1 : 0;
 
                                       return Container(
-                                        width: 58,
+                                        width: 65,
                                         alignment: Alignment.center,
                                         child: Column(
                                           mainAxisAlignment:
@@ -3670,19 +3929,19 @@ class _HomeScreenState extends State<HomeScreen>
                                             Text(
                                               formattedTime,
                                               style: TextStyle(
-                                                fontSize: 11,
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.w900,
                                                 color: _secondaryText,
                                               ),
                                             ),
-                                            const SizedBox(height: 2),
+                                            const SizedBox(height: 4),
                                             Icon(
                                               _getWeatherIcon(hCode, isDayTime),
                                               color: _getWeatherIconColor(
                                                 hCode,
                                                 isDayTime,
                                               ),
-                                              size: 18,
+                                              size: 20,
                                             ),
                                           ],
                                         ),
@@ -3690,9 +3949,9 @@ class _HomeScreenState extends State<HomeScreen>
                                     },
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 10),
                                 SizedBox(
-                                  height: 85,
+                                  height: 95,
                                   child: LineChart(
                                     LineChartData(
                                       minX: 0,
@@ -3783,12 +4042,12 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 14),
                                 Divider(
                                   color: _secondaryText.withValues(alpha: 0.2),
                                   height: 1,
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 14),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceAround,
@@ -3798,13 +4057,13 @@ class _HomeScreenState extends State<HomeScreen>
                                         const Icon(
                                           Icons.wb_sunny_rounded,
                                           color: Colors.orange,
-                                          size: 20,
+                                          size: 22,
                                         ),
-                                        const SizedBox(width: 6),
+                                        const SizedBox(width: 8),
                                         Text(
                                           'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
                                           style: TextStyle(
-                                            fontSize: 13,
+                                            fontSize: 14,
                                             fontWeight: FontWeight.w900,
                                             color: _darkText,
                                           ),
@@ -3812,7 +4071,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       ],
                                     ),
                                     Container(
-                                      height: 16,
+                                      height: 18,
                                       width: 1,
                                       color: _secondaryText.withValues(
                                         alpha: 0.3,
@@ -3823,13 +4082,13 @@ class _HomeScreenState extends State<HomeScreen>
                                         const Icon(
                                           Icons.wb_twilight_rounded,
                                           color: Colors.deepOrange,
-                                          size: 20,
+                                          size: 22,
                                         ),
-                                        const SizedBox(width: 6),
+                                        const SizedBox(width: 8),
                                         Text(
                                           'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
                                           style: TextStyle(
-                                            fontSize: 13,
+                                            fontSize: 14,
                                             fontWeight: FontWeight.w900,
                                             color: _darkText,
                                           ),
@@ -3844,199 +4103,32 @@ class _HomeScreenState extends State<HomeScreen>
                           const SizedBox(height: 16),
                           Row(
                             children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () => _showDetailedAIReportDialog(
-                                    context,
-                                    data,
-                                  ),
-                                  child: _buildNeuContainer(
-                                    radius: 18,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                      horizontal: 10,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.psychology_rounded,
-                                              size: 20,
-                                              color: _purple,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'کەشوهەوا',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        AnimatedBuilder(
-                                          animation: _pulseAnimation,
-                                          builder: (context, child) {
-                                            return Transform.translate(
-                                              offset: Offset(
-                                                _pulseAnimation.value,
-                                                0,
-                                              ),
-                                              child: child,
-                                            );
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration: BoxDecoration(
-                                              color: _background,
-                                              shape: BoxShape.circle,
-                                              boxShadow: _neuShadowsSmall,
-                                            ),
-                                            child: Icon(
-                                              Icons.touch_app_rounded,
-                                              size: 13,
-                                              color: _purple,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                              _buildActionCard(
+                                title: 'کەشوهەوا',
+                                icon: Icons.psychology_rounded,
+                                color: _purple,
+                                onTap: () =>
+                                    _showDetailedAIReportDialog(context, data),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      _showRainReportDialog(context, data),
-                                  child: _buildNeuContainer(
-                                    radius: 18,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                      horizontal: 10,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.water_drop_rounded,
-                                              size: 20,
-                                              color: Colors.blueAccent,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'بڕی باران',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        AnimatedBuilder(
-                                          animation: _pulseAnimation,
-                                          builder: (context, child) {
-                                            return Transform.translate(
-                                              offset: Offset(
-                                                _pulseAnimation.value,
-                                                0,
-                                              ),
-                                              child: child,
-                                            );
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration: BoxDecoration(
-                                              color: _background,
-                                              shape: BoxShape.circle,
-                                              boxShadow: _neuShadowsSmall,
-                                            ),
-                                            child: const Icon(
-                                              Icons.touch_app_rounded,
-                                              size: 13,
-                                              color: Colors.blueAccent,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                              const SizedBox(width: 10),
+                              _buildActionCard(
+                                title: 'بڕی باران',
+                                icon: Icons.water_drop_rounded,
+                                color: Colors.blueAccent,
+                                onTap: () =>
+                                    _showRainReportDialog(context, data),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      _showEarthquakeReportDialog(context),
-                                  child: _buildNeuContainer(
-                                    radius: 18,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                      horizontal: 10,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.waves_rounded,
-                                              size: 20,
-                                              color: Colors.deepOrangeAccent,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'بومەلەرزە',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        AnimatedBuilder(
-                                          animation: _pulseAnimation,
-                                          builder: (context, child) {
-                                            return Transform.translate(
-                                              offset: Offset(
-                                                _pulseAnimation.value,
-                                                0,
-                                              ),
-                                              child: child,
-                                            );
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration: BoxDecoration(
-                                              color: _background,
-                                              shape: BoxShape.circle,
-                                              boxShadow: _neuShadowsSmall,
-                                            ),
-                                            child: const Icon(
-                                              Icons.touch_app_rounded,
-                                              size: 13,
-                                              color: Colors.deepOrangeAccent,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                              const SizedBox(width: 10),
+                              _buildActionCard(
+                                title: 'بومەلەرزە',
+                                icon: Icons.waves_rounded,
+                                color: Colors.deepOrangeAccent,
+                                onTap: () =>
+                                    _showEarthquakeReportDialog(context),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 20),
                           ...List.generate(forecastDays, (i) {
                             final String date = data.times[i];
                             final String dayName = _getKurdishDayName(date);
@@ -4048,7 +4140,7 @@ class _HomeScreenState extends State<HomeScreen>
                             final Color cardTint = _getWeatherCardTint(code);
 
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 10.0),
+                              padding: const EdgeInsets.only(bottom: 12.0),
                               child: GestureDetector(
                                 onTap: () => _showDayDetailDialog(
                                   context,
@@ -4059,10 +4151,10 @@ class _HomeScreenState extends State<HomeScreen>
                                   data,
                                 ),
                                 child: _buildNeuContainer(
-                                  radius: 16,
+                                  radius: 18,
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
+                                    horizontal: 18,
+                                    vertical: 16,
                                   ),
                                   customColor: cardTint,
                                   child: Row(
@@ -4072,11 +4164,11 @@ class _HomeScreenState extends State<HomeScreen>
                                       Row(
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.all(8),
+                                            padding: const EdgeInsets.all(10),
                                             decoration: BoxDecoration(
                                               color: cardTint,
                                               borderRadius:
-                                                  BorderRadius.circular(12),
+                                                  BorderRadius.circular(14),
                                               boxShadow: _neuShadowsSmall,
                                             ),
                                             child: Icon(
@@ -4085,10 +4177,10 @@ class _HomeScreenState extends State<HomeScreen>
                                                 code,
                                                 1,
                                               ),
-                                              size: 34,
+                                              size: 38,
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
+                                          const SizedBox(width: 14),
                                           Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
@@ -4097,16 +4189,16 @@ class _HomeScreenState extends State<HomeScreen>
                                                 dayName,
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w900,
-                                                  fontSize: 16,
+                                                  fontSize: 17,
                                                   color: _darkText,
                                                 ),
                                               ),
-                                              const SizedBox(height: 3),
+                                              const SizedBox(height: 4),
                                               Text(
                                                 date,
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w900,
-                                                  fontSize: 13,
+                                                  fontSize: 14,
                                                   color: _secondaryText
                                                       .withValues(alpha: 0.9),
                                                 ),
@@ -4125,22 +4217,22 @@ class _HomeScreenState extends State<HomeScreen>
                                                 '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w900,
-                                                  fontSize: 15,
+                                                  fontSize: 16,
                                                   color: _darkText,
                                                 ),
                                               ),
-                                              const SizedBox(height: 3),
+                                              const SizedBox(height: 4),
                                               Text(
                                                 _getWeatherDescription(code),
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w900,
-                                                  fontSize: 13,
+                                                  fontSize: 14,
                                                   color: _secondaryText,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(width: 12),
+                                          const SizedBox(width: 14),
                                           AnimatedBuilder(
                                             animation: _pulseAnimation,
                                             builder: (context, child) {
@@ -4153,7 +4245,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               );
                                             },
                                             child: Container(
-                                              padding: const EdgeInsets.all(6),
+                                              padding: const EdgeInsets.all(8),
                                               decoration: BoxDecoration(
                                                 color: cardTint,
                                                 shape: BoxShape.circle,
@@ -4161,7 +4253,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               ),
                                               child: Icon(
                                                 Icons.touch_app_rounded,
-                                                size: 15,
+                                                size: 16,
                                                 color: _purple,
                                               ),
                                             ),
@@ -4174,21 +4266,21 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             );
                           }),
-                          const SizedBox(height: 14),
-                          _buildAirQualityImageBannerCard(),
                           const SizedBox(height: 16),
+                          _buildAirQualityImageBannerCard(),
+                          const SizedBox(height: 18),
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
                               '    گەشەپێدەر: زێر مەستاکانی ©٢٠٢٦    ',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w900,
                                 color: _darkText,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),
