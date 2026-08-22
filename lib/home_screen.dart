@@ -209,6 +209,7 @@ class _HomeScreenState extends State<HomeScreen>
       _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
       _isLocationLoading = false;
     });
+    _fetchElevation(_latitude, _longitude);
   }
 
   Future<void> _fetchElevation(double lat, double lon) async {
@@ -2087,10 +2088,10 @@ class _HomeScreenState extends State<HomeScreen>
     if (code == 2) return Icons.wb_cloudy_rounded;
     if (code == 3) return Icons.cloud_rounded;
     if (code >= 45 && code <= 48) return Icons.foggy;
-    if (code >= 51 && code <= 57) return Icons.grain_rounded;
-    if (code >= 61 && code <= 67) return Icons.umbrella_rounded;
+    if (code >= 51 && code <= 57) return Icons.cloudy_snowing;
+    if (code >= 61 && code <= 67) return Icons.cloudy_snowing;
     if (code >= 71 && code <= 77) return Icons.ac_unit_rounded;
-    if (code >= 80 && code <= 82) return Icons.umbrella_rounded;
+    if (code >= 80 && code <= 82) return Icons.cloudy_snowing;
     if (code == 85 || code == 86) return Icons.ac_unit_rounded;
     if (code >= 95 && code <= 99) return Icons.thunderstorm_rounded;
     return isDay == 1 ? Icons.wb_sunny_rounded : Icons.nightlight_round;
