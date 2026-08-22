@@ -27,6 +27,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   bool _isLocationLoading = false;
   bool _isDarkMode = false;
+  bool _isManualLocation =
+      false; // ئاماژە بۆ ئەوەی کە ئایا بەکارهێنەر بە دەست شاری هەڵبژاردووە
 
   final MapController _fullscreenMapController = MapController();
 
@@ -141,15 +143,18 @@ class _HomeScreenState extends State<HomeScreen>
   void _startLocationStream() {
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 0,
+      distanceFilter: 100, // بۆ ئەوەی زوو زوو لەخۆیەوە بانگی نەکاتەوە
     );
 
     _positionStreamSubscription =
-        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-          (Position position) {
+        Geolocator.getPositionStream(
+          locationSettings: locationSettings,
+        ).listen((Position position) {
+          // ئەگەر بەکارهێنەر شاری دیارینەکردبێت بە دەست، ئینجا شوێن نوێ بکاتەوە
+          if (!_isManualLocation) {
             _updateLiveElevationAndLocation(position);
-          },
-        );
+          }
+        });
   }
 
   void _updateLiveElevationAndLocation(Position position) {
@@ -209,7 +214,6 @@ class _HomeScreenState extends State<HomeScreen>
       _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
       _isLocationLoading = false;
     });
-    _fetchElevation(_latitude, _longitude);
   }
 
   Future<void> _fetchElevation(double lat, double lon) async {
@@ -983,6 +987,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (mounted) {
       setState(() {
         _isLocationLoading = true;
+        _isManualLocation = false; // دووبارە دەگەڕێتەوە سەر دۆخی لایڤی GPS
       });
     }
 
@@ -1587,6 +1592,7 @@ class _HomeScreenState extends State<HomeScreen>
 
                                             // نوێکردنەوەی زانیارییەکان
                                             setState(() {
+                                              _isManualLocation = true;
                                               _latitude = lat;
                                               _longitude = lon;
                                               _cityName = shortName;
@@ -1827,7 +1833,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   child: Text(
                                     _isLocationLoading
                                         ? 'لە دۆزینەوەی شوێن...'
-                                        : 'دۆزینەوەی شوێنی ئێستام',
+                                        : 'دۆزینەوەی شوێنی ئێستام (GPS)',
                                     textAlign: TextAlign.right,
                                     style: TextStyle(
                                       fontSize: 16,
@@ -1949,6 +1955,8 @@ class _HomeScreenState extends State<HomeScreen>
                                 onTap: () {
                                   Navigator.pop(dialogContext);
                                   setState(() {
+                                    _isManualLocation =
+                                        true; // دۆخی دەستی کارابکە
                                     _latitude = double.parse(
                                       result['lat'].toString(),
                                     );
@@ -1996,6 +2004,7 @@ class _HomeScreenState extends State<HomeScreen>
       onTap: () {
         Navigator.pop(context);
         setState(() {
+          _isManualLocation = true; // دۆخی دەستی کارابکە
           _latitude = lat;
           _longitude = lon;
           _cityName = name;
@@ -2088,7 +2097,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (code == 2) return Icons.wb_cloudy_rounded;
     if (code == 3) return Icons.cloud_rounded;
     if (code >= 45 && code <= 48) return Icons.foggy;
-    if (code >= 51 && code <= 57) return Icons.cloudy_snowing;
+    if (code >= 51 && code <= 57) return Icons.grain_rounded;
     if (code >= 61 && code <= 67) return Icons.cloudy_snowing;
     if (code >= 71 && code <= 77) return Icons.ac_unit_rounded;
     if (code >= 80 && code <= 82) return Icons.cloudy_snowing;
@@ -2771,8 +2780,6 @@ class _HomeScreenState extends State<HomeScreen>
       },
     );
   }
-
-  ////============================================
 
   Widget _buildIosReportStat({
     required IconData icon,
