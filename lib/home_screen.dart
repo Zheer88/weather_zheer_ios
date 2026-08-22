@@ -2630,260 +2630,495 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // ==================== پەنجەرەی پێشکەوتووی بومەلەرزە (٣ لەسەر ٤ی شاشە + زانیاری ئەم مانگە + هەڵبژاردن) ====================
   void _showEarthquakeReportDialog(BuildContext context) {
+    int selectedFilter = 0; // 0 = شاری هەڵبژێردراو, 1 = سنوری عێراق و کوردستان
+    final MapController mapController = MapController();
+
     showDialog(
       context: context,
       builder: (dialogContext) {
+        final double dialogHeight = MediaQuery.of(context).size.height * 0.75;
+        final bool isDark = _isDarkMode;
+        final Color iosCardBg = isDark
+            ? const Color(0xFF1E2638).withValues(alpha: 0.85)
+            : const Color(0xFFE2EAF4).withValues(alpha: 0.95);
+        final Color iosBorderColor = isDark
+            ? Colors.white.withValues(alpha: 0.12)
+            : Colors.black.withValues(alpha: 0.08);
+
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: _background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
-            ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Icon(
-                  Icons.waves_rounded,
-                  color: Colors.deepOrangeAccent,
-                  size: 28,
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 16,
                 ),
-                const SizedBox(width: 10),
-                Text(
-                  'سەرچاوەی بومەلەرزە',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                    color: _darkText,
+                child: Container(
+                  height: dialogHeight,
+                  width: double.maxFinite,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isDark
+                          ? [const Color(0xFF161E2E), const Color(0xFF0F172A)]
+                          : [const Color(0xFFE9F1FA), const Color(0xFFD5E3F4)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.6 : 0.15,
+                        ),
+                        blurRadius: 25,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                    border: Border.all(color: iosBorderColor, width: 1.5),
                   ),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: FutureBuilder<List<EarthquakeModel>>(
-                future: _earthquakeData,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 200,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.deepOrange,
-                        ),
-                      ),
-                    );
-                  }
-
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'هەڵە لە وەرگرتنی داتا: ${snapshot.error}',
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.right,
-                      ),
-                    );
-                  }
-
-                  final allEarthquakes = snapshot.data ?? [];
-                  final now = DateTime.now();
-
-                  final earthquakes = allEarthquakes.where((eq) {
-                    final isIraq = eq.place.toLowerCase().contains('iraq');
-                    if (!isIraq) return false;
-                    try {
-                      final eqTime = DateTime.parse(eq.time);
-                      final difference = now.difference(eqTime).inHours;
-                      return difference <= 48 && difference >= 0;
-                    } catch (_) {
-                      return true;
-                    }
-                  }).toList();
-
-                  if (earthquakes.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Text(
-                          'هیچ بومەلەرزەیەک لە هەرێمی کوردستان تۆمار نەکراوە لە ٤٨ سەعاتی ڕابردوودا',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: _darkText,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  return SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'بومەلەرزەکان لە هەرێمی کوردستان و عێراق (٤٨ سەعاتی ڕابردوو):',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: _secondaryText,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: SizedBox(
-                            height: 220,
-                            child: FlutterMap(
-                              options: MapOptions(
-                                initialCenter: LatLng(
-                                  earthquakes.first.lat,
-                                  earthquakes.first.lon,
-                                ),
-                                initialZoom: 6.0,
-                              ),
-                              children: [
-                                TileLayer(
-                                  urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.zheer.weatherapp',
-                                ),
-                                MarkerLayer(
-                                  markers: earthquakes.map((eq) {
-                                    return Marker(
-                                      point: LatLng(eq.lat, eq.lon),
-                                      width: 40,
-                                      height: 40,
-                                      child: Tooltip(
-                                        message:
-                                            'شوێن: ${eq.place}\nبری گوڕ: ${eq.mag} ڕێختەر\nقوڵی: ${eq.depth.toStringAsFixed(1)} کم\nکات و بەروار: ${eq.time}',
-                                        child: const Icon(
-                                          Icons.crisis_alert_rounded,
-                                          color: Colors.deepOrange,
-                                          size: 32,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: FutureBuilder<List<EarthquakeModel>>(
+                      future: _earthquakeData,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.deepOrangeAccent,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'لیستی بومەلەرزەکان لە هەرێمی کوردستان و عێراق:',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: _darkText,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        ...earthquakes.take(10).map((eq) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10.0),
-                            child: Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: _background,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: _neuShadowsSmall,
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'هەڵە لە وەرگرتنی داتا: ${snapshot.error}',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            ),
+                          );
+                        }
+
+                        final allEarthquakes = snapshot.data ?? [];
+                        final now = DateTime.now();
+
+                        // تەنها فلتەرکردنی زانیارییەکانی ئەو مانگەی تێیداین
+                        final thisMonthEarthquakes = allEarthquakes.where((eq) {
+                          try {
+                            final eqTime = DateTime.parse(eq.time);
+                            return eqTime.year == now.year &&
+                                eqTime.month == now.month;
+                          } catch (_) {
+                            return true;
+                          }
+                        }).toList();
+
+                        // فلتەر بەپێی دوو جۆری هەڵبژاردنەکە
+                        final displayedEarthquakes = thisMonthEarthquakes.where((
+                          eq,
+                        ) {
+                          if (selectedFilter == 0) {
+                            // بەپێی شوێنی دیاریکراو (لە بازنەی 250 کم لە شارەکەوە)
+                            final distance =
+                                Geolocator.distanceBetween(
+                                  _latitude,
+                                  _longitude,
+                                  eq.lat,
+                                  eq.lon,
+                                ) /
+                                1000;
+                            return distance <= 250;
+                          } else {
+                            // سنوری عێراق و هەرێمی کوردستان
+                            final p = eq.place.toLowerCase();
+                            return p.contains('iraq') ||
+                                p.contains('kurdistan') ||
+                                (eq.lat >= 29.0 &&
+                                    eq.lat <= 38.0 &&
+                                    eq.lon >= 38.5 &&
+                                    eq.lon <= 49.0);
+                          }
+                        }).toList();
+
+                        return Column(
+                          children: [
+                            // بەشی سەرەوە (تایتڵ و دوگمەی داخستن)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: 16,
+                                left: 16,
+                                right: 16,
+                                bottom: 10,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  FutureBuilder<String>(
-                                    future: _getRealMapLocationName(
-                                      eq.lat,
-                                      eq.lon,
-                                      eq.place,
-                                    ),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return const Text(
-                                          'شوێن: لە دیاریکردندایە...',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 16,
-                                            color: Colors.grey,
-                                          ),
-                                        );
-                                      }
-                                      final placeName =
-                                          snapshot.data ?? 'نەناسراو';
-                                      return Text(
-                                        'شوێن: $placeName',
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.waves_rounded,
+                                        color: Colors.deepOrangeAccent,
+                                        size: 26,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'بومەلەرزەکانی ئەم مانگە',
                                         style: TextStyle(
+                                          fontSize: 18,
                                           fontWeight: FontWeight.w900,
-                                          fontSize: 16,
                                           color: _darkText,
                                         ),
-                                      );
-                                    },
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'بری گوڕ: ${eq.mag} ڕێختەر',
-                                    style: const TextStyle(
-                                      color: Colors.deepOrange,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'قوڵی: ${eq.depth.toStringAsFixed(1)} کم',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 15,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'کات و بەروار: ${eq.time}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14,
-                                      color: _secondaryText,
+                                  GestureDetector(
+                                    onTap: () => Navigator.pop(dialogContext),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.white12
+                                            : Colors.black.withValues(
+                                                alpha: 0.08,
+                                              ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        color: _darkText,
+                                        size: 20,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        }),
-                      ],
+
+                            // سویچی هەڵبژاردن: شاری هەڵبژێردراو یان سنوری عێراق
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: iosCardBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: iosBorderColor),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setModalState(() {
+                                            selectedFilter = 0;
+                                          });
+                                          mapController.move(
+                                            LatLng(_latitude, _longitude),
+                                            7.5,
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: selectedFilter == 0
+                                                ? Colors.deepOrangeAccent
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            'ناوچەی $_cityName',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w900,
+                                              color: selectedFilter == 0
+                                                  ? Colors.white
+                                                  : _secondaryText,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setModalState(() {
+                                            selectedFilter = 1;
+                                          });
+                                          mapController.move(
+                                            const LatLng(34.0, 44.0),
+                                            5.8,
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: selectedFilter == 1
+                                                ? Colors.deepOrangeAccent
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            'سنوری عێراق و هەرێم',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w900,
+                                              color: selectedFilter == 1
+                                                  ? Colors.white
+                                                  : _secondaryText,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // نەخشەی بومەلەرزەکان بە دیزاینی شیک
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: Container(
+                                  height: 160,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: iosBorderColor),
+                                  ),
+                                  child: FlutterMap(
+                                    mapController: mapController,
+                                    options: MapOptions(
+                                      initialCenter: selectedFilter == 0
+                                          ? LatLng(_latitude, _longitude)
+                                          : const LatLng(35.0, 44.5),
+                                      initialZoom: selectedFilter == 0
+                                          ? 7.5
+                                          : 5.8,
+                                    ),
+                                    children: [
+                                      TileLayer(
+                                        urlTemplate:
+                                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                        userAgentPackageName:
+                                            'com.zheer.weatherapp',
+                                      ),
+                                      MarkerLayer(
+                                        markers: [
+                                          // نیشاندەری شاری ئێستا
+                                          Marker(
+                                            point: LatLng(
+                                              _latitude,
+                                              _longitude,
+                                            ),
+                                            width: 30,
+                                            height: 30,
+                                            child: const Icon(
+                                              Icons.my_location,
+                                              color: Colors.blueAccent,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          // نیشاندەری بومەلەرزەکان
+                                          ...displayedEarthquakes.map((eq) {
+                                            return Marker(
+                                              point: LatLng(eq.lat, eq.lon),
+                                              width: 36,
+                                              height: 36,
+                                              child: const Icon(
+                                                Icons.crisis_alert_rounded,
+                                                color: Colors.deepOrangeAccent,
+                                                size: 28,
+                                              ),
+                                            );
+                                          }),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // لیستی کارتی بومەلەرزەکان
+                            Expanded(
+                              child: displayedEarthquakes.isEmpty
+                                  ? Center(
+                                      child: Text(
+                                        'هیچ بومەلەرزەیەک بۆ ئەم مانگە تۆمار نەکراوە.',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: _secondaryText,
+                                        ),
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      itemCount: displayedEarthquakes.length,
+                                      separatorBuilder: (context, index) =>
+                                          const SizedBox(height: 8),
+                                      itemBuilder: (context, index) {
+                                        final eq = displayedEarthquakes[index];
+                                        return GestureDetector(
+                                          onTap: () {
+                                            mapController.move(
+                                              LatLng(eq.lat, eq.lon),
+                                              8.5,
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: iosCardBg,
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: iosBorderColor,
+                                              ),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Expanded(
+                                                      child: FutureBuilder<String>(
+                                                        future:
+                                                            _getRealMapLocationName(
+                                                              eq.lat,
+                                                              eq.lon,
+                                                              eq.place,
+                                                            ),
+                                                        builder: (context, snap) {
+                                                          return Text(
+                                                            snap.data ??
+                                                                _translateEarthquakePlace(
+                                                                  eq.place,
+                                                                ),
+                                                            style: TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w900,
+                                                              color: _darkText,
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 3,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors
+                                                            .deepOrangeAccent
+                                                            .withValues(
+                                                              alpha: 0.15,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        'گوڕ: ${eq.mag} ڕێختەر',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w900,
+                                                          color: Colors
+                                                              .deepOrangeAccent,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      'قوڵی: ${eq.depth.toStringAsFixed(1)} کم',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: Colors
+                                                            .redAccent
+                                                            .shade400,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      eq.time,
+                                                      textDirection:
+                                                          TextDirection.ltr,
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: _secondaryText,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
-                  'داخستن',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: Colors.deepOrange,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
                   ),
                 ),
-              ),
-            ],
+              );
+            },
           ),
         );
       },
@@ -3690,7 +3925,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           const SizedBox(height: 14),
 
-                          // ==================== کارتی هێڵکاری کەشوهەوا (قەبارەی بچوککراوە و دیاریکەری شەو/ڕۆژ) ====================
+                          // کارتی هێڵکاری کەشوهەوا
                           Builder(
                             builder: (context) {
                               final int hourlyCount = min(
@@ -4400,9 +4635,9 @@ class _HomeScreenState extends State<HomeScreen>
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              '    گەشەپێدەر: زێر مەستاکانی ©٢٠٢٦    ',
+                              '     programmer: Zheer T Mastakany ©2026  ',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w900,
                                 color: _darkText,
                               ),
