@@ -27,8 +27,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   bool _isLocationLoading = false;
   bool _isDarkMode = false;
-  bool _isManualLocation =
-      false; // ئاماژە بۆ ئەوەی کە ئایا بەکارهێنەر بە دەست شاری هەڵبژاردووە
+  bool _isManualLocation = false;
 
   final MapController _fullscreenMapController = MapController();
 
@@ -143,18 +142,17 @@ class _HomeScreenState extends State<HomeScreen>
   void _startLocationStream() {
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 100, // بۆ ئەوەی زوو زوو لەخۆیەوە بانگی نەکاتەوە
+      distanceFilter: 100,
     );
 
     _positionStreamSubscription =
-        Geolocator.getPositionStream(
-          locationSettings: locationSettings,
-        ).listen((Position position) {
-          // ئەگەر بەکارهێنەر شاری دیارینەکردبێت بە دەست، ئینجا شوێن نوێ بکاتەوە
-          if (!_isManualLocation) {
-            _updateLiveElevationAndLocation(position);
-          }
-        });
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) {
+            if (!_isManualLocation) {
+              _updateLiveElevationAndLocation(position);
+            }
+          },
+        );
   }
 
   void _updateLiveElevationAndLocation(Position position) {
@@ -987,7 +985,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (mounted) {
       setState(() {
         _isLocationLoading = true;
-        _isManualLocation = false; // دووبارە دەگەڕێتەوە سەر دۆخی لایڤی GPS
+        _isManualLocation = false;
       });
     }
 
@@ -1258,12 +1256,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _showFullscreenMapDialog(BuildContext context) {
-    String mapSearchQuery = '';
-    List<dynamic> mapSearchResults = [];
-    bool isMapSearching = false;
-    Timer? mapDebounce;
-    final TextEditingController mapSearchController = TextEditingController();
-
     showDialog(
       context: context,
       barrierColor: Colors.black54,
@@ -1427,201 +1419,6 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ],
                               ),
-                            ),
-                          ),
-
-                          Positioned(
-                            top: 16,
-                            left: 65,
-                            right: 65,
-                            child: Column(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: _background.withValues(alpha: 0.95),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: _neuShadowsSmall,
-                                  ),
-                                  child: TextField(
-                                    controller: mapSearchController,
-                                    style: TextStyle(
-                                      color: _darkText,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 15,
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText: 'گەران بۆ شار...',
-                                      hintStyle: TextStyle(
-                                        color: _secondaryText.withValues(
-                                          alpha: 0.7,
-                                        ),
-                                        fontSize: 14,
-                                      ),
-                                      prefixIcon: Icon(
-                                        Icons.search_rounded,
-                                        color: _purple,
-                                      ),
-                                      suffixIcon: mapSearchQuery.isNotEmpty
-                                          ? IconButton(
-                                              icon: Icon(
-                                                Icons.clear_rounded,
-                                                color: _secondaryText,
-                                              ),
-                                              onPressed: () {
-                                                mapSearchController.clear();
-                                                setStateDialog(() {
-                                                  mapSearchQuery = '';
-                                                  mapSearchResults = [];
-                                                });
-                                              },
-                                            )
-                                          : null,
-                                      border: InputBorder.none,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            vertical: 14,
-                                          ),
-                                    ),
-                                    onChanged: (value) {
-                                      setStateDialog(() {
-                                        mapSearchQuery = value;
-                                      });
-
-                                      if (mapDebounce != null &&
-                                          mapDebounce!.isActive) {
-                                        mapDebounce!.cancel();
-                                      }
-
-                                      mapDebounce = Timer(
-                                        const Duration(milliseconds: 800),
-                                        () async {
-                                          if (value.trim().isEmpty) {
-                                            setStateDialog(() {
-                                              mapSearchResults = [];
-                                              isMapSearching = false;
-                                            });
-                                            return;
-                                          }
-                                          setStateDialog(() {
-                                            isMapSearching = true;
-                                          });
-                                          final results =
-                                              await _searchCityByName(value);
-                                          setStateDialog(() {
-                                            mapSearchResults = results;
-                                            isMapSearching = false;
-                                          });
-                                        },
-                                      );
-                                    },
-                                  ),
-                                ),
-                                if (isMapSearching)
-                                  Container(
-                                    margin: const EdgeInsets.only(top: 8),
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: _background,
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: _neuShadowsSmall,
-                                    ),
-                                    child: CircularProgressIndicator(
-                                      color: _purple,
-                                    ),
-                                  ),
-                                if (!isMapSearching &&
-                                    mapSearchResults.isNotEmpty)
-                                  Container(
-                                    margin: const EdgeInsets.only(top: 8),
-                                    constraints: BoxConstraints(
-                                      maxHeight:
-                                          MediaQuery.of(context).size.height *
-                                          0.4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _background.withValues(
-                                        alpha: 0.95,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: _neuShadowsSmall,
-                                    ),
-                                    child: ListView.separated(
-                                      shrinkWrap: true,
-                                      itemCount: mapSearchResults.length,
-                                      separatorBuilder: (context, index) =>
-                                          Divider(
-                                            color: _secondaryText.withValues(
-                                              alpha: 0.2,
-                                            ),
-                                            height: 1,
-                                          ),
-                                      itemBuilder: (context, index) {
-                                        final result = mapSearchResults[index];
-                                        final fullName =
-                                            result['display_name'] as String;
-                                        final shortName =
-                                            result['name'] as String? ??
-                                            fullName.split(',').first;
-
-                                        return ListTile(
-                                          title: Text(
-                                            shortName,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 16,
-                                              color: _darkText,
-                                            ),
-                                          ),
-                                          subtitle: Text(
-                                            fullName,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 12,
-                                              color: _secondaryText,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          onTap: () {
-                                            final lat = double.parse(
-                                              result['lat'].toString(),
-                                            );
-                                            final lon = double.parse(
-                                              result['lon'].toString(),
-                                            );
-
-                                            // نوێکردنەوەی زانیارییەکان
-                                            setState(() {
-                                              _isManualLocation = true;
-                                              _latitude = lat;
-                                              _longitude = lon;
-                                              _cityName = shortName;
-                                              _weatherData =
-                                                  _loadWeatherForCoordinates(
-                                                    lat,
-                                                    lon,
-                                                  );
-                                            });
-                                            _fetchElevation(lat, lon);
-
-                                            // بردنی نەخشەکە بۆ شوێنە نوێیەکە
-                                            _fullscreenMapController.move(
-                                              LatLng(lat, lon),
-                                              10.0,
-                                            );
-
-                                            // خاوێنکردنەوەی گەڕان
-                                            mapSearchController.clear();
-                                            setStateDialog(() {
-                                              mapSearchQuery = '';
-                                              mapSearchResults = [];
-                                            });
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-                              ],
                             ),
                           ),
                         ],
@@ -1955,8 +1752,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 onTap: () {
                                   Navigator.pop(dialogContext);
                                   setState(() {
-                                    _isManualLocation =
-                                        true; // دۆخی دەستی کارابکە
+                                    _isManualLocation = true;
                                     _latitude = double.parse(
                                       result['lat'].toString(),
                                     );
@@ -2004,7 +1800,7 @@ class _HomeScreenState extends State<HomeScreen>
       onTap: () {
         Navigator.pop(context);
         setState(() {
-          _isManualLocation = true; // دۆخی دەستی کارابکە
+          _isManualLocation = true;
           _latitude = lat;
           _longitude = lon;
           _cityName = name;
@@ -2177,6 +1973,23 @@ class _HomeScreenState extends State<HomeScreen>
       'یەکشەممە',
     ];
     return kurdishDays[date.weekday - 1];
+  }
+
+  List<double> _calculateMovingAverage(List<double> data, int windowSize) {
+    if (data.isEmpty) return [];
+    List<double> ma = [];
+    for (int i = 0; i < data.length; i++) {
+      int start = max(0, i - windowSize ~/ 2);
+      int end = min(data.length - 1, i + windowSize ~/ 2);
+      double sum = 0.0;
+      int count = 0;
+      for (int j = start; j <= end; j++) {
+        sum += data[j];
+        count++;
+      }
+      ma.add(count > 0 ? (sum / count) : data[i]);
+    }
+    return ma;
   }
 
   void _showDetailedAIReportDialog(BuildContext context, WeatherModel data) {
@@ -3875,240 +3688,540 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 18),
-                          _buildNeuContainer(
-                            radius: 24,
-                            customColor: _isDarkMode
-                                ? const Color(0xFF232A34)
-                                : const Color(0xFFE6ECF5),
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                  height: 48,
-                                  child: ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: min(
-                                      24,
-                                      data.hourlyTemperatures.length,
-                                    ),
-                                    itemBuilder: (context, index) {
-                                      if (index % 3 != 0) {
-                                        return const SizedBox.shrink();
-                                      }
-                                      String fullTime =
-                                          (data.hourlyTimes.isNotEmpty &&
-                                              data.hourlyTimes.length > index)
-                                          ? data.hourlyTimes[index]
-                                          : '00:00';
-                                      String timeOnly = fullTime.contains('T')
-                                          ? fullTime
-                                                .split('T')[1]
-                                                .substring(0, 5)
-                                          : fullTime;
-                                      int hour24 =
-                                          int.tryParse(
-                                            timeOnly.split(':')[0],
-                                          ) ??
-                                          0;
-                                      String period = hour24 >= 12
-                                          ? 'پاشنیوەڕۆ'
-                                          : 'بەیانی';
-                                      int hour12 = hour24 % 12;
-                                      if (hour12 == 0) hour12 = 12;
-                                      String formattedTime = '$hour12 $period';
-                                      int hCode =
-                                          (data.hourlyWeatherCodes.isNotEmpty &&
-                                              data.hourlyWeatherCodes.length >
-                                                  index)
-                                          ? data.hourlyWeatherCodes[index]
-                                          : 0;
-                                      int isDayTime =
-                                          (hour24 >= 6 && hour24 < 19) ? 1 : 0;
+                          const SizedBox(height: 14),
 
-                                      return Container(
-                                        width: 65,
-                                        alignment: Alignment.center,
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
+                          // ==================== کارتی هێڵکاری کەشوهەوا (قەبارەی بچوککراوە و دیاریکەری شەو/ڕۆژ) ====================
+                          Builder(
+                            builder: (context) {
+                              final int hourlyCount = min(
+                                24,
+                                data.hourlyTemperatures.length,
+                              );
+                              final List<double> rawTemps = data
+                                  .hourlyTemperatures
+                                  .take(hourlyCount)
+                                  .toList();
+                              final List<double> rawRains =
+                                  (data.hourlyPrecipitations.isNotEmpty
+                                          ? data.hourlyPrecipitations
+                                          : List.filled(hourlyCount, 0.0))
+                                      .take(hourlyCount)
+                                      .map((e) => (e as num).toDouble())
+                                      .toList();
+
+                              final List<double> maTemps =
+                                  _calculateMovingAverage(rawTemps, 3);
+                              final List<double> maRains =
+                                  _calculateMovingAverage(rawRains, 3);
+
+                              final int currentHour = DateTime.now().hour;
+                              final bool isCurrentlyDay =
+                                  currentHour >= 6 && currentHour < 19;
+
+                              return _buildNeuContainer(
+                                radius: 16,
+                                customColor: _isDarkMode
+                                    ? const Color(0xFF232A34)
+                                    : const Color(0xFFE6ECF5),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
                                           children: [
+                                            Icon(
+                                              isCurrentlyDay
+                                                  ? Icons.wb_sunny_rounded
+                                                  : Icons.nightlight_round,
+                                              color: isCurrentlyDay
+                                                  ? Colors.orangeAccent
+                                                  : Colors.indigoAccent,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 5),
                                             Text(
-                                              formattedTime,
+                                              isCurrentlyDay
+                                                  ? 'ئێستا: ڕۆژە'
+                                                  : 'ئێستا: شەوە',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w900,
-                                                color: _secondaryText,
+                                                color: _darkText,
                                               ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Icon(
-                                              _getWeatherIcon(hCode, isDayTime),
-                                              color: _getWeatherIconColor(
-                                                hCode,
-                                                isDayTime,
-                                              ),
-                                              size: 20,
                                             ),
                                           ],
                                         ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                SizedBox(
-                                  height: 95,
-                                  child: LineChart(
-                                    LineChartData(
-                                      minX: 0,
-                                      maxX:
-                                          (min(
-                                                    24,
-                                                    data
-                                                        .hourlyTemperatures
-                                                        .length,
-                                                  ) -
-                                                  1)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _purple.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '٢٤ کاتژمێر',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w900,
+                                              color: _purple,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    SizedBox(
+                                      height: 48,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: hourlyCount,
+                                        itemBuilder: (context, index) {
+                                          String fullTime =
+                                              (data.hourlyTimes.isNotEmpty &&
+                                                  data.hourlyTimes.length >
+                                                      index)
+                                              ? data.hourlyTimes[index]
+                                              : '00:00';
+                                          String timeOnly =
+                                              fullTime.contains('T')
+                                              ? fullTime
+                                                    .split('T')[1]
+                                                    .substring(0, 5)
+                                              : fullTime;
+                                          int hour24 =
+                                              int.tryParse(
+                                                timeOnly.split(':')[0],
+                                              ) ??
+                                              0;
+                                          String period = hour24 >= 12
+                                              ? 'د.ن'
+                                              : 'ب';
+                                          int hour12 = hour24 % 12;
+                                          if (hour12 == 0) hour12 = 12;
+                                          String formattedTime =
+                                              '$hour12 $period';
+                                          int hCode =
+                                              (data
+                                                      .hourlyWeatherCodes
+                                                      .isNotEmpty &&
+                                                  data
+                                                          .hourlyWeatherCodes
+                                                          .length >
+                                                      index)
+                                              ? data.hourlyWeatherCodes[index]
+                                              : 0;
+                                          int isDayTime =
+                                              (hour24 >= 6 && hour24 < 19)
+                                              ? 1
+                                              : 0;
+                                          double currentMaTemp =
+                                              maTemps.length > index
+                                              ? maTemps[index]
+                                              : (rawTemps.length > index
+                                                    ? rawTemps[index]
+                                                    : 0.0);
+
+                                          return Container(
+                                            width: 44,
+                                            alignment: Alignment.center,
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  formattedTime,
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: _secondaryText,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Icon(
+                                                  _getWeatherIcon(
+                                                    hCode,
+                                                    isDayTime,
+                                                  ),
+                                                  color: _getWeatherIconColor(
+                                                    hCode,
+                                                    isDayTime,
+                                                  ),
+                                                  size: 15,
+                                                ),
+                                                const SizedBox(height: 1),
+                                                Text(
+                                                  '${currentMaTemp.round()}°',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: _darkText,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    SizedBox(
+                                      height: 60,
+                                      child: LineChart(
+                                        LineChartData(
+                                          minX: 0,
+                                          maxX: (hourlyCount - 1)
                                               .toDouble()
                                               .clamp(0.0, 23.0),
-                                      minY: 0,
-                                      maxY: 40,
-                                      gridData: FlGridData(
-                                        show: true,
-                                        drawVerticalLine: true,
-                                        getDrawingHorizontalLine: (value) =>
-                                            FlLine(
-                                              color: _secondaryText.withValues(
-                                                alpha: 0.1,
-                                              ),
-                                              strokeWidth: 1,
-                                            ),
-                                        getDrawingVerticalLine: (value) =>
-                                            FlLine(
-                                              color: _secondaryText.withValues(
-                                                alpha: 0.1,
-                                              ),
-                                              strokeWidth: 1,
-                                            ),
-                                      ),
-                                      titlesData: FlTitlesData(
-                                        rightTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: false,
-                                          ),
-                                        ),
-                                        topTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: false,
-                                          ),
-                                        ),
-                                        leftTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: false,
-                                          ),
-                                        ),
-                                        bottomTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: false,
-                                          ),
-                                        ),
-                                      ),
-                                      borderData: FlBorderData(show: false),
-                                      lineBarsData: [
-                                        LineChartBarData(
-                                          spots: List.generate(
-                                            min(
-                                              24,
-                                              data.hourlyTemperatures.length,
-                                            ),
-                                            (i) {
-                                              double temp =
-                                                  data.hourlyTemperatures[i];
-                                              double mappedY =
-                                                  15.0 + (temp - 15.0) * 0.8;
-                                              return FlSpot(
-                                                i.toDouble(),
-                                                mappedY.clamp(10.0, 38.0),
-                                              );
-                                            },
-                                          ),
-                                          isCurved: true,
-                                          color: Colors.orange,
-                                          barWidth: 2.5,
-                                          isStrokeCapRound: true,
-                                          dotData: FlDotData(show: false),
-                                          belowBarData: BarAreaData(
+                                          minY: 0,
+                                          maxY: 45,
+                                          gridData: FlGridData(
                                             show: true,
-                                            color: Colors.orange.withValues(
-                                              alpha: 0.2,
+                                            drawVerticalLine: true,
+                                            getDrawingHorizontalLine: (value) =>
+                                                FlLine(
+                                                  color: _secondaryText
+                                                      .withValues(alpha: 0.08),
+                                                  strokeWidth: 1,
+                                                ),
+                                            getDrawingVerticalLine: (value) =>
+                                                FlLine(
+                                                  color: _secondaryText
+                                                      .withValues(alpha: 0.08),
+                                                  strokeWidth: 1,
+                                                ),
+                                          ),
+                                          titlesData: const FlTitlesData(
+                                            rightTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: false,
+                                              ),
+                                            ),
+                                            topTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: false,
+                                              ),
+                                            ),
+                                            leftTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: false,
+                                              ),
+                                            ),
+                                            bottomTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: false,
+                                              ),
                                             ),
                                           ),
+                                          borderData: FlBorderData(show: false),
+                                          lineBarsData: [
+                                            LineChartBarData(
+                                              spots: List.generate(
+                                                hourlyCount,
+                                                (i) {
+                                                  double temp = maTemps[i];
+                                                  double mappedY =
+                                                      18.0 +
+                                                      (temp - 15.0) * 0.7;
+                                                  return FlSpot(
+                                                    i.toDouble(),
+                                                    mappedY.clamp(12.0, 42.0),
+                                                  );
+                                                },
+                                              ),
+                                              isCurved: true,
+                                              curveSmoothness: 0.35,
+                                              color: Colors.orange,
+                                              barWidth: 1.8,
+                                              isStrokeCapRound: true,
+                                              dotData: FlDotData(
+                                                show: true,
+                                                getDotPainter:
+                                                    (
+                                                      spot,
+                                                      percent,
+                                                      bar,
+                                                      index,
+                                                    ) {
+                                                      return FlDotCirclePainter(
+                                                        radius: 1.5,
+                                                        color: Colors.white,
+                                                        strokeWidth: 1.2,
+                                                        strokeColor:
+                                                            Colors.orange,
+                                                      );
+                                                    },
+                                              ),
+                                              belowBarData: BarAreaData(
+                                                show: true,
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Colors.orange.withValues(
+                                                      alpha: 0.18,
+                                                    ),
+                                                    Colors.orange.withValues(
+                                                      alpha: 0.0,
+                                                    ),
+                                                  ],
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                ),
+                                              ),
+                                            ),
+                                            LineChartBarData(
+                                              spots: List.generate(
+                                                hourlyCount,
+                                                (i) {
+                                                  double temp = maTemps[i];
+                                                  double lowEstimate =
+                                                      temp - 4.5;
+                                                  double mappedY =
+                                                      18.0 +
+                                                      (lowEstimate - 15.0) *
+                                                          0.7;
+                                                  return FlSpot(
+                                                    i.toDouble(),
+                                                    mappedY.clamp(6.0, 36.0),
+                                                  );
+                                                },
+                                              ),
+                                              isCurved: true,
+                                              curveSmoothness: 0.35,
+                                              color: Colors.tealAccent.shade400,
+                                              barWidth: 1.5,
+                                              isStrokeCapRound: true,
+                                              dotData: FlDotData(
+                                                show: true,
+                                                getDotPainter:
+                                                    (
+                                                      spot,
+                                                      percent,
+                                                      bar,
+                                                      index,
+                                                    ) {
+                                                      return FlDotCirclePainter(
+                                                        radius: 1.3,
+                                                        color: Colors.white,
+                                                        strokeWidth: 1.0,
+                                                        strokeColor: Colors
+                                                            .tealAccent
+                                                            .shade400,
+                                                      );
+                                                    },
+                                              ),
+                                              belowBarData: BarAreaData(
+                                                show: false,
+                                              ),
+                                            ),
+                                            LineChartBarData(
+                                              spots: List.generate(
+                                                hourlyCount,
+                                                (i) {
+                                                  double rain = maRains[i];
+                                                  double mappedY = (rain * 5.0)
+                                                      .clamp(0.0, 22.0);
+                                                  return FlSpot(
+                                                    i.toDouble(),
+                                                    mappedY,
+                                                  );
+                                                },
+                                              ),
+                                              isCurved: true,
+                                              curveSmoothness: 0.25,
+                                              color: const Color(0xFF38BDF8),
+                                              barWidth: 1.6,
+                                              isStrokeCapRound: true,
+                                              dotData: FlDotData(
+                                                show: true,
+                                                getDotPainter:
+                                                    (
+                                                      spot,
+                                                      percent,
+                                                      bar,
+                                                      index,
+                                                    ) {
+                                                      return FlDotCirclePainter(
+                                                        radius: spot.y > 0
+                                                            ? 1.8
+                                                            : 0,
+                                                        color: Colors.white,
+                                                        strokeWidth: 1.2,
+                                                        strokeColor:
+                                                            const Color(
+                                                              0xFF38BDF8,
+                                                            ),
+                                                      );
+                                                    },
+                                              ),
+                                              belowBarData: BarAreaData(
+                                                show: true,
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    const Color(
+                                                      0xFF38BDF8,
+                                                    ).withValues(alpha: 0.2),
+                                                    const Color(
+                                                      0xFF38BDF8,
+                                                    ).withValues(alpha: 0.01),
+                                                  ],
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                Divider(
-                                  color: _secondaryText.withValues(alpha: 0.2),
-                                  height: 1,
-                                ),
-                                const SizedBox(height: 14),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.wb_sunny_rounded,
-                                          color: Colors.orange,
-                                          size: 22,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900,
-                                            color: _darkText,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Container(
-                                      height: 18,
-                                      width: 1,
-                                      color: _secondaryText.withValues(
-                                        alpha: 0.3,
                                       ),
                                     ),
+                                    const SizedBox(height: 6),
                                     Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        const Icon(
-                                          Icons.wb_twilight_rounded,
-                                          color: Colors.deepOrange,
-                                          size: 22,
+                                        Row(
+                                          children: [
+                                            Container(
+                                              width: 6,
+                                              height: 6,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.orange,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'گەرمی',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w800,
+                                                color: _secondaryText,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900,
-                                            color: _darkText,
+                                        const SizedBox(width: 10),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              width: 6,
+                                              height: 6,
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    Colors.tealAccent.shade400,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'نزمی',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w800,
+                                                color: _secondaryText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              width: 6,
+                                              height: 6,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF38BDF8),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'باران',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w800,
+                                                color: _secondaryText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Divider(
+                                      color: _secondaryText.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      height: 1,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.wb_sunny_rounded,
+                                              color: Colors.orange,
+                                              size: 15,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Container(
+                                          height: 12,
+                                          width: 1,
+                                          color: _secondaryText.withValues(
+                                            alpha: 0.25,
                                           ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.wb_twilight_rounded,
+                                              color: Colors.deepOrange,
+                                              size: 15,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
+
                           Row(
                             children: [
                               _buildActionCard(
