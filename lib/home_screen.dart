@@ -329,12 +329,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _showAirQualityDialog(BuildContext context) {
     final bool isDark = _isDarkMode;
-    final Color iosCardBg = isDark
-        ? const Color(0xFF1E2638).withValues(alpha: 0.85)
-        : const Color(0xFFE2EAF4).withValues(alpha: 0.95);
-    final Color iosBorderColor = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.black.withValues(alpha: 0.08);
+    final Color cardBg = isDark ? const Color(0xFF252D38) : Colors.white;
+    final Color borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
 
     showDialog(
       context: context,
@@ -342,284 +340,270 @@ class _HomeScreenState extends State<HomeScreen>
         return Directionality(
           textDirection: TextDirection.rtl,
           child: Dialog(
-            backgroundColor: Colors.transparent,
+            backgroundColor: _background,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
             insetPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 24,
             ),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 440),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [const Color(0xFF161E2E), const Color(0xFF0F172A)]
-                      : [const Color(0xFFE9F1FA), const Color(0xFFD5E3F4)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.15),
-                    blurRadius: 25,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-                border: Border.all(color: iosBorderColor, width: 1.5),
+                color: _background,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: _neuShadows,
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: FutureBuilder<Map<String, dynamic>?>(
-                  future: _fetchAirQualityData(_latitude, _longitude),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(
-                        height: 220,
-                        child: Center(
-                          child: CircularProgressIndicator(color: Colors.cyan),
-                        ),
-                      );
-                    }
+              child: FutureBuilder<Map<String, dynamic>?>(
+                future: _fetchAirQualityData(_latitude, _longitude),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 220,
+                      child: Center(
+                        child: CircularProgressIndicator(color: Colors.cyan),
+                      ),
+                    );
+                  }
 
-                    if (!snapshot.hasData || snapshot.data == null) {
-                      return Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'داتای جۆری و کوالێتیی هەوا بۆ ئەم ناوچەیە لە بارکردندایە',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: _darkText,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
+                  if (!snapshot.hasData || snapshot.data == null) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'داتای جۆری و کوالێتیی هەوا بۆ ئەم ناوچەیە لە بارکردندایە',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _darkText,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: Text(
+                            'داخستن',
+                            style: TextStyle(
+                              color: _purple,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(height: 16),
-                            TextButton(
-                              onPressed: () => Navigator.pop(dialogContext),
-                              child: Text(
-                                'داخستن',
-                                style: TextStyle(
-                                  color: _purple,
-                                  fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  final aqiData = snapshot.data!;
+                  final int usAqi = _calculateRealAqi(aqiData);
+                  final dynamic pm25 = aqiData['pm2_5'] ?? 0;
+                  final dynamic pm10 = aqiData['pm10'] ?? 0;
+                  final dynamic co = aqiData['carbon_monoxide'] ?? 0;
+                  final dynamic no2 = aqiData['nitrogen_dioxide'] ?? 0;
+                  final dynamic so2 = aqiData['sulphur_dioxide'] ?? 0;
+                  final dynamic o3 = aqiData['ozone'] ?? 0;
+
+                  final statusInfo = _getAqiStatus(usAqi);
+                  final Color statusColor = statusInfo['color'] as Color;
+
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.air_rounded,
+                                  color: Colors.teal,
+                                  size: 30,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'کوالێتی هەوا — $_cityName',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: _darkText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(dialogContext),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white12
+                                      : Colors.black.withValues(alpha: 0.06),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: _darkText,
+                                  size: 22,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    }
-
-                    final aqiData = snapshot.data!;
-                    final int usAqi = _calculateRealAqi(aqiData);
-                    final dynamic pm25 = aqiData['pm2_5'] ?? 0;
-                    final dynamic pm10 = aqiData['pm10'] ?? 0;
-                    final dynamic co = aqiData['carbon_monoxide'] ?? 0;
-                    final dynamic no2 = aqiData['nitrogen_dioxide'] ?? 0;
-                    final dynamic so2 = aqiData['sulphur_dioxide'] ?? 0;
-                    final dynamic o3 = aqiData['ozone'] ?? 0;
-
-                    final statusInfo = _getAqiStatus(usAqi);
-                    final Color statusColor = statusInfo['color'] as Color;
-
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: borderColor),
+                            boxShadow: _neuShadowsSmall,
+                          ),
+                          child: Column(
                             children: [
                               Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  const Icon(
-                                    Icons.air_rounded,
-                                    color: Colors.cyan,
-                                    size: 26,
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '$usAqi',
+                                        style: TextStyle(
+                                          fontSize: 46,
+                                          fontWeight: FontWeight.w900,
+                                          color: statusColor,
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                      Text(
+                                        'ئاستی ڕاستەقینە',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: _secondaryText,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'کوالێتیی هەوا — $_cityName',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w900,
-                                      color: _darkText,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: statusColor.withValues(
+                                          alpha: 0.4,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      statusInfo['status'] as String,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900,
+                                        color: statusColor,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                              GestureDetector(
-                                onTap: () => Navigator.pop(dialogContext),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? Colors.white12
-                                        : Colors.black.withValues(alpha: 0.08),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.close_rounded,
-                                    color: _darkText,
-                                    size: 20,
-                                  ),
+                              const SizedBox(height: 12),
+                              Divider(color: borderColor, height: 1),
+                              const SizedBox(height: 10),
+                              Text(
+                                statusInfo['desc'] as String,
+                                textAlign: TextAlign.start,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  height: 1.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: _darkText,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: iosCardBg,
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(color: iosBorderColor),
+                        ),
+                        const SizedBox(height: 14),
+                        GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 1.3,
+                          children: [
+                            _buildIosAirQualityGridItem(
+                              title: 'تەنی زیانبەخش',
+                              value: '$pm25',
+                              unit: 'مایکروگرام',
+                              icon: Icons.grain_rounded,
+                              iconColor: Colors.deepOrangeAccent,
+                              cardBg: cardBg,
+                              borderColor: borderColor,
                             ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '$usAqi',
-                                          style: TextStyle(
-                                            fontSize: 48,
-                                            fontWeight: FontWeight.w900,
-                                            color: statusColor,
-                                            height: 1.1,
-                                          ),
-                                        ),
-                                        Text(
-                                          'ئاستی ڕاستەقینە',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800,
-                                            color: _secondaryText,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(
-                                          color: statusColor.withValues(
-                                            alpha: 0.4,
-                                          ),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        statusInfo['status'] as String,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w900,
-                                          color: statusColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Divider(color: iosBorderColor, height: 1),
-                                const SizedBox(height: 10),
-                                Text(
-                                  statusInfo['desc'] as String,
-                                  textAlign: TextAlign.start,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    height: 1.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: _darkText.withValues(alpha: 0.9),
-                                  ),
-                                ),
-                              ],
+                            _buildIosAirQualityGridItem(
+                              title: 'تۆز و گەردیلە',
+                              value: '$pm10',
+                              unit: 'مایکروگرام',
+                              icon: Icons.blur_on_rounded,
+                              iconColor: Colors.amber.shade800,
+                              cardBg: cardBg,
+                              borderColor: borderColor,
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          GridView.count(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 1.35,
-                            children: [
-                              _buildIosAirQualityGridItem(
-                                title: 'تەنی زیانبەخش',
-                                value: '$pm25',
-                                unit: 'مایکروگرام',
-                                icon: Icons.grain_rounded,
-                                iconColor: Colors.deepOrangeAccent,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                              _buildIosAirQualityGridItem(
-                                title: 'تۆز و گەردیلە',
-                                value: '$pm10',
-                                unit: 'مایکروگرام',
-                                icon: Icons.blur_on_rounded,
-                                iconColor: Colors.amber.shade800,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                              _buildIosAirQualityGridItem(
-                                title: 'گازی ئۆزۆن',
-                                value: '$o3',
-                                unit: 'مایکروگرام',
-                                icon: Icons.wb_sunny_outlined,
-                                iconColor: Colors.blueAccent,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                              _buildIosAirQualityGridItem(
-                                title: 'نایترۆجین',
-                                value: '$no2',
-                                unit: 'مایکروگرام',
-                                icon: Icons.science_outlined,
-                                iconColor: Colors.purpleAccent,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                              _buildIosAirQualityGridItem(
-                                title: 'کاربۆن مۆنۆکسید',
-                                value: '$co',
-                                unit: 'مایکروگرام',
-                                icon: Icons.cloud_outlined,
-                                iconColor: Colors.teal,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                              _buildIosAirQualityGridItem(
-                                title: 'دوانۆکسیدی گۆگرد',
-                                value: '$so2',
-                                unit: 'مایکروگرام',
-                                icon: Icons.warning_amber_rounded,
-                                iconColor: Colors.redAccent,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                            _buildIosAirQualityGridItem(
+                              title: 'گازی ئۆزۆن',
+                              value: '$o3',
+                              unit: 'مایکروگرام',
+                              icon: Icons.wb_sunny_outlined,
+                              iconColor: Colors.blueAccent,
+                              cardBg: cardBg,
+                              borderColor: borderColor,
+                            ),
+                            _buildIosAirQualityGridItem(
+                              title: 'نایترۆجین',
+                              value: '$no2',
+                              unit: 'مایکروگرام',
+                              icon: Icons.science_outlined,
+                              iconColor: Colors.purpleAccent,
+                              cardBg: cardBg,
+                              borderColor: borderColor,
+                            ),
+                            _buildIosAirQualityGridItem(
+                              title: 'کاربۆن مۆنۆکسید',
+                              value: '$co',
+                              unit: 'مایکروگرام',
+                              icon: Icons.cloud_outlined,
+                              iconColor: Colors.teal,
+                              cardBg: cardBg,
+                              borderColor: borderColor,
+                            ),
+                            _buildIosAirQualityGridItem(
+                              title: 'دوانۆکسیدی گۆگرد',
+                              value: '$so2',
+                              unit: 'مایکروگرام',
+                              icon: Icons.warning_amber_rounded,
+                              iconColor: Colors.redAccent,
+                              cardBg: cardBg,
+                              borderColor: borderColor,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -638,11 +622,12 @@ class _HomeScreenState extends State<HomeScreen>
     required Color borderColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor),
+        boxShadow: _neuShadowsSmall,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,14 +635,14 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: iconColor),
-              const SizedBox(width: 5),
+              Icon(icon, size: 22, color: iconColor),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
                     color: _secondaryText,
                   ),
                   maxLines: 1,
@@ -673,7 +658,7 @@ class _HomeScreenState extends State<HomeScreen>
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 20,
                   fontWeight: FontWeight.w900,
                   color: _darkText,
                 ),
@@ -682,7 +667,7 @@ class _HomeScreenState extends State<HomeScreen>
               Text(
                 unit,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: _secondaryText,
                 ),
@@ -2630,9 +2615,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ==================== پەنجەرەی پێشکەوتووی بومەلەرزە (٣ لەسەر ٤ی شاشە + زانیاری ئەم مانگە + هەڵبژاردن) ====================
   void _showEarthquakeReportDialog(BuildContext context) {
-    int selectedFilter = 0; // 0 = شاری هەڵبژێردراو, 1 = سنوری عێراق و کوردستان
+    int selectedFilter = 0;
     final MapController mapController = MapController();
 
     showDialog(
@@ -2710,7 +2694,6 @@ class _HomeScreenState extends State<HomeScreen>
                         final allEarthquakes = snapshot.data ?? [];
                         final now = DateTime.now();
 
-                        // تەنها فلتەرکردنی زانیارییەکانی ئەو مانگەی تێیداین
                         final thisMonthEarthquakes = allEarthquakes.where((eq) {
                           try {
                             final eqTime = DateTime.parse(eq.time);
@@ -2721,36 +2704,32 @@ class _HomeScreenState extends State<HomeScreen>
                           }
                         }).toList();
 
-                        // فلتەر بەپێی دوو جۆری هەڵبژاردنەکە
-                        final displayedEarthquakes = thisMonthEarthquakes.where((
-                          eq,
-                        ) {
-                          if (selectedFilter == 0) {
-                            // بەپێی شوێنی دیاریکراو (لە بازنەی 250 کم لە شارەکەوە)
-                            final distance =
-                                Geolocator.distanceBetween(
-                                  _latitude,
-                                  _longitude,
-                                  eq.lat,
-                                  eq.lon,
-                                ) /
-                                1000;
-                            return distance <= 250;
-                          } else {
-                            // سنوری عێراق و هەرێمی کوردستان
-                            final p = eq.place.toLowerCase();
-                            return p.contains('iraq') ||
-                                p.contains('kurdistan') ||
-                                (eq.lat >= 29.0 &&
-                                    eq.lat <= 38.0 &&
-                                    eq.lon >= 38.5 &&
-                                    eq.lon <= 49.0);
-                          }
-                        }).toList();
+                        final displayedEarthquakes = thisMonthEarthquakes.where(
+                          (eq) {
+                            if (selectedFilter == 0) {
+                              final distance =
+                                  Geolocator.distanceBetween(
+                                    _latitude,
+                                    _longitude,
+                                    eq.lat,
+                                    eq.lon,
+                                  ) /
+                                  1000;
+                              return distance <= 250;
+                            } else {
+                              final p = eq.place.toLowerCase();
+                              return p.contains('iraq') ||
+                                  p.contains('kurdistan') ||
+                                  (eq.lat >= 29.0 &&
+                                      eq.lat <= 38.0 &&
+                                      eq.lon >= 38.5 &&
+                                      eq.lon <= 49.0);
+                            }
+                          },
+                        ).toList();
 
                         return Column(
                           children: [
-                            // بەشی سەرەوە (تایتڵ و دوگمەی داخستن)
                             Padding(
                               padding: const EdgeInsets.only(
                                 top: 16,
@@ -2802,8 +2781,6 @@ class _HomeScreenState extends State<HomeScreen>
                                 ],
                               ),
                             ),
-
-                            // سویچی هەڵبژاردن: شاری هەڵبژێردراو یان سنوری عێراق
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -2895,10 +2872,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 10),
-
-                            // نەخشەی بومەلەرزەکان بە دیزاینی شیک
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -2929,7 +2903,6 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                       MarkerLayer(
                                         markers: [
-                                          // نیشاندەری شاری ئێستا
                                           Marker(
                                             point: LatLng(
                                               _latitude,
@@ -2943,7 +2916,6 @@ class _HomeScreenState extends State<HomeScreen>
                                               size: 24,
                                             ),
                                           ),
-                                          // نیشاندەری بومەلەرزەکان
                                           ...displayedEarthquakes.map((eq) {
                                             return Marker(
                                               point: LatLng(eq.lat, eq.lon),
@@ -2963,10 +2935,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 10),
-
-                            // لیستی کارتی بومەلەرزەکان
                             Expanded(
                               child: displayedEarthquakes.isEmpty
                                   ? Center(
@@ -3925,7 +3894,6 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           const SizedBox(height: 14),
 
-                          // کارتی هێڵکاری کەشوهەوا
                           Builder(
                             builder: (context) {
                               final int hourlyCount = min(
