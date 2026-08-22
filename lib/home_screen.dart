@@ -81,9 +81,9 @@ class _HomeScreenState extends State<HomeScreen>
   ];
 
   late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
   late Animation<double> _locationBounceAnimation;
   late Animation<double> _mapIconBounceAnimation;
+  late Animation<double> _rotateAnimation;
 
   StreamSubscription<Position>? _positionStreamSubscription;
   Position? _lastFetchedPosition;
@@ -109,18 +109,18 @@ class _HomeScreenState extends State<HomeScreen>
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
-
-    _pulseAnimation = Tween<double>(begin: 0.0, end: 6.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
 
     _locationBounceAnimation = Tween<double>(begin: -3.0, end: 3.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     _mapIconBounceAnimation = Tween<double>(begin: -5.0, end: 5.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _rotateAnimation = Tween<double>(begin: -0.06, end: 0.06).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
@@ -3516,34 +3516,34 @@ class _HomeScreenState extends State<HomeScreen>
     required bool wideScreen,
   }) {
     return _buildNeuContainer(
-      radius: 16,
+      radius: 14,
       customColor: cardColor,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: iconColor, size: 28),
-          const SizedBox(height: 10),
+          Icon(icon, color: iconColor, size: 22),
+          const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               title,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
                 color: _secondaryText,
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               value,
               textDirection: TextDirection.ltr,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w900,
                 color: _darkText,
               ),
@@ -3564,20 +3564,20 @@ class _HomeScreenState extends State<HomeScreen>
       child: GestureDetector(
         onTap: onTap,
         child: _buildNeuContainer(
-          radius: 18,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          radius: 14,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 30, color: color),
-              const SizedBox(height: 8),
+              Icon(icon, size: 24, color: color),
+              const SizedBox(height: 6),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                     color: _darkText,
                   ),
@@ -4128,7 +4128,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 16),
                           ...List.generate(forecastDays, (i) {
                             final String date = data.times[i];
                             final String dayName = _getKurdishDayName(date);
@@ -4140,7 +4140,7 @@ class _HomeScreenState extends State<HomeScreen>
                             final Color cardTint = _getWeatherCardTint(code);
 
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 12.0),
+                              padding: const EdgeInsets.only(bottom: 8.0),
                               child: GestureDetector(
                                 onTap: () => _showDayDetailDialog(
                                   context,
@@ -4151,10 +4151,10 @@ class _HomeScreenState extends State<HomeScreen>
                                   data,
                                 ),
                                 child: _buildNeuContainer(
-                                  radius: 18,
+                                  radius: 14,
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 16,
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
                                   customColor: cardTint,
                                   child: Row(
@@ -4164,23 +4164,32 @@ class _HomeScreenState extends State<HomeScreen>
                                       Row(
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.all(10),
+                                            padding: const EdgeInsets.all(6),
                                             decoration: BoxDecoration(
                                               color: cardTint,
                                               borderRadius:
-                                                  BorderRadius.circular(14),
+                                                  BorderRadius.circular(10),
                                               boxShadow: _neuShadowsSmall,
                                             ),
-                                            child: Icon(
-                                              _getWeatherIcon(code, 1),
-                                              color: _getWeatherIconColor(
-                                                code,
-                                                1,
+                                            child: AnimatedBuilder(
+                                              animation: _rotateAnimation,
+                                              builder: (context, child) {
+                                                return Transform.rotate(
+                                                  angle: _rotateAnimation.value,
+                                                  child: child,
+                                                );
+                                              },
+                                              child: Icon(
+                                                _getWeatherIcon(code, 1),
+                                                color: _getWeatherIconColor(
+                                                  code,
+                                                  1,
+                                                ),
+                                                size: 24,
                                               ),
-                                              size: 38,
                                             ),
                                           ),
-                                          const SizedBox(width: 14),
+                                          const SizedBox(width: 10),
                                           Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
@@ -4189,16 +4198,16 @@ class _HomeScreenState extends State<HomeScreen>
                                                 dayName,
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w900,
-                                                  fontSize: 17,
+                                                  fontSize: 14,
                                                   color: _darkText,
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
+                                              const SizedBox(height: 2),
                                               Text(
                                                 date,
                                                 style: TextStyle(
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 11,
                                                   color: _secondaryText
                                                       .withValues(alpha: 0.9),
                                                 ),
@@ -4217,35 +4226,33 @@ class _HomeScreenState extends State<HomeScreen>
                                                 '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w900,
-                                                  fontSize: 16,
+                                                  fontSize: 13,
                                                   color: _darkText,
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
+                                              const SizedBox(height: 2),
                                               Text(
                                                 _getWeatherDescription(code),
                                                 style: TextStyle(
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 11,
                                                   color: _secondaryText,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(width: 14),
+                                          const SizedBox(width: 8),
                                           AnimatedBuilder(
-                                            animation: _pulseAnimation,
+                                            animation: _rotateAnimation,
                                             builder: (context, child) {
-                                              return Transform.translate(
-                                                offset: Offset(
-                                                  _pulseAnimation.value,
-                                                  0,
-                                                ),
+                                              return Transform.rotate(
+                                                angle:
+                                                    _rotateAnimation.value * 2,
                                                 child: child,
                                               );
                                             },
                                             child: Container(
-                                              padding: const EdgeInsets.all(8),
+                                              padding: const EdgeInsets.all(6),
                                               decoration: BoxDecoration(
                                                 color: cardTint,
                                                 shape: BoxShape.circle,
@@ -4253,7 +4260,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               ),
                                               child: Icon(
                                                 Icons.touch_app_rounded,
-                                                size: 16,
+                                                size: 13,
                                                 color: _purple,
                                               ),
                                             ),
