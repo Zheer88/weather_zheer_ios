@@ -697,12 +697,12 @@ class _HomeScreenState extends State<HomeScreen>
           child: GestureDetector(
             onTap: () => _showAirQualityDialog(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               decoration: BoxDecoration(
                 color: _isDarkMode
                     ? const Color(0xFF1E252D)
                     : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: _isDarkMode
                       ? Colors.white.withValues(alpha: 0.18)
@@ -722,13 +722,13 @@ class _HomeScreenState extends State<HomeScreen>
                           const Icon(
                             Icons.air_rounded,
                             color: Color(0xFF4ADE80),
-                            size: 22,
+                            size: 26,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Text(
                             'کوالێتی هەوا: $_cityName',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 15,
                               fontWeight: FontWeight.w900,
                               color: _darkText,
                             ),
@@ -737,8 +737,8 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                          horizontal: 12,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
                           color: statusColor.withValues(alpha: 0.15),
@@ -758,7 +758,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -768,7 +768,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             'بارودۆخ: $statusName',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w900,
                               color: statusColor,
                             ),
@@ -776,14 +776,14 @@ class _HomeScreenState extends State<HomeScreen>
                           Text(
                             'ڕێژە: $aqi',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w900,
                               color: statusColor,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 10),
                       Row(
                         children: List.generate(5, (index) {
                           final bool isActive = aqi >= (index * 50);
@@ -796,9 +796,9 @@ class _HomeScreenState extends State<HomeScreen>
 
                           return Expanded(
                             child: Container(
-                              height: 10,
+                              height: 18,
                               margin: EdgeInsets.only(
-                                right: index == 0 ? 0 : 3,
+                                right: index == 0 ? 0 : 5,
                               ),
                               decoration: BoxDecoration(
                                 color: isActive
@@ -806,13 +806,13 @@ class _HomeScreenState extends State<HomeScreen>
                                     : (_isDarkMode
                                           ? Colors.black45
                                           : Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(3),
+                                borderRadius: BorderRadius.circular(6),
                               ),
                               alignment: Alignment.center,
                               child: Text(
                                 '${(index + 1) * 50}',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   color: isActive
                                       ? Colors.white
@@ -823,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen>
                           );
                         }),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: const [
