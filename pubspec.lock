@@ -97,6 +97,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.14"
+  device_preview:
+    dependency: "direct main"
+    description:
+      name: device_preview
+      sha256: "17904a409957093dd31e0b78fbc49df87645ef9e6809f792ee6e2f52b61590cb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.0-prerelease3"
   equatable:
     dependency: transitive
     description:
