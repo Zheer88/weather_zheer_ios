@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,69 @@ import 'package:latlong2/latlong.dart' hide Path;
 import 'earthquake_service.dart';
 import 'location_weather_service.dart';
 import 'models/earthquake_model.dart';
+
+/// خزمەتگوزاری پەخشکردنی دەنگی کلیک بە فیدباکی لەرینەوە بۆ تەواوی پلاتفۆرمەکان
+class SoundFeedbackService {
+  static void playClick() {
+    try {
+      SystemSound.play(SystemSoundType.click);
+      HapticFeedback.selectionClick();
+      HapticFeedback.lightImpact();
+    } catch (_) {}
+  }
+}
+
+/// ویجێتی کارتی کارلێککار بۆ پێدانی دەنگ، قەبارەی پەستان و گۆڕانی ڕووناکی لەکاتی گرتەکردندا
+class PressableCard extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final double pressedScale;
+
+  const PressableCard({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.pressedScale = 0.96,
+  });
+
+  @override
+  State<PressableCard> createState() => _PressableCardState();
+}
+
+class _PressableCardState extends State<PressableCard> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) {
+          SoundFeedbackService.playClick();
+          setState(() => _isPressed = true);
+        },
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          if (widget.onTap != null) {
+            widget.onTap!();
+          }
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedScale(
+          scale: _isPressed ? widget.pressedScale : 1.0,
+          duration: const Duration(milliseconds: 90),
+          curve: Curves.easeInOut,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 90),
+            opacity: _isPressed ? 0.75 : 1.0,
+            child: widget.child,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -387,9 +451,25 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              CupertinoButton.filled(
-                                onPressed: () => Navigator.pop(dialogContext),
-                                child: const Text('داخستن'),
+                              PressableCard(
+                                onTap: () => Navigator.pop(dialogContext),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _purple,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Text(
+                                    'داخستن',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           );
@@ -417,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  GestureDetector(
+                                  PressableCard(
                                     onTap: () => Navigator.pop(dialogContext),
                                     child: Container(
                                       padding: const EdgeInsets.all(6),
@@ -454,93 +534,96 @@ class _HomeScreenState extends State<HomeScreen>
                               const SizedBox(height: 10),
 
                               // Compact Overview Card
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: cardBg,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: borderColor),
-                                  boxShadow: _neuShadowsSmall,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          '$usAqi',
-                                          style: TextStyle(
-                                            fontSize: 32,
-                                            fontWeight: FontWeight.w900,
-                                            color: statusColor,
-                                            height: 1.0,
-                                            letterSpacing: -1.0,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'AQI',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w800,
-                                            color: _secondaryText,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Container(
-                                          height: 16,
-                                          width: 1,
-                                          color: borderColor,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: statusColor.withValues(
-                                              alpha: 0.18,
+                              PressableCard(
+                                onTap: () {},
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: cardBg,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: borderColor),
+                                    boxShadow: _neuShadowsSmall,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            '$usAqi',
+                                            style: TextStyle(
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.w900,
+                                              color: statusColor,
+                                              height: 1.0,
+                                              letterSpacing: -1.0,
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'AQI',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w800,
+                                              color: _secondaryText,
                                             ),
-                                            border: Border.all(
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Container(
+                                            height: 16,
+                                            width: 1,
+                                            color: borderColor,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
                                               color: statusColor.withValues(
-                                                alpha: 0.35,
+                                                alpha: 0.18,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: statusColor.withValues(
+                                                  alpha: 0.35,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              statusInfo['status'] as String,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w900,
+                                                color: statusColor,
                                               ),
                                             ),
                                           ),
-                                          child: Text(
-                                            statusInfo['status'] as String,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w900,
-                                              color: statusColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Divider(color: borderColor, height: 1),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      statusInfo['desc'] as String,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        height: 1.35,
-                                        fontWeight: FontWeight.w600,
-                                        color: _darkText,
+                                        ],
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 8),
+                                      Divider(color: borderColor, height: 1),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        statusInfo['desc'] as String,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          height: 1.35,
+                                          fontWeight: FontWeight.w600,
+                                          color: _darkText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 10),
@@ -635,66 +718,69 @@ class _HomeScreenState extends State<HomeScreen>
     required Color cardBg,
     required Color borderColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-        boxShadow: _neuShadowsSmall,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 24, color: iconColor),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  title,
+    return PressableCard(
+      onTap: () {},
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor),
+          boxShadow: _neuShadowsSmall,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 24, color: iconColor),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: _secondaryText,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  value,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: _darkText,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  unit,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
                     color: _secondaryText,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  color: _darkText,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                unit,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                  color: _secondaryText,
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -717,7 +803,7 @@ class _HomeScreenState extends State<HomeScreen>
 
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: GestureDetector(
+          child: PressableCard(
             onTap: () => _showAirQualityDialog(context),
             child: _buildNeuContainer(
               radius: 22,
@@ -1151,7 +1237,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ],
                             ),
-                            GestureDetector(
+                            PressableCard(
                               onTap: () => Navigator.pop(dialogContext),
                               child: Container(
                                 padding: const EdgeInsets.all(6),
@@ -1257,41 +1343,44 @@ class _HomeScreenState extends State<HomeScreen>
     required Color cardBg,
     required Color borderColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor),
-        boxShadow: _neuShadowsSmall,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: _darkText,
+    return PressableCard(
+      onTap: () {},
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor),
+          boxShadow: _neuShadowsSmall,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: _darkText,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          Text(
-            value,
-            textDirection: TextDirection.ltr,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: color,
+              ],
             ),
-          ),
-        ],
+            Text(
+              value,
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1399,7 +1488,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Positioned(
                             top: 16,
                             left: 16,
-                            child: GestureDetector(
+                            child: PressableCard(
                               onTap: () => Navigator.pop(dialogContext),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(20),
@@ -1506,7 +1595,7 @@ class _HomeScreenState extends State<HomeScreen>
     final bool isSelected = _mapLayerType == type;
     return Tooltip(
       message: label,
-      child: GestureDetector(
+      child: PressableCard(
         onTap: () {
           setStateDialog(() {
             _mapLayerType = type;
@@ -1634,6 +1723,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           color: _secondaryText,
                                         ),
                                         onPressed: () {
+                                          SoundFeedbackService.playClick();
                                           searchController.clear();
                                           setStateDialog(() {
                                             searchQuery = '';
@@ -1683,7 +1773,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           const SizedBox(height: 16),
                           if (searchQuery.isEmpty)
-                            GestureDetector(
+                            PressableCard(
                               onTap: _isLocationLoading
                                   ? null
                                   : () async {
@@ -1805,39 +1895,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       result['name'] as String? ??
                                       fullName.split(',').first;
 
-                                  return ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: Container(
-                                      padding: const EdgeInsets.all(7),
-                                      decoration: BoxDecoration(
-                                        color: CupertinoColors.systemRed
-                                            .withValues(alpha: 0.15),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        CupertinoIcons.location_solid,
-                                        color: CupertinoColors.systemRed,
-                                        size: 16,
-                                      ),
-                                    ),
-                                    title: Text(
-                                      shortName,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 15,
-                                        color: _darkText,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      fullName,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                        color: _secondaryText,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                  return PressableCard(
                                     onTap: () {
                                       Navigator.pop(dialogContext);
                                       setState(() {
@@ -1857,6 +1915,40 @@ class _HomeScreenState extends State<HomeScreen>
                                       });
                                       _fetchElevation(_latitude, _longitude);
                                     },
+                                    child: ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: Container(
+                                        padding: const EdgeInsets.all(7),
+                                        decoration: BoxDecoration(
+                                          color: CupertinoColors.systemRed
+                                              .withValues(alpha: 0.15),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          CupertinoIcons.location_solid,
+                                          color: CupertinoColors.systemRed,
+                                          size: 16,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        shortName,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 15,
+                                          color: _darkText,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        fullName,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                          color: _secondaryText,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
                                   );
                                 },
                               ),
@@ -1865,15 +1957,17 @@ class _HomeScreenState extends State<HomeScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              CupertinoButton(
-                                padding: EdgeInsets.zero,
-                                onPressed: () => Navigator.pop(dialogContext),
-                                child: Text(
-                                  'داخستن',
-                                  style: TextStyle(
-                                    color: _secondaryText,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
+                              PressableCard(
+                                onTap: () => Navigator.pop(dialogContext),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    'داخستن',
+                                    style: TextStyle(
+                                      color: _secondaryText,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1894,7 +1988,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildCityChip(String name, double lat, double lon) {
     final bool isDark = _isDarkMode;
-    return GestureDetector(
+    return PressableCard(
       onTap: () {
         Navigator.pop(context);
         setState(() {
@@ -2239,7 +2333,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ],
                             ),
-                            GestureDetector(
+                            PressableCard(
                               onTap: () => Navigator.pop(dialogContext),
                               child: Container(
                                 padding: const EdgeInsets.all(6),
@@ -2275,93 +2369,96 @@ class _HomeScreenState extends State<HomeScreen>
                               : 35.0;
                           final double tempShadow = tempSun - 3.5;
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: iosCardBg,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: iosBorderColor),
-                              boxShadow: _neuShadowsSmall,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        _buildWeatherVisualIcon(
-                                          weatherCode,
-                                          1,
-                                          size: 34,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              dayName,
-                                              style: TextStyle(
-                                                fontSize: 16.5,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
+                          return PressableCard(
+                            onTap: () {},
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: iosCardBg,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: iosBorderColor),
+                                boxShadow: _neuShadowsSmall,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          _buildWeatherVisualIcon(
+                                            weatherCode,
+                                            1,
+                                            size: 34,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                dayName,
+                                                style: TextStyle(
+                                                  fontSize: 16.5,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: _darkText,
+                                                ),
                                               ),
-                                            ),
-                                            Text(
-                                              date,
-                                              style: TextStyle(
-                                                fontSize: 12.5,
-                                                fontWeight: FontWeight.w700,
-                                                color: _secondaryText,
+                                              Text(
+                                                date,
+                                                style: TextStyle(
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: _secondaryText,
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    Text(
-                                      _getWeatherDescription(weatherCode),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w900,
-                                        color: _purple,
+                                            ],
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Divider(color: iosBorderColor, height: 1),
-                                const SizedBox(height: 10),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    _buildIosReportStat(
-                                      icon: CupertinoIcons.sun_max,
-                                      iconColor: Colors.amber,
-                                      title: 'لە بەرخۆر',
-                                      value: '${tempSun.toStringAsFixed(1)}°',
-                                    ),
-                                    _buildIosReportStat(
-                                      icon: CupertinoIcons.tree,
-                                      iconColor: Colors.teal,
-                                      title: 'لە سێبەر',
-                                      value:
-                                          '${tempShadow.toStringAsFixed(1)}°',
-                                    ),
-                                    _buildIosReportStat(
-                                      icon: CupertinoIcons.snow,
-                                      iconColor: Colors.blueAccent,
-                                      title: 'نزمترین',
-                                      value: '${minT?.round() ?? 0}°',
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                      Text(
+                                        _getWeatherDescription(weatherCode),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                          color: _purple,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Divider(color: iosBorderColor, height: 1),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      _buildIosReportStat(
+                                        icon: CupertinoIcons.sun_max,
+                                        iconColor: Colors.amber,
+                                        title: 'لە بەرخۆر',
+                                        value: '${tempSun.toStringAsFixed(1)}°',
+                                      ),
+                                      _buildIosReportStat(
+                                        icon: CupertinoIcons.tree,
+                                        iconColor: Colors.teal,
+                                        title: 'لە سێبەر',
+                                        value:
+                                            '${tempShadow.toStringAsFixed(1)}°',
+                                      ),
+                                      _buildIosReportStat(
+                                        icon: CupertinoIcons.snow,
+                                        iconColor: Colors.blueAccent,
+                                        title: 'نزمترین',
+                                        value: '${minT?.round() ?? 0}°',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         }),
@@ -2458,7 +2555,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ],
                             ),
-                            GestureDetector(
+                            PressableCard(
                               onTap: () => Navigator.pop(dialogContext),
                               child: Container(
                                 padding: const EdgeInsets.all(5),
@@ -2503,111 +2600,114 @@ class _HomeScreenState extends State<HomeScreen>
                                   ? data.precipitationProbabilities[i]
                                   : 0;
 
-                              return Container(
-                                width: 110,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                  horizontal: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: iosCardBg,
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(color: iosBorderColor),
-                                  boxShadow: _neuShadowsSmall,
-                                ),
-                                child: Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      children: [
-                                        Text(
-                                          dayName,
-                                          style: TextStyle(
-                                            fontSize: 15,
+                              return PressableCard(
+                                onTap: () {},
+                                child: Container(
+                                  width: 110,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: iosCardBg,
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: iosBorderColor),
+                                    boxShadow: _neuShadowsSmall,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          Text(
+                                            dayName,
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: _darkText,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            date,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: _secondaryText,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blueAccent.withValues(
+                                            alpha: 0.18,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '$rainProb٪',
+                                          style: const TextStyle(
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w900,
-                                            color: _darkText,
+                                            color: Colors.blueAccent,
                                           ),
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          date.length > 5
-                                              ? date.substring(5)
-                                              : date,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: _secondaryText,
+                                      ),
+                                      Column(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                CupertinoIcons.drop,
+                                                size: 14,
+                                                color: Colors.blueAccent,
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '$rainAmount مم',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: _darkText,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blueAccent.withValues(
-                                          alpha: 0.18,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '$rainProb٪',
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.blueAccent,
-                                        ),
-                                      ),
-                                    ),
-                                    Column(
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(
-                                              CupertinoIcons.drop,
-                                              size: 14,
-                                              color: Colors.blueAccent,
-                                            ),
-                                            const SizedBox(width: 3),
-                                            Text(
-                                              '$rainAmount مم',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
+                                          const SizedBox(height: 2),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                CupertinoIcons.snow,
+                                                size: 14,
+                                                color: Colors.lightBlueAccent,
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(
-                                              CupertinoIcons.snow,
-                                              size: 14,
-                                              color: Colors.lightBlueAccent,
-                                            ),
-                                            const SizedBox(width: 3),
-                                            Text(
-                                              '$snowAmount سم',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '$snowAmount سم',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: _darkText,
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               );
                             },
@@ -2925,7 +3025,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         ),
                                       ],
                                     ),
-                                    GestureDetector(
+                                    PressableCard(
                                       onTap: () => Navigator.pop(dialogContext),
                                       child: Container(
                                         padding: const EdgeInsets.all(5),
@@ -2961,7 +3061,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   child: Row(
                                     children: [
                                       Expanded(
-                                        child: GestureDetector(
+                                        child: PressableCard(
                                           onTap: () {
                                             setModalState(() {
                                               selectedFilter = 0;
@@ -2997,7 +3097,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         ),
                                       ),
                                       Expanded(
-                                        child: GestureDetector(
+                                        child: PressableCard(
                                           onTap: () {
                                             setModalState(() {
                                               selectedFilter = 1;
@@ -3125,7 +3225,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         itemBuilder: (context, index) {
                                           final eq =
                                               displayedEarthquakes[index];
-                                          return GestureDetector(
+                                          return PressableCard(
                                             onTap: () {
                                               mapController.move(
                                                 LatLng(eq.lat, eq.lon),
@@ -3384,7 +3484,7 @@ class _HomeScreenState extends State<HomeScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              GestureDetector(
+                              PressableCard(
                                 onTap: () => Navigator.pop(dialogContext),
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
@@ -3434,60 +3534,65 @@ class _HomeScreenState extends State<HomeScreen>
                           const SizedBox(height: 10),
 
                           // Weather Banner
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: iosCardBg,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: iosBorderColor),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildWeatherVisualIcon(
-                                  weatherCode,
-                                  1,
-                                  size: 38,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  '${maxT?.round() ?? 0}°',
-                                  style: TextStyle(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w900,
-                                    color: _darkText,
+                          PressableCard(
+                            onTap: () {},
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: iosCardBg,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: iosBorderColor),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildWeatherVisualIcon(
+                                    weatherCode,
+                                    1,
+                                    size: 38,
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                Container(
-                                  height: 18,
-                                  width: 1.2,
-                                  color: _secondaryText.withValues(alpha: 0.3),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  _getWeatherDescription(weatherCode),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: _purple,
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    '${maxT?.round() ?? 0}°',
+                                    style: TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w900,
+                                      color: _darkText,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  '(${minT?.round() ?? 0}° / ${maxT?.round() ?? 0}°)',
-                                  textDirection: TextDirection.ltr,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: _secondaryText,
+                                  const SizedBox(width: 10),
+                                  Container(
+                                    height: 18,
+                                    width: 1.2,
+                                    color: _secondaryText.withValues(
+                                      alpha: 0.3,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    _getWeatherDescription(weatherCode),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: _purple,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    '(${minT?.round() ?? 0}° / ${maxT?.round() ?? 0}°)',
+                                    textDirection: TextDirection.ltr,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: _secondaryText,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -3566,37 +3671,40 @@ class _HomeScreenState extends State<HomeScreen>
                                       final int isDayTime =
                                           (hour24 >= 6 && hour24 < 19) ? 1 : 0;
 
-                                      return Container(
-                                        width: 52,
-                                        alignment: Alignment.center,
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              formattedTime12,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w800,
-                                                color: _darkText,
+                                      return PressableCard(
+                                        onTap: () {},
+                                        child: Container(
+                                          width: 52,
+                                          alignment: Alignment.center,
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                formattedTime12,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: _darkText,
+                                                ),
                                               ),
-                                            ),
-                                            _buildWeatherVisualIcon(
-                                              hCode,
-                                              isDayTime,
-                                              size: 26,
-                                            ),
-                                            Text(
-                                              '${temp.round()}°',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 14.5,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
+                                              _buildWeatherVisualIcon(
+                                                hCode,
+                                                isDayTime,
+                                                size: 26,
                                               ),
-                                            ),
-                                          ],
+                                              Text(
+                                                '${temp.round()}°',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 14.5,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: _darkText,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       );
                                     },
@@ -3676,61 +3784,62 @@ class _HomeScreenState extends State<HomeScreen>
     required Color cardBg,
     required Color borderColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor),
-        boxShadow: _neuShadowsSmall,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: iconColor),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: _secondaryText,
+    return PressableCard(
+      onTap: () {},
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor),
+          boxShadow: _neuShadowsSmall,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: iconColor),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: _secondaryText,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: _darkText,
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: _darkText,
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              color: _secondaryText,
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: _secondaryText,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -3773,49 +3882,52 @@ class _HomeScreenState extends State<HomeScreen>
     required String value,
     required bool wideScreen,
   }) {
-    return _buildNeuContainer(
-      radius: 14,
-      customColor: cardColor,
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 3),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
+    return PressableCard(
+      onTap: () {},
+      child: _buildNeuContainer(
+        radius: 14,
+        customColor: cardColor,
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 3),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 14),
             ),
-            child: Icon(icon, color: iconColor, size: 14),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: _secondaryText,
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: _secondaryText,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 1),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              textDirection: TextDirection.ltr,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
-                color: _darkText,
+            const SizedBox(height: 1),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                textDirection: TextDirection.ltr,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                  color: _darkText,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -3827,7 +3939,7 @@ class _HomeScreenState extends State<HomeScreen>
     required VoidCallback onTap,
   }) {
     return Expanded(
-      child: GestureDetector(
+      child: PressableCard(
         onTap: onTap,
         child: _buildNeuContainer(
           radius: 16,
@@ -3908,14 +4020,8 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              CupertinoButton(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                color: _purple,
-                borderRadius: BorderRadius.circular(16),
-                onPressed: () {
+              PressableCard(
+                onTap: () {
                   setState(() {
                     _weatherData = _loadWeatherForCoordinates(
                       _latitude,
@@ -3925,19 +4031,34 @@ class _HomeScreenState extends State<HomeScreen>
                   });
                   _fetchElevation(_latitude, _longitude);
                 },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(CupertinoIcons.refresh_bold, size: 16),
-                    SizedBox(width: 6),
-                    Text(
-                      'دووبارە هەوڵبدەرەوە',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _purple,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        CupertinoIcons.refresh_bold,
+                        size: 16,
+                        color: Colors.white,
                       ),
-                    ),
-                  ],
+                      SizedBox(width: 6),
+                      Text(
+                        'دووبارە هەوڵبدەرەوە',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -4020,7 +4141,7 @@ class _HomeScreenState extends State<HomeScreen>
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Expanded(
-                                child: GestureDetector(
+                                child: PressableCard(
                                   onTap: () =>
                                       _showLocationSearchDialog(context),
                                   child: _buildNeuContainer(
@@ -4081,7 +4202,7 @@ class _HomeScreenState extends State<HomeScreen>
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  GestureDetector(
+                                  PressableCard(
                                     onTap: () =>
                                         _showFullscreenMapDialog(context),
                                     child: Container(
@@ -4108,7 +4229,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  GestureDetector(
+                                  PressableCard(
                                     onTap: () {
                                       setState(() {
                                         _isDarkMode = !_isDarkMode;
@@ -4142,7 +4263,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  GestureDetector(
+                                  PressableCard(
                                     onTap: () =>
                                         _showSeaLevelDetailsDialog(context),
                                     child: Container(
@@ -4363,37 +4484,42 @@ class _HomeScreenState extends State<HomeScreen>
                                                     ? rawTemps[index]
                                                     : 0.0);
 
-                                          return Container(
-                                            width: 48,
-                                            alignment: Alignment.center,
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  formattedTime,
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: _secondaryText,
+                                          return PressableCard(
+                                            onTap: () {},
+                                            child: Container(
+                                              width: 48,
+                                              alignment: Alignment.center,
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    formattedTime,
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: _secondaryText,
+                                                    ),
                                                   ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                _buildWeatherVisualIcon(
-                                                  hCode,
-                                                  isDayTime,
-                                                  size: 22,
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  '${currentMaTemp.round()}°',
-                                                  style: TextStyle(
-                                                    fontSize: 12.5,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: _darkText,
+                                                  const SizedBox(height: 2),
+                                                  _buildWeatherVisualIcon(
+                                                    hCode,
+                                                    isDayTime,
+                                                    size: 22,
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    '${currentMaTemp.round()}°',
+                                                    style: TextStyle(
+                                                      fontSize: 12.5,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      color: _darkText,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           );
                                         },
@@ -4793,7 +4919,7 @@ class _HomeScreenState extends State<HomeScreen>
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8.0),
-                              child: GestureDetector(
+                              child: PressableCard(
                                 onTap: () => _showDayDetailDialog(
                                   context,
                                   date,
