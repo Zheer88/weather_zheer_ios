@@ -5039,5 +5039,4 @@ class WeatherModel {
       ),
     );
   }
-
 }
