@@ -40,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen>
   String _cityName = 'سلێمانی';
   String _mapLayerType = 'normal';
 
-  // iOS Fluid Atmospheric Palette
   Color get _darkText =>
       _isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
   Color get _secondaryText =>
@@ -454,7 +453,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               const SizedBox(height: 10),
 
-                              // Compact Overview Card (بەشی سەرەوە تەواو بچووککراوە)
+                              // Compact Overview Card
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
@@ -546,7 +545,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               const SizedBox(height: 10),
 
-                              // Air Components Grid (ئایکۆنەکان گەورەتر کراون و هەموو نوسینەکان لە ناوەڕاستن)
+                              // Air Components Grid
                               GridView.count(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
@@ -713,7 +712,6 @@ class _HomeScreenState extends State<HomeScreen>
         final Color statusColor = statusInfo['color'] as Color;
         final String statusName = statusInfo['status'] as String;
 
-        // Progress Ratio clamped to 250 max
         final double progressRatio = (aqi / 250.0).clamp(0.0, 1.0);
         final List<int> scales = [25, 50, 100, 150, 200, 250];
 
@@ -807,8 +805,6 @@ class _HomeScreenState extends State<HomeScreen>
                         ],
                       ),
                       const SizedBox(height: 10),
-
-                      // Fluid Gradient Progress Bar with REVERSED colors
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final double fullWidth = constraints.maxWidth;
@@ -821,10 +817,10 @@ class _HomeScreenState extends State<HomeScreen>
                                   borderRadius: BorderRadius.circular(10),
                                   gradient: const LinearGradient(
                                     colors: [
-                                      Color(0xFF881337), // مەترسیدار
-                                      Color(0xFFEF4444), // ژەهراوی
-                                      Color(0xFFF59E0B), // ئاسایی
-                                      Color(0xFF10B981), // خاوێن
+                                      Color(0xFF881337),
+                                      Color(0xFFEF4444),
+                                      Color(0xFFF59E0B),
+                                      Color(0xFF10B981),
                                     ],
                                   ),
                                 ),
@@ -860,8 +856,6 @@ class _HomeScreenState extends State<HomeScreen>
                         },
                       ),
                       const SizedBox(height: 6),
-
-                      // Scales: 25, 50, 100, 150, 200, 250
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: scales.map((val) {
@@ -876,8 +870,6 @@ class _HomeScreenState extends State<HomeScreen>
                         }).toList(),
                       ),
                       const SizedBox(height: 8),
-
-                      // Status terms: خاوێن، یاسایی، ژەهراوی، مەترسیدار
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: const [
@@ -2169,14 +2161,14 @@ class _HomeScreenState extends State<HomeScreen>
                                   child: Icon(
                                     CupertinoIcons.sparkles,
                                     color: _purple,
-                                    size: 20,
+                                    size: 22,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Text(
                                   'ڕاپۆرتی کەشوهەوا ($_cityName)',
                                   style: TextStyle(
-                                    fontSize: 17,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: -0.4,
                                     color: _darkText,
@@ -2221,8 +2213,8 @@ class _HomeScreenState extends State<HomeScreen>
                           final double tempShadow = tempSun - 3.5;
 
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: iosCardBg,
                               borderRadius: BorderRadius.circular(20),
@@ -2244,9 +2236,9 @@ class _HomeScreenState extends State<HomeScreen>
                                             weatherCode,
                                             1,
                                           ),
-                                          size: 24,
+                                          size: 28,
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: 10),
                                         Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
@@ -2254,7 +2246,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             Text(
                                               dayName,
                                               style: TextStyle(
-                                                fontSize: 15,
+                                                fontSize: 16.5,
                                                 fontWeight: FontWeight.w900,
                                                 color: _darkText,
                                               ),
@@ -2262,7 +2254,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             Text(
                                               date,
                                               style: TextStyle(
-                                                fontSize: 11.5,
+                                                fontSize: 12.5,
                                                 fontWeight: FontWeight.w700,
                                                 color: _secondaryText,
                                               ),
@@ -2274,16 +2266,16 @@ class _HomeScreenState extends State<HomeScreen>
                                     Text(
                                       _getWeatherDescription(weatherCode),
                                       style: TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w900,
                                         color: _purple,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 10),
                                 Divider(color: iosBorderColor, height: 1),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 10),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -2391,14 +2383,14 @@ class _HomeScreenState extends State<HomeScreen>
                                   child: const Icon(
                                     CupertinoIcons.drop_fill,
                                     color: Colors.blueAccent,
-                                    size: 20,
+                                    size: 22,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Text(
                                   'پێشبینی باران و بەفر',
                                   style: TextStyle(
-                                    fontSize: 17,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: -0.4,
                                     color: _darkText,
@@ -2427,7 +2419,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         const SizedBox(height: 14),
                         SizedBox(
-                          height: 160,
+                          height: 170,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: totalDays,
@@ -2452,9 +2444,9 @@ class _HomeScreenState extends State<HomeScreen>
                                   : 0;
 
                               return Container(
-                                width: 105,
+                                width: 110,
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
+                                  vertical: 10,
                                   horizontal: 6,
                                 ),
                                 decoration: BoxDecoration(
@@ -2472,7 +2464,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         Text(
                                           dayName,
                                           style: TextStyle(
-                                            fontSize: 14,
+                                            fontSize: 15,
                                             fontWeight: FontWeight.w900,
                                             color: _darkText,
                                           ),
@@ -2483,7 +2475,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               ? date.substring(5)
                                               : date,
                                           style: TextStyle(
-                                            fontSize: 11,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.w700,
                                             color: _secondaryText,
                                           ),
@@ -2492,8 +2484,8 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2,
+                                        horizontal: 8,
+                                        vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
                                         color: Colors.blueAccent.withValues(
@@ -2504,7 +2496,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       child: Text(
                                         '$rainProb٪',
                                         style: const TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w900,
                                           color: Colors.blueAccent,
                                         ),
@@ -2518,14 +2510,14 @@ class _HomeScreenState extends State<HomeScreen>
                                           children: [
                                             const Icon(
                                               CupertinoIcons.drop_fill,
-                                              size: 12,
+                                              size: 14,
                                               color: Colors.blueAccent,
                                             ),
-                                            const SizedBox(width: 2),
+                                            const SizedBox(width: 3),
                                             Text(
                                               '$rainAmount مم',
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 13,
                                                 fontWeight: FontWeight.w900,
                                                 color: _darkText,
                                               ),
@@ -2539,14 +2531,14 @@ class _HomeScreenState extends State<HomeScreen>
                                           children: [
                                             const Icon(
                                               CupertinoIcons.snow,
-                                              size: 12,
+                                              size: 14,
                                               color: Colors.lightBlueAccent,
                                             ),
-                                            const SizedBox(width: 2),
+                                            const SizedBox(width: 3),
                                             Text(
                                               '$snowAmount سم',
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 13,
                                                 fontWeight: FontWeight.w900,
                                                 color: _darkText,
                                               ),
@@ -2585,13 +2577,13 @@ class _HomeScreenState extends State<HomeScreen>
                                   const Icon(
                                     CupertinoIcons.chart_bar_alt_fill,
                                     color: Colors.blueAccent,
-                                    size: 16,
+                                    size: 18,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     'کۆی گشتی پێشبینیکراوی ($totalDays ڕۆژ)',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w900,
                                       color: _darkText,
                                     ),
@@ -2604,7 +2596,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   Expanded(
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 6,
+                                        vertical: 8,
                                         horizontal: 6,
                                       ),
                                       decoration: BoxDecoration(
@@ -2619,7 +2611,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           Text(
                                             'کۆی باران',
                                             style: TextStyle(
-                                              fontSize: 12,
+                                              fontSize: 13,
                                               fontWeight: FontWeight.w700,
                                               color: _secondaryText,
                                             ),
@@ -2628,7 +2620,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           Text(
                                             '${sumTotalRain.toStringAsFixed(1)} مم',
                                             style: const TextStyle(
-                                              fontSize: 16,
+                                              fontSize: 17,
                                               fontWeight: FontWeight.w900,
                                               color: Colors.blueAccent,
                                             ),
@@ -2641,7 +2633,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   Expanded(
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 6,
+                                        vertical: 8,
                                         horizontal: 6,
                                       ),
                                       decoration: BoxDecoration(
@@ -2656,7 +2648,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           Text(
                                             'کۆی بەفر',
                                             style: TextStyle(
-                                              fontSize: 12,
+                                              fontSize: 13,
                                               fontWeight: FontWeight.w700,
                                               color: _secondaryText,
                                             ),
@@ -2665,7 +2657,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           Text(
                                             '${sumTotalSnow.toStringAsFixed(1)} سم',
                                             style: TextStyle(
-                                              fontSize: 16,
+                                              fontSize: 17,
                                               fontWeight: FontWeight.w900,
                                               color: isDark
                                                   ? Colors.lightBlueAccent
@@ -2702,15 +2694,15 @@ class _HomeScreenState extends State<HomeScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: iconColor),
-        const SizedBox(width: 4),
+        Icon(icon, size: 18, color: iconColor),
+        const SizedBox(width: 5),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: _secondaryText,
               ),
@@ -2718,7 +2710,7 @@ class _HomeScreenState extends State<HomeScreen>
             Text(
               value,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w900,
                 color: _darkText,
               ),
@@ -3313,7 +3305,7 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 14,
+                      vertical: 16,
                     ),
                     decoration: BoxDecoration(
                       color: isDark
@@ -3357,18 +3349,18 @@ class _HomeScreenState extends State<HomeScreen>
                                       '$_cityName — $dayName',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 17.5,
                                         fontWeight: FontWeight.w900,
                                         letterSpacing: -0.3,
                                         color: _darkText,
                                       ),
                                     ),
-                                    const SizedBox(height: 1),
+                                    const SizedBox(height: 2),
                                     Text(
                                       date,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 12.5,
                                         fontWeight: FontWeight.w700,
                                         color: _secondaryText,
                                       ),
@@ -3379,17 +3371,17 @@ class _HomeScreenState extends State<HomeScreen>
                               const SizedBox(width: 28),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
 
-                          // Compact Weather Banner
+                          // Weather Banner
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
+                              horizontal: 16,
+                              vertical: 10,
                             ),
                             decoration: BoxDecoration(
                               color: iosCardBg,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(18),
                               border: Border.all(color: iosBorderColor),
                             ),
                             child: Row(
@@ -3399,29 +3391,29 @@ class _HomeScreenState extends State<HomeScreen>
                                 Icon(
                                   _getWeatherIcon(weatherCode, 1),
                                   color: _getWeatherIconColor(weatherCode, 1),
-                                  size: 26,
+                                  size: 30,
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 10),
                                 Text(
                                   '${maxT?.round() ?? 0}°',
                                   style: TextStyle(
-                                    fontSize: 24,
+                                    fontSize: 26,
                                     fontWeight: FontWeight.w900,
                                     color: _darkText,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Container(
-                                  height: 16,
-                                  width: 1,
+                                  height: 18,
+                                  width: 1.2,
                                   color: _secondaryText.withValues(alpha: 0.3),
                                 ),
                                 const SizedBox(width: 10),
                                 Text(
                                   _getWeatherDescription(weatherCode),
                                   style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
                                     color: _purple,
                                   ),
                                 ),
@@ -3430,7 +3422,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   '(${minT?.round() ?? 0}° / ${maxT?.round() ?? 0}°)',
                                   textDirection: TextDirection.ltr,
                                   style: TextStyle(
-                                    fontSize: 11.5,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w800,
                                     color: _secondaryText,
                                   ),
@@ -3438,11 +3430,11 @@ class _HomeScreenState extends State<HomeScreen>
                               ],
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
 
                           // Hourly Prediction Box
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: iosCardBg,
                               borderRadius: BorderRadius.circular(20),
@@ -3457,7 +3449,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   children: [
                                     Icon(
                                       CupertinoIcons.time,
-                                      size: 14,
+                                      size: 16,
                                       color: _secondaryText,
                                     ),
                                     const SizedBox(width: 6),
@@ -3465,23 +3457,23 @@ class _HomeScreenState extends State<HomeScreen>
                                       'پێشبینی کاتژمێری',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 13.5,
                                         fontWeight: FontWeight.w900,
                                         color: _secondaryText,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 6),
-                                Divider(color: iosBorderColor, height: 1),
                                 const SizedBox(height: 8),
+                                Divider(color: iosBorderColor, height: 1),
+                                const SizedBox(height: 10),
                                 SizedBox(
-                                  height: 85,
+                                  height: 96,
                                   child: ListView.separated(
                                     scrollDirection: Axis.horizontal,
                                     itemCount: matchedIndices.length,
                                     separatorBuilder: (context, i) =>
-                                        const SizedBox(width: 10),
+                                        const SizedBox(width: 12),
                                     itemBuilder: (context, index) {
                                       final realIdx = matchedIndices[index];
                                       final String fullTime =
@@ -3515,7 +3507,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           (hour24 >= 6 && hour24 < 19) ? 1 : 0;
 
                                       return Container(
-                                        width: 48,
+                                        width: 52,
                                         alignment: Alignment.center,
                                         child: Column(
                                           mainAxisAlignment:
@@ -3525,7 +3517,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               formattedTime12,
                                               textAlign: TextAlign.center,
                                               style: TextStyle(
-                                                fontSize: 10,
+                                                fontSize: 11.5,
                                                 fontWeight: FontWeight.w800,
                                                 color: _darkText,
                                               ),
@@ -3536,13 +3528,13 @@ class _HomeScreenState extends State<HomeScreen>
                                                 hCode,
                                                 isDayTime,
                                               ),
-                                              size: 20,
+                                              size: 24,
                                             ),
                                             Text(
                                               '${temp.round()}°',
                                               textAlign: TextAlign.center,
                                               style: TextStyle(
-                                                fontSize: 13,
+                                                fontSize: 14.5,
                                                 fontWeight: FontWeight.w900,
                                                 color: _darkText,
                                               ),
@@ -3556,16 +3548,16 @@ class _HomeScreenState extends State<HomeScreen>
                               ],
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
 
                           // Centered Grid Info Cards
                           GridView.count(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             crossAxisCount: 2,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 1.45,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 1.35,
                             children: [
                               _buildIosInfoCard(
                                 title: 'بارانبارین',
@@ -3628,10 +3620,10 @@ class _HomeScreenState extends State<HomeScreen>
     required Color borderColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: borderColor),
         boxShadow: _neuShadowsSmall,
       ),
@@ -3642,14 +3634,14 @@ class _HomeScreenState extends State<HomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 14, color: iconColor),
-              const SizedBox(width: 4),
+              Icon(icon, size: 18, color: iconColor),
+              const SizedBox(width: 5),
               Flexible(
                 child: Text(
                   title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w800,
                     color: _secondaryText,
                   ),
@@ -3659,12 +3651,12 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ],
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           Text(
             value,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 17,
               fontWeight: FontWeight.w900,
               color: _darkText,
             ),
@@ -3674,7 +3666,7 @@ class _HomeScreenState extends State<HomeScreen>
             subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 9.5,
+              fontSize: 10.5,
               fontWeight: FontWeight.w700,
               color: _secondaryText,
             ),
@@ -3715,7 +3707,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Miniaturized Compact Summary Card (پلەی بەرزی، نزمی، باران)
   Widget _buildSummaryCard({
     required IconData icon,
     required Color iconColor,
@@ -3771,7 +3762,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Optimized Compact Action Card (کەشوهەوا، بڕی باران، بومەلەرزە)
   Widget _buildActionCard({
     required String title,
     required IconData icon,
@@ -4129,7 +4119,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                             const SizedBox(height: 10),
 
-                            // Miniaturized Top Cards (پلەی بەرزی، نزمی، باران)
+                            // Top Cards
                             Row(
                               children: [
                                 Expanded(
@@ -4181,7 +4171,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                             const SizedBox(height: 10),
 
-                            // Miniaturized Chart Container
+                            // Chart Container
                             Builder(
                               builder: (context) {
                                 final int hourlyCount = min(
@@ -4212,8 +4202,8 @@ class _HomeScreenState extends State<HomeScreen>
                                 return _buildNeuContainer(
                                   radius: 20,
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 8,
+                                    horizontal: 12,
+                                    vertical: 12,
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
@@ -4234,15 +4224,15 @@ class _HomeScreenState extends State<HomeScreen>
                                                 color: isCurrentlyDay
                                                     ? Colors.amber
                                                     : Colors.indigoAccent,
-                                                size: 16,
+                                                size: 20,
                                               ),
-                                              const SizedBox(width: 5),
+                                              const SizedBox(width: 6),
                                               Text(
                                                 isCurrentlyDay
                                                     ? 'ئێستا: ڕۆژە'
                                                     : 'ئێستا: شەوە',
                                                 style: TextStyle(
-                                                  fontSize: 14.5,
+                                                  fontSize: 16,
                                                   fontWeight: FontWeight.w900,
                                                   color: _darkText,
                                                 ),
@@ -4251,8 +4241,8 @@ class _HomeScreenState extends State<HomeScreen>
                                           ),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
+                                              horizontal: 8,
+                                              vertical: 3,
                                             ),
                                             decoration: BoxDecoration(
                                               color: _purple.withValues(
@@ -4264,7 +4254,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             child: Text(
                                               '٢٤ کاتژمێر',
                                               style: TextStyle(
-                                                fontSize: 10.5,
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.w900,
                                                 color: _purple,
                                               ),
@@ -4272,9 +4262,9 @@ class _HomeScreenState extends State<HomeScreen>
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 6),
+                                      const SizedBox(height: 8),
                                       SizedBox(
-                                        height: 46,
+                                        height: 64,
                                         child: ListView.builder(
                                           scrollDirection: Axis.horizontal,
                                           itemCount: hourlyCount,
@@ -4325,7 +4315,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                       : 0.0);
 
                                             return Container(
-                                              width: 44,
+                                              width: 48,
                                               alignment: Alignment.center,
                                               child: Column(
                                                 mainAxisAlignment:
@@ -4334,13 +4324,13 @@ class _HomeScreenState extends State<HomeScreen>
                                                   Text(
                                                     formattedTime,
                                                     style: TextStyle(
-                                                      fontSize: 9.5,
+                                                      fontSize: 11,
                                                       fontWeight:
                                                           FontWeight.w700,
                                                       color: _secondaryText,
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 1),
+                                                  const SizedBox(height: 2),
                                                   Icon(
                                                     _getWeatherIcon(
                                                       hCode,
@@ -4350,13 +4340,13 @@ class _HomeScreenState extends State<HomeScreen>
                                                       hCode,
                                                       isDayTime,
                                                     ),
-                                                    size: 14,
+                                                    size: 18,
                                                   ),
-                                                  const SizedBox(height: 1),
+                                                  const SizedBox(height: 2),
                                                   Text(
                                                     '${currentMaTemp.round()}°',
                                                     style: TextStyle(
-                                                      fontSize: 10.5,
+                                                      fontSize: 12.5,
                                                       fontWeight:
                                                           FontWeight.w900,
                                                       color: _darkText,
@@ -4368,11 +4358,11 @@ class _HomeScreenState extends State<HomeScreen>
                                           },
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 6),
 
-                                      // Compact chart height
+                                      // Chart
                                       SizedBox(
-                                        height: 48,
+                                        height: 58,
                                         child: LineChart(
                                           LineChartData(
                                             minX: 0,
@@ -4444,7 +4434,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                 isCurved: true,
                                                 curveSmoothness: 0.35,
                                                 color: Colors.orange,
-                                                barWidth: 2.0,
+                                                barWidth: 2.2,
                                                 isStrokeCapRound: true,
                                                 dotData: FlDotData(
                                                   show: true,
@@ -4456,9 +4446,9 @@ class _HomeScreenState extends State<HomeScreen>
                                                         index,
                                                       ) {
                                                         return FlDotCirclePainter(
-                                                          radius: 1.2,
+                                                          radius: 1.5,
                                                           color: Colors.white,
-                                                          strokeWidth: 1.0,
+                                                          strokeWidth: 1.2,
                                                           strokeColor:
                                                               Colors.orange,
                                                         );
@@ -4501,7 +4491,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                 curveSmoothness: 0.35,
                                                 color:
                                                     Colors.tealAccent.shade400,
-                                                barWidth: 1.6,
+                                                barWidth: 1.8,
                                                 isStrokeCapRound: true,
                                                 dotData: FlDotData(
                                                   show: true,
@@ -4513,9 +4503,9 @@ class _HomeScreenState extends State<HomeScreen>
                                                         index,
                                                       ) {
                                                         return FlDotCirclePainter(
-                                                          radius: 1.0,
+                                                          radius: 1.2,
                                                           color: Colors.white,
-                                                          strokeWidth: 0.8,
+                                                          strokeWidth: 1.0,
                                                           strokeColor: Colors
                                                               .tealAccent
                                                               .shade400,
@@ -4530,7 +4520,10 @@ class _HomeScreenState extends State<HomeScreen>
                                                 spots: List.generate(
                                                   hourlyCount,
                                                   (i) {
-                                                    double rain = maRains[i];
+                                                    double rain = maRrains(
+                                                      maRains,
+                                                      i,
+                                                    );
                                                     double mappedY =
                                                         (rain * 5.0).clamp(
                                                           0.0,
@@ -4545,7 +4538,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                 isCurved: true,
                                                 curveSmoothness: 0.25,
                                                 color: const Color(0xFF38BDF8),
-                                                barWidth: 1.8,
+                                                barWidth: 2.0,
                                                 isStrokeCapRound: true,
                                                 dotData: FlDotData(
                                                   show: true,
@@ -4558,10 +4551,10 @@ class _HomeScreenState extends State<HomeScreen>
                                                       ) {
                                                         return FlDotCirclePainter(
                                                           radius: spot.y > 0
-                                                              ? 1.5
+                                                              ? 1.8
                                                               : 0,
                                                           color: Colors.white,
-                                                          strokeWidth: 1.0,
+                                                          strokeWidth: 1.2,
                                                           strokeColor:
                                                               const Color(
                                                                 0xFF38BDF8,
@@ -4589,7 +4582,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(height: 6),
+                                      const SizedBox(height: 8),
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
@@ -4597,30 +4590,30 @@ class _HomeScreenState extends State<HomeScreen>
                                           Row(
                                             children: [
                                               Container(
-                                                width: 6,
-                                                height: 6,
+                                                width: 8,
+                                                height: 8,
                                                 decoration: const BoxDecoration(
                                                   color: Colors.orange,
                                                   shape: BoxShape.circle,
                                                 ),
                                               ),
-                                              const SizedBox(width: 4),
+                                              const SizedBox(width: 5),
                                               Text(
                                                 'گەرمی',
                                                 style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
                                                   color: _secondaryText,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(width: 10),
+                                          const SizedBox(width: 14),
                                           Row(
                                             children: [
                                               Container(
-                                                width: 6,
-                                                height: 6,
+                                                width: 8,
+                                                height: 8,
                                                 decoration: BoxDecoration(
                                                   color: Colors
                                                       .tealAccent
@@ -4628,34 +4621,34 @@ class _HomeScreenState extends State<HomeScreen>
                                                   shape: BoxShape.circle,
                                                 ),
                                               ),
-                                              const SizedBox(width: 4),
+                                              const SizedBox(width: 5),
                                               Text(
                                                 'نزمی',
                                                 style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
                                                   color: _secondaryText,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(width: 10),
+                                          const SizedBox(width: 14),
                                           Row(
                                             children: [
                                               Container(
-                                                width: 6,
-                                                height: 6,
+                                                width: 8,
+                                                height: 8,
                                                 decoration: const BoxDecoration(
                                                   color: Color(0xFF38BDF8),
                                                   shape: BoxShape.circle,
                                                 ),
                                               ),
-                                              const SizedBox(width: 4),
+                                              const SizedBox(width: 5),
                                               Text(
                                                 'باران',
                                                 style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
                                                   color: _secondaryText,
                                                 ),
                                               ),
@@ -4663,14 +4656,14 @@ class _HomeScreenState extends State<HomeScreen>
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 6),
+                                      const SizedBox(height: 8),
                                       Divider(
                                         color: _secondaryText.withValues(
                                           alpha: 0.15,
                                         ),
                                         height: 1,
                                       ),
-                                      const SizedBox(height: 6),
+                                      const SizedBox(height: 8),
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceAround,
@@ -4680,13 +4673,13 @@ class _HomeScreenState extends State<HomeScreen>
                                               const Icon(
                                                 CupertinoIcons.sunrise_fill,
                                                 color: Colors.amber,
-                                                size: 15,
+                                                size: 20,
                                               ),
-                                              const SizedBox(width: 4),
+                                              const SizedBox(width: 6),
                                               Text(
                                                 'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
                                                 style: TextStyle(
-                                                  fontSize: 11,
+                                                  fontSize: 13,
                                                   fontWeight: FontWeight.w900,
                                                   color: _darkText,
                                                 ),
@@ -4694,8 +4687,8 @@ class _HomeScreenState extends State<HomeScreen>
                                             ],
                                           ),
                                           Container(
-                                            height: 12,
-                                            width: 1,
+                                            height: 16,
+                                            width: 1.2,
                                             color: _secondaryText.withValues(
                                               alpha: 0.25,
                                             ),
@@ -4705,13 +4698,13 @@ class _HomeScreenState extends State<HomeScreen>
                                               const Icon(
                                                 CupertinoIcons.sunset_fill,
                                                 color: Colors.deepOrange,
-                                                size: 15,
+                                                size: 20,
                                               ),
-                                              const SizedBox(width: 4),
+                                              const SizedBox(width: 6),
                                               Text(
                                                 'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
                                                 style: TextStyle(
-                                                  fontSize: 11,
+                                                  fontSize: 13,
                                                   fontWeight: FontWeight.w900,
                                                   color: _darkText,
                                                 ),
@@ -4727,7 +4720,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                             const SizedBox(height: 10),
 
-                            // Miniaturized Action Cards (کەشوهەوا، بڕی باران، بومەلەرزە)
+                            // Action Cards
                             Row(
                               children: [
                                 _buildActionCard(
@@ -4784,8 +4777,8 @@ class _HomeScreenState extends State<HomeScreen>
                                   child: _buildNeuContainer(
                                     radius: 18,
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
+                                      horizontal: 14,
+                                      vertical: 10,
                                     ),
                                     customColor: cardTint,
                                     child: Row(
@@ -4795,7 +4788,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         Row(
                                           children: [
                                             Container(
-                                              padding: const EdgeInsets.all(7),
+                                              padding: const EdgeInsets.all(8),
                                               decoration: BoxDecoration(
                                                 color: _isDarkMode
                                                     ? Colors.white12
@@ -4803,7 +4796,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                         alpha: 0.06,
                                                       ),
                                                 borderRadius:
-                                                    BorderRadius.circular(12),
+                                                    BorderRadius.circular(14),
                                               ),
                                               child: AnimatedBuilder(
                                                 animation: _rotateAnimation,
@@ -4820,11 +4813,11 @@ class _HomeScreenState extends State<HomeScreen>
                                                     code,
                                                     1,
                                                   ),
-                                                  size: 22,
+                                                  size: 26,
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: 10),
+                                            const SizedBox(width: 12),
                                             Column(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
@@ -4833,7 +4826,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                   dayName,
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.w900,
-                                                    fontSize: 15,
+                                                    fontSize: 16.5,
                                                     letterSpacing: -0.3,
                                                     color: _darkText,
                                                   ),
@@ -4843,7 +4836,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                   date,
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.w700,
-                                                    fontSize: 11.5,
+                                                    fontSize: 12.5,
                                                     color: _secondaryText
                                                         .withValues(alpha: 0.9),
                                                   ),
@@ -4862,7 +4855,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                   '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.w900,
-                                                    fontSize: 14,
+                                                    fontSize: 15.5,
                                                     letterSpacing: -0.3,
                                                     color: _darkText,
                                                   ),
@@ -4871,14 +4864,14 @@ class _HomeScreenState extends State<HomeScreen>
                                                 Text(
                                                   _getWeatherDescription(code),
                                                   style: TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 13,
                                                     color: _secondaryText,
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(width: 8),
+                                            const SizedBox(width: 10),
                                             AnimatedBuilder(
                                               animation: _rotateAnimation,
                                               builder: (context, child) {
@@ -4891,7 +4884,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               },
                                               child: Container(
                                                 padding: const EdgeInsets.all(
-                                                  5,
+                                                  6,
                                                 ),
                                                 decoration: BoxDecoration(
                                                   color: _purple.withValues(
@@ -4902,7 +4895,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                 child: Icon(
                                                   CupertinoIcons
                                                       .hand_point_left_fill,
-                                                  size: 13,
+                                                  size: 15,
                                                   color: _purple,
                                                 ),
                                               ),
@@ -4946,6 +4939,8 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
+
+  double maRrains(List<double> list, int i) => list.length > i ? list[i] : 0.0;
 }
 
 class WeatherModel {
