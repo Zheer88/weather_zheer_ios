@@ -1985,43 +1985,243 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  IconData _getWeatherIcon(int code, int isDay) {
-    if (code == 0) {
-      return isDay == 1
-          ? CupertinoIcons.sun_max_fill
-          : CupertinoIcons.moon_stars_fill;
-    }
-    if (code == 1) {
-      return isDay == 1
-          ? CupertinoIcons.cloud_sun_fill
-          : CupertinoIcons.cloud_moon_fill;
-    }
-    if (code == 2) return CupertinoIcons.cloud_sun_fill;
-    if (code == 3) return CupertinoIcons.cloud_fill;
-    if (code >= 45 && code <= 48) return CupertinoIcons.cloud_fog_fill;
-    if (code >= 51 && code <= 57) return CupertinoIcons.cloud_drizzle_fill;
-    if (code >= 61 && code <= 67) return CupertinoIcons.cloud_rain_fill;
-    if (code >= 71 && code <= 77) return CupertinoIcons.snow;
-    if (code >= 80 && code <= 82) return CupertinoIcons.cloud_heavyrain_fill;
-    if (code == 85 || code == 86) return CupertinoIcons.snow;
-    if (code >= 95 && code <= 99) return CupertinoIcons.cloud_bolt_rain_fill;
-    return isDay == 1
-        ? CupertinoIcons.sun_max_fill
-        : CupertinoIcons.moon_stars_fill;
-  }
+  Widget _buildWeatherVisualIcon(int code, int isDay, {double size = 28}) {
+    const Color sunYellow = Color(0xFFFFC000);
+    const Color cloudBlue = Color(0xFF53A0FD);
+    const Color rainColor = Color(0xFF4A90E2);
+    const Color boltYellow = Color(0xFFFFD500);
+    const Color snowColor = Color(0xFF64B5F6);
 
-  Color _getWeatherIconColor(int code, int isDay) {
-    if (code == 0) return isDay == 1 ? Colors.amber : Colors.indigoAccent;
-    if (code == 1 || code == 2 || code == 3) {
-      return isDay == 1 ? Colors.blueGrey : Colors.indigo;
+    final double totalW = size * 1.35;
+    final double totalH = size * 1.25;
+
+    Widget buildSun({double s = 24}) {
+      return SizedBox(
+        width: s,
+        height: s,
+        child: CustomPaint(painter: _VectorSunPainter(sunColor: sunYellow)),
+      );
     }
-    if (code >= 45 && code <= 48) return Colors.grey;
-    if (code >= 51 && code <= 67) return Colors.blueAccent;
-    if (code >= 71 && code <= 77) return Colors.lightBlueAccent;
-    if (code >= 80 && code <= 82) return Colors.blueAccent;
-    if (code == 85 || code == 86) return Colors.lightBlueAccent;
-    if (code >= 95 && code <= 99) return Colors.deepPurpleAccent;
-    return isDay == 1 ? Colors.amber : Colors.indigoAccent;
+
+    Widget buildMoon({double s = 22}) {
+      return Icon(
+        CupertinoIcons.moon_stars_fill,
+        color: const Color(0xFF9FA8DA),
+        size: s,
+      );
+    }
+
+    Widget buildCloud({double w = 28, double h = 18}) {
+      return Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(
+          color: cloudBlue,
+          borderRadius: BorderRadius.circular(h * 0.5),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: w * 0.18,
+              bottom: h * 0.35,
+              child: Container(
+                width: w * 0.52,
+                height: w * 0.52,
+                decoration: const BoxDecoration(
+                  color: cloudBlue,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned(
+              right: w * 0.14,
+              bottom: h * 0.28,
+              child: Container(
+                width: w * 0.38,
+                height: w * 0.38,
+                decoration: const BoxDecoration(
+                  color: cloudBlue,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget content;
+
+    if (code == 0) {
+      content = isDay == 1 ? buildSun(s: size) : buildMoon(s: size);
+    } else if (code == 1 || code == 2) {
+      if (isDay == 1) {
+        content = Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned(top: 0, right: 2, child: buildSun(s: size * 0.72)),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              child: buildCloud(w: size * 0.95, h: size * 0.55),
+            ),
+          ],
+        );
+      } else {
+        content = Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned(top: 0, right: 4, child: buildMoon(s: size * 0.68)),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              child: buildCloud(w: size * 0.95, h: size * 0.55),
+            ),
+          ],
+        );
+      }
+    } else if (code == 3) {
+      content = Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 2,
+            right: 0,
+            child: Opacity(
+              opacity: 0.6,
+              child: buildCloud(w: size * 0.85, h: size * 0.5),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            child: buildCloud(w: size * 0.95, h: size * 0.55),
+          ),
+        ],
+      );
+    } else if (code >= 45 && code <= 48) {
+      content = SizedBox(
+        width: size,
+        height: size * 0.8,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 2.5,
+              width: size * 0.9,
+              decoration: BoxDecoration(
+                color: const Color(0xFF90A4AE),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Container(
+              height: 2.5,
+              width: size * 0.65,
+              decoration: BoxDecoration(
+                color: const Color(0xFF90A4AE),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Container(
+              height: 2.5,
+              width: size * 0.8,
+              decoration: BoxDecoration(
+                color: const Color(0xFF90A4AE),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (code >= 51 && code <= 57) {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          buildCloud(w: size * 0.95, h: size * 0.55),
+          const SizedBox(height: 3),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 2, height: 5, color: rainColor),
+              const SizedBox(width: 5),
+              Container(width: 2, height: 5, color: rainColor),
+            ],
+          ),
+        ],
+      );
+    } else if (code >= 61 && code <= 67 || (code >= 80 && code <= 82)) {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          buildCloud(w: size * 0.95, h: size * 0.55),
+          const SizedBox(height: 3),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Transform.rotate(
+                angle: -0.2,
+                child: Container(width: 2, height: 6, color: rainColor),
+              ),
+              const SizedBox(width: 4),
+              Transform.rotate(
+                angle: -0.2,
+                child: Container(width: 2, height: 6, color: rainColor),
+              ),
+              const SizedBox(width: 4),
+              Transform.rotate(
+                angle: -0.2,
+                child: Container(width: 2, height: 6, color: rainColor),
+              ),
+            ],
+          ),
+        ],
+      );
+    } else if (code >= 71 && code <= 77 || code == 85 || code == 86) {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          buildCloud(w: size * 0.95, h: size * 0.55),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(CupertinoIcons.snow, size: size * 0.28, color: snowColor),
+              const SizedBox(width: 3),
+              Icon(CupertinoIcons.snow, size: size * 0.28, color: snowColor),
+              const SizedBox(width: 3),
+              Icon(CupertinoIcons.snow, size: size * 0.28, color: snowColor),
+            ],
+          ),
+        ],
+      );
+    } else if (code >= 95 && code <= 99) {
+      content = Stack(
+        alignment: Alignment.center,
+        children: [
+          buildCloud(w: size * 0.95, h: size * 0.55),
+          Positioned(
+            bottom: -3,
+            child: Icon(
+              CupertinoIcons.bolt_fill,
+              size: size * 0.55,
+              color: boltYellow,
+            ),
+          ),
+        ],
+      );
+    } else {
+      content = isDay == 1 ? buildSun(s: size) : buildMoon(s: size);
+    }
+
+    return SizedBox(
+      width: totalW,
+      height: totalH,
+      child: Center(child: content),
+    );
   }
 
   Color _getWeatherCardTint(int code) {
@@ -2230,12 +2430,9 @@ class _HomeScreenState extends State<HomeScreen>
                                   children: [
                                     Row(
                                       children: [
-                                        Icon(
-                                          _getWeatherIcon(weatherCode, 1),
-                                          color: _getWeatherIconColor(
-                                            weatherCode,
-                                            1,
-                                          ),
+                                        _buildWeatherVisualIcon(
+                                          weatherCode,
+                                          1,
                                           size: 28,
                                         ),
                                         const SizedBox(width: 10),
@@ -3388,9 +3585,9 @@ class _HomeScreenState extends State<HomeScreen>
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  _getWeatherIcon(weatherCode, 1),
-                                  color: _getWeatherIconColor(weatherCode, 1),
+                                _buildWeatherVisualIcon(
+                                  weatherCode,
+                                  1,
                                   size: 30,
                                 ),
                                 const SizedBox(width: 10),
@@ -3522,13 +3719,10 @@ class _HomeScreenState extends State<HomeScreen>
                                                 color: _darkText,
                                               ),
                                             ),
-                                            Icon(
-                                              _getWeatherIcon(hCode, isDayTime),
-                                              color: _getWeatherIconColor(
-                                                hCode,
-                                                isDayTime,
-                                              ),
-                                              size: 24,
+                                            _buildWeatherVisualIcon(
+                                              hCode,
+                                              isDayTime,
+                                              size: 20,
                                             ),
                                             Text(
                                               '${temp.round()}°',
@@ -3690,6 +3884,7 @@ class _HomeScreenState extends State<HomeScreen>
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
         child: Container(
+          width: double.infinity,
           padding: padding ?? const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color:
@@ -3894,6 +4089,8 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: _iosAtmosphereGradient,
@@ -3945,989 +4142,949 @@ class _HomeScreenState extends State<HomeScreen>
                 return LayoutBuilder(
                   builder: (context, constraints) {
                     final bool wideScreen = constraints.maxWidth >= 900;
-                    final double maxContentWidth = wideScreen
-                        ? 1120
-                        : double.infinity;
 
-                    return Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: maxContentWidth),
-                        child: ListView(
-                          physics: const BouncingScrollPhysics(),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: wideScreen ? 20 : 14,
-                            vertical: 10,
-                          ),
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () =>
-                                        _showLocationSearchDialog(context),
-                                    child: _buildNeuContainer(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      radius: 16,
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        children: [
-                                          AnimatedBuilder(
-                                            animation: _locationBounceAnimation,
-                                            builder: (context, child) {
-                                              return Transform.translate(
-                                                offset: Offset(
-                                                  0,
-                                                  _locationBounceAnimation
-                                                      .value,
-                                                ),
-                                                child: child,
-                                              );
-                                            },
-                                            child: const Icon(
-                                              CupertinoIcons.location_solid,
-                                              color: CupertinoColors.systemRed,
-                                              size: 20,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              _cityName,
-                                              textAlign: TextAlign.right,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w900,
-                                                fontSize: 16,
-                                                letterSpacing: -0.3,
-                                                color: _darkText,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Icon(
-                                            CupertinoIcons
-                                                .chevron_up_chevron_down,
-                                            size: 14,
-                                            color: _secondaryText,
-                                          ),
-                                        ],
-                                      ),
+                    return SizedBox(
+                      width: double.infinity,
+                      child: ListView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: wideScreen ? 20 : 12,
+                          vertical: 10,
+                        ),
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      _showLocationSearchDialog(context),
+                                  child: _buildNeuContainer(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () =>
-                                          _showFullscreenMapDialog(context),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(9),
-                                        decoration: BoxDecoration(
-                                          color: _isDarkMode
-                                              ? const Color(
-                                                  0xFF1E293B,
-                                                ).withValues(alpha: 0.6)
-                                              : Colors.white.withValues(
-                                                  alpha: 0.65,
-                                                ),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: _iosGlassBorder,
-                                          ),
-                                          boxShadow: _neuShadowsSmall,
-                                        ),
-                                        child: const Icon(
-                                          CupertinoIcons.map_fill,
-                                          color: Colors.blueAccent,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _isDarkMode = !_isDarkMode;
-                                        });
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(9),
-                                        decoration: BoxDecoration(
-                                          color: _isDarkMode
-                                              ? const Color(
-                                                  0xFF1E293B,
-                                                ).withValues(alpha: 0.6)
-                                              : Colors.white.withValues(
-                                                  alpha: 0.65,
-                                                ),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: _iosGlassBorder,
-                                          ),
-                                          boxShadow: _neuShadowsSmall,
-                                        ),
-                                        child: Icon(
-                                          _isDarkMode
-                                              ? CupertinoIcons.moon_stars_fill
-                                              : CupertinoIcons.sun_max_fill,
-                                          color: _isDarkMode
-                                              ? Colors.amber
-                                              : _purple,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    GestureDetector(
-                                      onTap: () =>
-                                          _showSeaLevelDetailsDialog(context),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(9),
-                                        decoration: BoxDecoration(
-                                          color: _isDarkMode
-                                              ? const Color(
-                                                  0xFF1E293B,
-                                                ).withValues(alpha: 0.6)
-                                              : Colors.white.withValues(
-                                                  alpha: 0.65,
-                                                ),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: _iosGlassBorder,
-                                          ),
-                                          boxShadow: _neuShadowsSmall,
-                                        ),
-                                        child: const Icon(
-                                          CupertinoIcons.compass,
-                                          color: Colors.teal,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-
-                            // Top Cards
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildSummaryCard(
-                                    icon: CupertinoIcons.thermometer_sun,
-                                    iconColor: CupertinoColors.systemRed,
-                                    cardColor: _isDarkMode
-                                        ? const Color(
-                                            0xFF1E293B,
-                                          ).withValues(alpha: 0.5)
-                                        : Colors.white.withValues(alpha: 0.6),
-                                    title: 'بەرزترین',
-                                    value: '${todayMax.round()}°',
-                                    wideScreen: wideScreen,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: _buildSummaryCard(
-                                    icon: CupertinoIcons.snow,
-                                    iconColor: Colors.blueAccent,
-                                    cardColor: _isDarkMode
-                                        ? const Color(
-                                            0xFF1E293B,
-                                          ).withValues(alpha: 0.5)
-                                        : Colors.white.withValues(alpha: 0.6),
-                                    title: 'نزمترین',
-                                    value: '${todayMin.round()}°',
-                                    wideScreen: wideScreen,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: _buildSummaryCard(
-                                    icon: CupertinoIcons.drop_fill,
-                                    iconColor: Colors.cyan,
-                                    cardColor: _isDarkMode
-                                        ? const Color(
-                                            0xFF1E293B,
-                                          ).withValues(alpha: 0.5)
-                                        : Colors.white.withValues(alpha: 0.6),
-                                    title: 'باران',
-                                    value:
-                                        '${todayRainSum.toStringAsFixed(1)} مم',
-                                    wideScreen: wideScreen,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-
-                            // Chart Container
-                            Builder(
-                              builder: (context) {
-                                final int hourlyCount = min(
-                                  24,
-                                  data.hourlyTemperatures.length,
-                                );
-                                final List<double> rawTemps = data
-                                    .hourlyTemperatures
-                                    .take(hourlyCount)
-                                    .toList();
-                                final List<double> rawRains =
-                                    (data.hourlyPrecipitations.isNotEmpty
-                                            ? data.hourlyPrecipitations
-                                            : List.filled(hourlyCount, 0.0))
-                                        .take(hourlyCount)
-                                        .map((e) => (e as num).toDouble())
-                                        .toList();
-
-                                final List<double> maTemps =
-                                    _calculateMovingAverage(rawTemps, 3);
-                                final List<double> maRains =
-                                    _calculateMovingAverage(rawRains, 3);
-
-                                final int currentHour = DateTime.now().hour;
-                                final bool isCurrentlyDay =
-                                    currentHour >= 6 && currentHour < 19;
-
-                                return _buildNeuContainer(
-                                  radius: 20,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 12,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                isCurrentlyDay
-                                                    ? CupertinoIcons
-                                                          .sun_max_fill
-                                                    : CupertinoIcons
-                                                          .moon_stars_fill,
-                                                color: isCurrentlyDay
-                                                    ? Colors.amber
-                                                    : Colors.indigoAccent,
-                                                size: 20,
+                                    radius: 16,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        AnimatedBuilder(
+                                          animation: _locationBounceAnimation,
+                                          builder: (context, child) {
+                                            return Transform.translate(
+                                              offset: Offset(
+                                                0,
+                                                _locationBounceAnimation.value,
                                               ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                isCurrentlyDay
-                                                    ? 'ئێستا: ڕۆژە'
-                                                    : 'ئێستا: شەوە',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: _darkText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: _purple.withValues(
-                                                alpha: 0.18,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              '٢٤ کاتژمێر',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w900,
-                                                color: _purple,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      SizedBox(
-                                        height: 64,
-                                        child: ListView.builder(
-                                          scrollDirection: Axis.horizontal,
-                                          itemCount: hourlyCount,
-                                          itemBuilder: (context, index) {
-                                            String fullTime =
-                                                (data.hourlyTimes.isNotEmpty &&
-                                                    data.hourlyTimes.length >
-                                                        index)
-                                                ? data.hourlyTimes[index]
-                                                : '00:00';
-                                            String timeOnly =
-                                                fullTime.contains('T')
-                                                ? fullTime
-                                                      .split('T')[1]
-                                                      .substring(0, 5)
-                                                : fullTime;
-                                            int hour24 =
-                                                int.tryParse(
-                                                  timeOnly.split(':')[0],
-                                                ) ??
-                                                0;
-                                            String period = hour24 >= 12
-                                                ? 'د.ن'
-                                                : 'ب';
-                                            int hour12 = hour24 % 12;
-                                            if (hour12 == 0) hour12 = 12;
-                                            String formattedTime =
-                                                '$hour12 $period';
-                                            int hCode =
-                                                (data
-                                                        .hourlyWeatherCodes
-                                                        .isNotEmpty &&
-                                                    data
-                                                            .hourlyWeatherCodes
-                                                            .length >
-                                                        index)
-                                                ? data.hourlyWeatherCodes[index]
-                                                : 0;
-                                            int isDayTime =
-                                                (hour24 >= 6 && hour24 < 19)
-                                                ? 1
-                                                : 0;
-                                            double currentMaTemp =
-                                                maTemps.length > index
-                                                ? maTemps[index]
-                                                : (rawTemps.length > index
-                                                      ? rawTemps[index]
-                                                      : 0.0);
-
-                                            return Container(
-                                              width: 48,
-                                              alignment: Alignment.center,
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    formattedTime,
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: _secondaryText,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Icon(
-                                                    _getWeatherIcon(
-                                                      hCode,
-                                                      isDayTime,
-                                                    ),
-                                                    color: _getWeatherIconColor(
-                                                      hCode,
-                                                      isDayTime,
-                                                    ),
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    '${currentMaTemp.round()}°',
-                                                    style: TextStyle(
-                                                      fontSize: 12.5,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: _darkText,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                              child: child,
                                             );
                                           },
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-
-                                      // Chart
-                                      SizedBox(
-                                        height: 58,
-                                        child: LineChart(
-                                          LineChartData(
-                                            minX: 0,
-                                            maxX: (hourlyCount - 1)
-                                                .toDouble()
-                                                .clamp(0.0, 23.0),
-                                            minY: 0,
-                                            maxY: 45,
-                                            gridData: FlGridData(
-                                              show: true,
-                                              drawVerticalLine: true,
-                                              getDrawingHorizontalLine:
-                                                  (value) => FlLine(
-                                                    color: _secondaryText
-                                                        .withValues(
-                                                          alpha: 0.08,
-                                                        ),
-                                                    strokeWidth: 1,
-                                                  ),
-                                              getDrawingVerticalLine: (value) =>
-                                                  FlLine(
-                                                    color: _secondaryText
-                                                        .withValues(
-                                                          alpha: 0.08,
-                                                        ),
-                                                    strokeWidth: 1,
-                                                  ),
-                                            ),
-                                            titlesData: const FlTitlesData(
-                                              rightTitles: AxisTitles(
-                                                sideTitles: SideTitles(
-                                                  showTitles: false,
-                                                ),
-                                              ),
-                                              topTitles: AxisTitles(
-                                                sideTitles: SideTitles(
-                                                  showTitles: false,
-                                                ),
-                                              ),
-                                              leftTitles: AxisTitles(
-                                                sideTitles: SideTitles(
-                                                  showTitles: false,
-                                                ),
-                                              ),
-                                              bottomTitles: AxisTitles(
-                                                sideTitles: SideTitles(
-                                                  showTitles: false,
-                                                ),
-                                              ),
-                                            ),
-                                            borderData: FlBorderData(
-                                              show: false,
-                                            ),
-                                            lineBarsData: [
-                                              LineChartBarData(
-                                                spots: List.generate(
-                                                  hourlyCount,
-                                                  (i) {
-                                                    double temp = maTemps[i];
-                                                    double mappedY =
-                                                        18.0 +
-                                                        (temp - 15.0) * 0.7;
-                                                    return FlSpot(
-                                                      i.toDouble(),
-                                                      mappedY.clamp(12.0, 42.0),
-                                                    );
-                                                  },
-                                                ),
-                                                isCurved: true,
-                                                curveSmoothness: 0.35,
-                                                color: Colors.orange,
-                                                barWidth: 2.2,
-                                                isStrokeCapRound: true,
-                                                dotData: FlDotData(
-                                                  show: true,
-                                                  getDotPainter:
-                                                      (
-                                                        spot,
-                                                        percent,
-                                                        bar,
-                                                        index,
-                                                      ) {
-                                                        return FlDotCirclePainter(
-                                                          radius: 1.5,
-                                                          color: Colors.white,
-                                                          strokeWidth: 1.2,
-                                                          strokeColor:
-                                                              Colors.orange,
-                                                        );
-                                                      },
-                                                ),
-                                                belowBarData: BarAreaData(
-                                                  show: true,
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      Colors.orange.withValues(
-                                                        alpha: 0.2,
-                                                      ),
-                                                      Colors.orange.withValues(
-                                                        alpha: 0.0,
-                                                      ),
-                                                    ],
-                                                    begin: Alignment.topCenter,
-                                                    end: Alignment.bottomCenter,
-                                                  ),
-                                                ),
-                                              ),
-                                              LineChartBarData(
-                                                spots: List.generate(
-                                                  hourlyCount,
-                                                  (i) {
-                                                    double temp = maTemps[i];
-                                                    double lowEstimate =
-                                                        temp - 4.5;
-                                                    double mappedY =
-                                                        18.0 +
-                                                        (lowEstimate - 15.0) *
-                                                            0.7;
-                                                    return FlSpot(
-                                                      i.toDouble(),
-                                                      mappedY.clamp(6.0, 36.0),
-                                                    );
-                                                  },
-                                                ),
-                                                isCurved: true,
-                                                curveSmoothness: 0.35,
-                                                color:
-                                                    Colors.tealAccent.shade400,
-                                                barWidth: 1.8,
-                                                isStrokeCapRound: true,
-                                                dotData: FlDotData(
-                                                  show: true,
-                                                  getDotPainter:
-                                                      (
-                                                        spot,
-                                                        percent,
-                                                        bar,
-                                                        index,
-                                                      ) {
-                                                        return FlDotCirclePainter(
-                                                          radius: 1.2,
-                                                          color: Colors.white,
-                                                          strokeWidth: 1.0,
-                                                          strokeColor: Colors
-                                                              .tealAccent
-                                                              .shade400,
-                                                        );
-                                                      },
-                                                ),
-                                                belowBarData: BarAreaData(
-                                                  show: false,
-                                                ),
-                                              ),
-                                              LineChartBarData(
-                                                spots: List.generate(
-                                                  hourlyCount,
-                                                  (i) {
-                                                    double rain = maRrains(
-                                                      maRains,
-                                                      i,
-                                                    );
-                                                    double mappedY =
-                                                        (rain * 5.0).clamp(
-                                                          0.0,
-                                                          22.0,
-                                                        );
-                                                    return FlSpot(
-                                                      i.toDouble(),
-                                                      mappedY,
-                                                    );
-                                                  },
-                                                ),
-                                                isCurved: true,
-                                                curveSmoothness: 0.25,
-                                                color: const Color(0xFF38BDF8),
-                                                barWidth: 2.0,
-                                                isStrokeCapRound: true,
-                                                dotData: FlDotData(
-                                                  show: true,
-                                                  getDotPainter:
-                                                      (
-                                                        spot,
-                                                        percent,
-                                                        bar,
-                                                        index,
-                                                      ) {
-                                                        return FlDotCirclePainter(
-                                                          radius: spot.y > 0
-                                                              ? 1.8
-                                                              : 0,
-                                                          color: Colors.white,
-                                                          strokeWidth: 1.2,
-                                                          strokeColor:
-                                                              const Color(
-                                                                0xFF38BDF8,
-                                                              ),
-                                                        );
-                                                      },
-                                                ),
-                                                belowBarData: BarAreaData(
-                                                  show: true,
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      const Color(
-                                                        0xFF38BDF8,
-                                                      ).withValues(alpha: 0.25),
-                                                      const Color(
-                                                        0xFF38BDF8,
-                                                      ).withValues(alpha: 0.01),
-                                                    ],
-                                                    begin: Alignment.topCenter,
-                                                    end: Alignment.bottomCenter,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
+                                          child: const Icon(
+                                            CupertinoIcons.location_solid,
+                                            color: CupertinoColors.systemRed,
+                                            size: 20,
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 8,
-                                                height: 8,
-                                                decoration: const BoxDecoration(
-                                                  color: Colors.orange,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                'گەرمی',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: _secondaryText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(width: 14),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 8,
-                                                height: 8,
-                                                decoration: BoxDecoration(
-                                                  color: Colors
-                                                      .tealAccent
-                                                      .shade400,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                'نزمی',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: _secondaryText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(width: 14),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 8,
-                                                height: 8,
-                                                decoration: const BoxDecoration(
-                                                  color: Color(0xFF38BDF8),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                'باران',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: _secondaryText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Divider(
-                                        color: _secondaryText.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        height: 1,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceAround,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                CupertinoIcons.sunrise_fill,
-                                                color: Colors.amber,
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: _darkText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Container(
-                                            height: 16,
-                                            width: 1.2,
-                                            color: _secondaryText.withValues(
-                                              alpha: 0.25,
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            _cityName,
+                                            textAlign: TextAlign.right,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 16,
+                                              letterSpacing: -0.3,
+                                              color: _darkText,
                                             ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                CupertinoIcons.sunset_fill,
-                                                color: Colors.deepOrange,
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: _darkText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 10),
-
-                            // Action Cards
-                            Row(
-                              children: [
-                                _buildActionCard(
-                                  title: 'کەشوهەوا',
-                                  icon: CupertinoIcons.sparkles,
-                                  color: _purple,
-                                  onTap: () => _showDetailedAIReportDialog(
-                                    context,
-                                    data,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _buildActionCard(
-                                  title: 'بڕی باران',
-                                  icon: CupertinoIcons.drop_fill,
-                                  color: Colors.blueAccent,
-                                  onTap: () =>
-                                      _showRainReportDialog(context, data),
-                                ),
-                                const SizedBox(width: 8),
-                                _buildActionCard(
-                                  title: 'بومەلەرزە',
-                                  icon: CupertinoIcons.waveform_path_ecg,
-                                  color: Colors.deepOrangeAccent,
-                                  onTap: () =>
-                                      _showEarthquakeReportDialog(context),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // 6 Days Forecast List
-                            ...List.generate(forecastDays, (i) {
-                              final String date = data.times[i];
-                              final String dayName = _getKurdishDayName(date);
-                              final dynamic maxT = data.maxTemps[i];
-                              final dynamic minT = data.minTemps[i];
-                              final int code = data.weatherCodes.length > i
-                                  ? data.weatherCodes[i]
-                                  : 0;
-                              final Color cardTint = _getWeatherCardTint(code);
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: GestureDetector(
-                                  onTap: () => _showDayDetailDialog(
-                                    context,
-                                    date,
-                                    maxT,
-                                    minT,
-                                    code,
-                                    data,
-                                  ),
-                                  child: _buildNeuContainer(
-                                    radius: 18,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          CupertinoIcons
+                                              .chevron_up_chevron_down,
+                                          size: 14,
+                                          color: _secondaryText,
+                                        ),
+                                      ],
                                     ),
-                                    customColor: cardTint,
-                                    child: Row(
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () =>
+                                        _showFullscreenMapDialog(context),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(9),
+                                      decoration: BoxDecoration(
+                                        color: _isDarkMode
+                                            ? const Color(
+                                                0xFF1E293B,
+                                              ).withValues(alpha: 0.6)
+                                            : Colors.white.withValues(
+                                                alpha: 0.65,
+                                              ),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: _iosGlassBorder,
+                                        ),
+                                        boxShadow: _neuShadowsSmall,
+                                      ),
+                                      child: const Icon(
+                                        CupertinoIcons.map_fill,
+                                        color: Colors.blueAccent,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _isDarkMode = !_isDarkMode;
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(9),
+                                      decoration: BoxDecoration(
+                                        color: _isDarkMode
+                                            ? const Color(
+                                                0xFF1E293B,
+                                              ).withValues(alpha: 0.6)
+                                            : Colors.white.withValues(
+                                                alpha: 0.65,
+                                              ),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: _iosGlassBorder,
+                                        ),
+                                        boxShadow: _neuShadowsSmall,
+                                      ),
+                                      child: Icon(
+                                        _isDarkMode
+                                            ? CupertinoIcons.moon_stars_fill
+                                            : CupertinoIcons.sun_max_fill,
+                                        color: _isDarkMode
+                                            ? Colors.amber
+                                            : _purple,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  GestureDetector(
+                                    onTap: () =>
+                                        _showSeaLevelDetailsDialog(context),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(9),
+                                      decoration: BoxDecoration(
+                                        color: _isDarkMode
+                                            ? const Color(
+                                                0xFF1E293B,
+                                              ).withValues(alpha: 0.6)
+                                            : Colors.white.withValues(
+                                                alpha: 0.65,
+                                              ),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: _iosGlassBorder,
+                                        ),
+                                        boxShadow: _neuShadowsSmall,
+                                      ),
+                                      child: const Icon(
+                                        CupertinoIcons.compass,
+                                        color: Colors.teal,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Top Cards
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildSummaryCard(
+                                  icon: CupertinoIcons.thermometer_sun,
+                                  iconColor: CupertinoColors.systemRed,
+                                  cardColor: _isDarkMode
+                                      ? const Color(
+                                          0xFF1E293B,
+                                        ).withValues(alpha: 0.5)
+                                      : Colors.white.withValues(alpha: 0.6),
+                                  title: 'بەرزترین',
+                                  value: '${todayMax.round()}°',
+                                  wideScreen: wideScreen,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: _buildSummaryCard(
+                                  icon: CupertinoIcons.snow,
+                                  iconColor: Colors.blueAccent,
+                                  cardColor: _isDarkMode
+                                      ? const Color(
+                                          0xFF1E293B,
+                                        ).withValues(alpha: 0.5)
+                                      : Colors.white.withValues(alpha: 0.6),
+                                  title: 'نزمترین',
+                                  value: '${todayMin.round()}°',
+                                  wideScreen: wideScreen,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: _buildSummaryCard(
+                                  icon: CupertinoIcons.drop_fill,
+                                  iconColor: Colors.cyan,
+                                  cardColor: _isDarkMode
+                                      ? const Color(
+                                          0xFF1E293B,
+                                        ).withValues(alpha: 0.5)
+                                      : Colors.white.withValues(alpha: 0.6),
+                                  title: 'باران',
+                                  value:
+                                      '${todayRainSum.toStringAsFixed(1)} مم',
+                                  wideScreen: wideScreen,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Chart Container
+                          Builder(
+                            builder: (context) {
+                              final int hourlyCount = min(
+                                24,
+                                data.hourlyTemperatures.length,
+                              );
+                              final List<double> rawTemps = data
+                                  .hourlyTemperatures
+                                  .take(hourlyCount)
+                                  .toList();
+                              final List<double> rawRains =
+                                  (data.hourlyPrecipitations.isNotEmpty
+                                          ? data.hourlyPrecipitations
+                                          : List.filled(hourlyCount, 0.0))
+                                      .take(hourlyCount)
+                                      .map((e) => (e as num).toDouble())
+                                      .toList();
+
+                              final List<double> maTemps =
+                                  _calculateMovingAverage(rawTemps, 3);
+                              final List<double> maRains =
+                                  _calculateMovingAverage(rawRains, 3);
+
+                              final int currentHour = DateTime.now().hour;
+                              final bool isCurrentlyDay =
+                                  currentHour >= 6 && currentHour < 19;
+
+                              return _buildNeuContainer(
+                                radius: 20,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
                                         Row(
                                           children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: _isDarkMode
-                                                    ? Colors.white12
-                                                    : Colors.black.withValues(
-                                                        alpha: 0.06,
-                                                      ),
-                                                borderRadius:
-                                                    BorderRadius.circular(14),
-                                              ),
-                                              child: AnimatedBuilder(
-                                                animation: _rotateAnimation,
-                                                builder: (context, child) {
-                                                  return Transform.rotate(
-                                                    angle:
-                                                        _rotateAnimation.value,
-                                                    child: child,
-                                                  );
-                                                },
-                                                child: Icon(
-                                                  _getWeatherIcon(code, 1),
-                                                  color: _getWeatherIconColor(
-                                                    code,
-                                                    1,
-                                                  ),
-                                                  size: 26,
-                                                ),
-                                              ),
+                                            _buildWeatherVisualIcon(
+                                              0,
+                                              isCurrentlyDay ? 1 : 0,
+                                              size: 22,
                                             ),
-                                            const SizedBox(width: 12),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  dayName,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize: 16.5,
-                                                    letterSpacing: -0.3,
-                                                    color: _darkText,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  date,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 12.5,
-                                                    color: _secondaryText
-                                                        .withValues(alpha: 0.9),
-                                                  ),
-                                                ),
-                                              ],
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              isCurrentlyDay
+                                                  ? 'ئێستا: ڕۆژە'
+                                                  : 'ئێستا: شەوە',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
                                             ),
                                           ],
                                         ),
-                                        Row(
-                                          children: [
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.end,
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _purple.withValues(
+                                              alpha: 0.18,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '٢٤ کاتژمێر',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w900,
+                                              color: _purple,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      height: 64,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: hourlyCount,
+                                        itemBuilder: (context, index) {
+                                          String fullTime =
+                                              (data.hourlyTimes.isNotEmpty &&
+                                                  data.hourlyTimes.length >
+                                                      index)
+                                              ? data.hourlyTimes[index]
+                                              : '00:00';
+                                          String timeOnly =
+                                              fullTime.contains('T')
+                                              ? fullTime
+                                                    .split('T')[1]
+                                                    .substring(0, 5)
+                                              : fullTime;
+                                          int hour24 =
+                                              int.tryParse(
+                                                timeOnly.split(':')[0],
+                                              ) ??
+                                              0;
+                                          String period = hour24 >= 12
+                                              ? 'د.ن'
+                                              : 'ب';
+                                          int hour12 = hour24 % 12;
+                                          if (hour12 == 0) hour12 = 12;
+                                          String formattedTime =
+                                              '$hour12 $period';
+                                          int hCode =
+                                              (data
+                                                      .hourlyWeatherCodes
+                                                      .isNotEmpty &&
+                                                  data
+                                                          .hourlyWeatherCodes
+                                                          .length >
+                                                      index)
+                                              ? data.hourlyWeatherCodes[index]
+                                              : 0;
+                                          int isDayTime =
+                                              (hour24 >= 6 && hour24 < 19)
+                                              ? 1
+                                              : 0;
+                                          double currentMaTemp =
+                                              maTemps.length > index
+                                              ? maTemps[index]
+                                              : (rawTemps.length > index
+                                                    ? rawTemps[index]
+                                                    : 0.0);
+
+                                          return Container(
+                                            width: 48,
+                                            alignment: Alignment.center,
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
                                               children: [
                                                 Text(
-                                                  '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
+                                                  formattedTime,
                                                   style: TextStyle(
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize: 15.5,
-                                                    letterSpacing: -0.3,
-                                                    color: _darkText,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: _secondaryText,
                                                   ),
                                                 ),
                                                 const SizedBox(height: 2),
+                                                _buildWeatherVisualIcon(
+                                                  hCode,
+                                                  isDayTime,
+                                                  size: 18,
+                                                ),
+                                                const SizedBox(height: 2),
                                                 Text(
-                                                  _getWeatherDescription(code),
+                                                  '${currentMaTemp.round()}°',
                                                   style: TextStyle(
-                                                    fontWeight: FontWeight.w800,
-                                                    fontSize: 13,
-                                                    color: _secondaryText,
+                                                    fontSize: 12.5,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: _darkText,
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(width: 10),
-                                            AnimatedBuilder(
-                                              animation: _rotateAnimation,
-                                              builder: (context, child) {
-                                                return Transform.rotate(
-                                                  angle:
-                                                      _rotateAnimation.value *
-                                                      2,
-                                                  child: child,
-                                                );
-                                              },
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  6,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+
+                                    // Chart
+                                    SizedBox(
+                                      height: 58,
+                                      child: LineChart(
+                                        LineChartData(
+                                          minX: 0,
+                                          maxX: (hourlyCount - 1)
+                                              .toDouble()
+                                              .clamp(0.0, 23.0),
+                                          minY: 0,
+                                          maxY: 45,
+                                          gridData: FlGridData(
+                                            show: true,
+                                            drawVerticalLine: true,
+                                            getDrawingHorizontalLine: (value) =>
+                                                FlLine(
+                                                  color: _secondaryText
+                                                      .withValues(alpha: 0.08),
+                                                  strokeWidth: 1,
                                                 ),
-                                                decoration: BoxDecoration(
-                                                  color: _purple.withValues(
-                                                    alpha: 0.15,
-                                                  ),
-                                                  shape: BoxShape.circle,
+                                            getDrawingVerticalLine: (value) =>
+                                                FlLine(
+                                                  color: _secondaryText
+                                                      .withValues(alpha: 0.08),
+                                                  strokeWidth: 1,
                                                 ),
-                                                child: Icon(
-                                                  CupertinoIcons
-                                                      .hand_point_left_fill,
-                                                  size: 15,
-                                                  color: _purple,
+                                          ),
+                                          titlesData: const FlTitlesData(
+                                            rightTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: false,
+                                              ),
+                                            ),
+                                            topTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: false,
+                                              ),
+                                            ),
+                                            leftTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: false,
+                                              ),
+                                            ),
+                                            bottomTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: false,
+                                              ),
+                                            ),
+                                          ),
+                                          borderData: FlBorderData(show: false),
+                                          lineBarsData: [
+                                            LineChartBarData(
+                                              spots: List.generate(
+                                                hourlyCount,
+                                                (i) {
+                                                  double temp = maTemps[i];
+                                                  double mappedY =
+                                                      18.0 +
+                                                      (temp - 15.0) * 0.7;
+                                                  return FlSpot(
+                                                    i.toDouble(),
+                                                    mappedY.clamp(12.0, 42.0),
+                                                  );
+                                                },
+                                              ),
+                                              isCurved: true,
+                                              curveSmoothness: 0.35,
+                                              color: Colors.orange,
+                                              barWidth: 2.2,
+                                              isStrokeCapRound: true,
+                                              dotData: FlDotData(
+                                                show: true,
+                                                getDotPainter:
+                                                    (
+                                                      spot,
+                                                      percent,
+                                                      bar,
+                                                      index,
+                                                    ) {
+                                                      return FlDotCirclePainter(
+                                                        radius: 1.5,
+                                                        color: Colors.white,
+                                                        strokeWidth: 1.2,
+                                                        strokeColor:
+                                                            Colors.orange,
+                                                      );
+                                                    },
+                                              ),
+                                              belowBarData: BarAreaData(
+                                                show: true,
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Colors.orange.withValues(
+                                                      alpha: 0.2,
+                                                    ),
+                                                    Colors.orange.withValues(
+                                                      alpha: 0.0,
+                                                    ),
+                                                  ],
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
                                                 ),
+                                              ),
+                                            ),
+                                            LineChartBarData(
+                                              spots: List.generate(
+                                                hourlyCount,
+                                                (i) {
+                                                  double temp = maTemps[i];
+                                                  double lowEstimate =
+                                                      temp - 4.5;
+                                                  double mappedY =
+                                                      18.0 +
+                                                      (lowEstimate - 15.0) *
+                                                          0.7;
+                                                  return FlSpot(
+                                                    i.toDouble(),
+                                                    mappedY.clamp(6.0, 36.0),
+                                                  );
+                                                },
+                                              ),
+                                              isCurved: true,
+                                              curveSmoothness: 0.35,
+                                              color: Colors.tealAccent.shade400,
+                                              barWidth: 1.8,
+                                              isStrokeCapRound: true,
+                                              dotData: FlDotData(
+                                                show: true,
+                                                getDotPainter:
+                                                    (
+                                                      spot,
+                                                      percent,
+                                                      bar,
+                                                      index,
+                                                    ) {
+                                                      return FlDotCirclePainter(
+                                                        radius: 1.2,
+                                                        color: Colors.white,
+                                                        strokeWidth: 1.0,
+                                                        strokeColor: Colors
+                                                            .tealAccent
+                                                            .shade400,
+                                                      );
+                                                    },
+                                              ),
+                                              belowBarData: BarAreaData(
+                                                show: false,
+                                              ),
+                                            ),
+                                            LineChartBarData(
+                                              spots: List.generate(
+                                                hourlyCount,
+                                                (i) {
+                                                  double rain = maRrains(
+                                                    maRains,
+                                                    i,
+                                                  );
+                                                  double mappedY = (rain * 5.0)
+                                                      .clamp(0.0, 22.0);
+                                                  return FlSpot(
+                                                    i.toDouble(),
+                                                    mappedY,
+                                                  );
+                                                },
+                                              ),
+                                              isCurved: true,
+                                              curveSmoothness: 0.25,
+                                              color: const Color(0xFF38BDF8),
+                                              barWidth: 2.0,
+                                              isStrokeCapRound: true,
+                                              dotData: FlDotData(
+                                                show: true,
+                                                getDotPainter:
+                                                    (
+                                                      spot,
+                                                      percent,
+                                                      bar,
+                                                      index,
+                                                    ) {
+                                                      return FlDotCirclePainter(
+                                                        radius: spot.y > 0
+                                                            ? 1.8
+                                                            : 0,
+                                                        color: Colors.white,
+                                                        strokeWidth: 1.2,
+                                                        strokeColor:
+                                                            const Color(
+                                                              0xFF38BDF8,
+                                                            ),
+                                                      );
+                                                    },
+                                              ),
+                                              belowBarData: BarAreaData(
+                                                show: true,
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    const Color(
+                                                      0xFF38BDF8,
+                                                    ).withValues(alpha: 0.25),
+                                                    const Color(
+                                                      0xFF38BDF8,
+                                                    ).withValues(alpha: 0.01),
+                                                  ],
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.orange,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'گەرمی',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                color: _secondaryText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    Colors.tealAccent.shade400,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'نزمی',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                color: _secondaryText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF38BDF8),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'باران',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                color: _secondaryText,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ],
                                     ),
-                                  ),
+                                    const SizedBox(height: 8),
+                                    Divider(
+                                      color: _secondaryText.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      height: 1,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              CupertinoIcons.sunrise_fill,
+                                              color: Colors.amber,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Container(
+                                          height: 16,
+                                          width: 1.2,
+                                          color: _secondaryText.withValues(
+                                            alpha: 0.25,
+                                          ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              CupertinoIcons.sunset_fill,
+                                              color: Colors.deepOrange,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               );
-                            }),
-                            const SizedBox(height: 12),
+                            },
+                          ),
+                          const SizedBox(height: 10),
 
-                            // Air Quality Banner Card
-                            _buildAirQualityImageBannerCard(),
-                            const SizedBox(height: 18),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '     programmer: Zheer T Mastakany ©2026  ',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.2,
-                                  color: _darkText,
+                          // Action Cards
+                          Row(
+                            children: [
+                              _buildActionCard(
+                                title: 'کەشوهەوا',
+                                icon: CupertinoIcons.sparkles,
+                                color: _purple,
+                                onTap: () =>
+                                    _showDetailedAIReportDialog(context, data),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildActionCard(
+                                title: 'بڕی باران',
+                                icon: CupertinoIcons.drop_fill,
+                                color: Colors.blueAccent,
+                                onTap: () =>
+                                    _showRainReportDialog(context, data),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildActionCard(
+                                title: 'بومەلەرزە',
+                                icon: CupertinoIcons.waveform_path_ecg,
+                                color: Colors.deepOrangeAccent,
+                                onTap: () =>
+                                    _showEarthquakeReportDialog(context),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // 6 Days Forecast List
+                          ...List.generate(forecastDays, (i) {
+                            final String date = data.times[i];
+                            final String dayName = _getKurdishDayName(date);
+                            final dynamic maxT = data.maxTemps[i];
+                            final dynamic minT = data.minTemps[i];
+                            final int code = data.weatherCodes.length > i
+                                ? data.weatherCodes[i]
+                                : 0;
+                            final Color cardTint = _getWeatherCardTint(code);
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: GestureDetector(
+                                onTap: () => _showDayDetailDialog(
+                                  context,
+                                  date,
+                                  maxT,
+                                  minT,
+                                  code,
+                                  data,
+                                ),
+                                child: _buildNeuContainer(
+                                  radius: 18,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  customColor: cardTint,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: _isDarkMode
+                                                  ? Colors.white12
+                                                  : Colors.black.withValues(
+                                                      alpha: 0.06,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                            ),
+                                            child: AnimatedBuilder(
+                                              animation: _rotateAnimation,
+                                              builder: (context, child) {
+                                                return Transform.rotate(
+                                                  angle: _rotateAnimation.value,
+                                                  child: child,
+                                                );
+                                              },
+                                              child: _buildWeatherVisualIcon(
+                                                code,
+                                                1,
+                                                size: 26,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                dayName,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 16.5,
+                                                  letterSpacing: -0.3,
+                                                  color: _darkText,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                date,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12.5,
+                                                  color: _secondaryText
+                                                      .withValues(alpha: 0.9),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 15.5,
+                                                  letterSpacing: -0.3,
+                                                  color: _darkText,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                _getWeatherDescription(code),
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 13,
+                                                  color: _secondaryText,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 10),
+                                          AnimatedBuilder(
+                                            animation: _rotateAnimation,
+                                            builder: (context, child) {
+                                              return Transform.rotate(
+                                                angle:
+                                                    _rotateAnimation.value * 2,
+                                                child: child,
+                                              );
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: _purple.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                CupertinoIcons
+                                                    .hand_point_left_fill,
+                                                size: 15,
+                                                color: _purple,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
+                            );
+                          }),
+                          const SizedBox(height: 12),
+
+                          // Air Quality Banner Card
+                          _buildAirQualityImageBannerCard(),
+                          const SizedBox(height: 18),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '     programmer: Zheer T Mastakany ©2026  ',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                                color: _darkText,
+                              ),
                             ),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
                       ),
                     );
                   },
@@ -4941,6 +5098,50 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   double maRrains(List<double> list, int i) => list.length > i ? list[i] : 0.0;
+}
+
+class _VectorSunPainter extends CustomPainter {
+  final Color sunColor;
+
+  _VectorSunPainter({required this.sunColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * 0.28;
+
+    final paintCircle = Paint()
+      ..color = sunColor
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(center, radius, paintCircle);
+
+    final paintRay = Paint()
+      ..color = sunColor
+      ..strokeWidth = size.width * 0.08
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    const int rayCount = 8;
+    final double rayStart = radius + (size.width * 0.08);
+    final double rayEnd = radius + (size.width * 0.22);
+
+    for (int i = 0; i < rayCount; i++) {
+      final double angle = (i * 2 * pi) / rayCount;
+      final p1 = Offset(
+        center.dx + rayStart * cos(angle),
+        center.dy + rayStart * sin(angle),
+      );
+      final p2 = Offset(
+        center.dx + rayEnd * cos(angle),
+        center.dy + rayEnd * sin(angle),
+      );
+      canvas.drawLine(p1, p2, paintRay);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class WeatherModel {
