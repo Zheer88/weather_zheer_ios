@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'home_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // ڕێکخستنی شریتی سەرەوەی مۆبایل بە ڕوونی (تەواو پڕاوپڕی شاشە)
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+
   runApp(const WeatherZheerApp());
 }
 
@@ -18,35 +31,6 @@ class WeatherZheerApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF0F172A),
         fontFamily: 'Arial',
       ),
-      builder: (context, child) {
-        return Scaffold(
-          backgroundColor: const Color(0xFF030712),
-          body: Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 410, maxHeight: 880),
-              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(40),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  width: 3,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.8),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(37),
-                child: child ?? const SizedBox.shrink(),
-              ),
-            ),
-          ),
-        );
-      },
       home: const HomeScreen(),
     );
   }

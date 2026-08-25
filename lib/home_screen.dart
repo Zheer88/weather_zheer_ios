@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 
 import 'earthquake_service.dart';
 import 'location_weather_service.dart';
@@ -1985,241 +1985,104 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Widget _buildWeatherVisualIcon(int code, int isDay, {double size = 28}) {
-    const Color sunYellow = Color(0xFFFFC000);
-    const Color cloudBlue = Color(0xFF53A0FD);
-    const Color rainColor = Color(0xFF4A90E2);
-    const Color boltYellow = Color(0xFFFFD500);
-    const Color snowColor = Color(0xFF64B5F6);
-
-    final double totalW = size * 1.35;
-    final double totalH = size * 1.25;
-
-    Widget buildSun({double s = 24}) {
-      return SizedBox(
-        width: s,
-        height: s,
-        child: CustomPaint(painter: _VectorSunPainter(sunColor: sunYellow)),
-      );
-    }
-
-    Widget buildMoon({double s = 22}) {
-      return Icon(
-        CupertinoIcons.moon_stars_fill,
-        color: const Color(0xFF9FA8DA),
-        size: s,
-      );
-    }
-
-    Widget buildCloud({double w = 28, double h = 18}) {
-      return Container(
-        width: w,
-        height: h,
-        decoration: BoxDecoration(
-          color: cloudBlue,
-          borderRadius: BorderRadius.circular(h * 0.5),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              left: w * 0.18,
-              bottom: h * 0.35,
-              child: Container(
-                width: w * 0.52,
-                height: w * 0.52,
-                decoration: const BoxDecoration(
-                  color: cloudBlue,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              right: w * 0.14,
-              bottom: h * 0.28,
-              child: Container(
-                width: w * 0.38,
-                height: w * 0.38,
-                decoration: const BoxDecoration(
-                  color: cloudBlue,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+  Widget _buildWeatherVisualIcon(int code, int isDay, {double size = 36}) {
+    const Color sunOrange = Color(0xFFFF7A00);
+    const Color outlineBlue = Color(0xFF0066FF);
 
     Widget content;
 
     if (code == 0) {
-      content = isDay == 1 ? buildSun(s: size) : buildMoon(s: size);
+      content = Icon(
+        isDay == 1 ? CupertinoIcons.sun_max : CupertinoIcons.moon,
+        color: sunOrange,
+        size: size,
+      );
     } else if (code == 1 || code == 2) {
-      if (isDay == 1) {
-        content = Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned(top: 0, right: 2, child: buildSun(s: size * 0.72)),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              child: buildCloud(w: size * 0.95, h: size * 0.55),
-            ),
-          ],
-        );
-      } else {
-        content = Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned(top: 0, right: 4, child: buildMoon(s: size * 0.68)),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              child: buildCloud(w: size * 0.95, h: size * 0.55),
-            ),
-          ],
-        );
-      }
-    } else if (code == 3) {
       content = Stack(
         alignment: Alignment.center,
         children: [
           Positioned(
-            top: 2,
+            top: 0,
             right: 0,
-            child: Opacity(
-              opacity: 0.6,
-              child: buildCloud(w: size * 0.85, h: size * 0.5),
+            child: Icon(
+              isDay == 1 ? CupertinoIcons.sun_max : CupertinoIcons.moon,
+              color: sunOrange,
+              size: size * 0.65,
             ),
           ),
           Positioned(
             bottom: 0,
             left: 0,
-            child: buildCloud(w: size * 0.95, h: size * 0.55),
+            child: Icon(
+              CupertinoIcons.cloud,
+              color: outlineBlue,
+              size: size * 0.85,
+            ),
+          ),
+        ],
+      );
+    } else if (code == 3) {
+      content = Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Icon(
+              CupertinoIcons.cloud,
+              color: outlineBlue.withValues(alpha: 0.6),
+              size: size * 0.75,
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            child: Icon(
+              CupertinoIcons.cloud,
+              color: outlineBlue,
+              size: size * 0.85,
+            ),
           ),
         ],
       );
     } else if (code >= 45 && code <= 48) {
-      content = SizedBox(
-        width: size,
-        height: size * 0.8,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 2.5,
-              width: size * 0.9,
-              decoration: BoxDecoration(
-                color: const Color(0xFF90A4AE),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 3),
-            Container(
-              height: 2.5,
-              width: size * 0.65,
-              decoration: BoxDecoration(
-                color: const Color(0xFF90A4AE),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 3),
-            Container(
-              height: 2.5,
-              width: size * 0.8,
-              decoration: BoxDecoration(
-                color: const Color(0xFF90A4AE),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
-        ),
-      );
+      content = Icon(CupertinoIcons.wind, color: outlineBlue, size: size);
     } else if (code >= 51 && code <= 57) {
-      content = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          buildCloud(w: size * 0.95, h: size * 0.55),
-          const SizedBox(height: 3),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 2, height: 5, color: rainColor),
-              const SizedBox(width: 5),
-              Container(width: 2, height: 5, color: rainColor),
-            ],
-          ),
-        ],
+      content = Icon(
+        CupertinoIcons.cloud_drizzle,
+        color: outlineBlue,
+        size: size,
       );
     } else if (code >= 61 && code <= 67 || (code >= 80 && code <= 82)) {
-      content = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          buildCloud(w: size * 0.95, h: size * 0.55),
-          const SizedBox(height: 3),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Transform.rotate(
-                angle: -0.2,
-                child: Container(width: 2, height: 6, color: rainColor),
-              ),
-              const SizedBox(width: 4),
-              Transform.rotate(
-                angle: -0.2,
-                child: Container(width: 2, height: 6, color: rainColor),
-              ),
-              const SizedBox(width: 4),
-              Transform.rotate(
-                angle: -0.2,
-                child: Container(width: 2, height: 6, color: rainColor),
-              ),
-            ],
-          ),
-        ],
-      );
+      content = Icon(CupertinoIcons.cloud_rain, color: outlineBlue, size: size);
     } else if (code >= 71 && code <= 77 || code == 85 || code == 86) {
-      content = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          buildCloud(w: size * 0.95, h: size * 0.55),
-          const SizedBox(height: 2),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(CupertinoIcons.snow, size: size * 0.28, color: snowColor),
-              const SizedBox(width: 3),
-              Icon(CupertinoIcons.snow, size: size * 0.28, color: snowColor),
-              const SizedBox(width: 3),
-              Icon(CupertinoIcons.snow, size: size * 0.28, color: snowColor),
-            ],
-          ),
-        ],
-      );
+      content = Icon(CupertinoIcons.cloud_snow, color: outlineBlue, size: size);
     } else if (code >= 95 && code <= 99) {
       content = Stack(
         alignment: Alignment.center,
         children: [
-          buildCloud(w: size * 0.95, h: size * 0.55),
+          Icon(CupertinoIcons.cloud_bolt, color: outlineBlue, size: size),
           Positioned(
-            bottom: -3,
+            bottom: 0,
             child: Icon(
-              CupertinoIcons.bolt_fill,
-              size: size * 0.55,
-              color: boltYellow,
+              CupertinoIcons.bolt,
+              color: sunOrange,
+              size: size * 0.5,
             ),
           ),
         ],
       );
     } else {
-      content = isDay == 1 ? buildSun(s: size) : buildMoon(s: size);
+      content = Icon(
+        isDay == 1 ? CupertinoIcons.sun_max : CupertinoIcons.moon,
+        color: sunOrange,
+        size: size,
+      );
     }
 
     return SizedBox(
-      width: totalW,
-      height: totalH,
+      width: size * 1.25,
+      height: size * 1.15,
       child: Center(child: content),
     );
   }
@@ -2433,7 +2296,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         _buildWeatherVisualIcon(
                                           weatherCode,
                                           1,
-                                          size: 28,
+                                          size: 34,
                                         ),
                                         const SizedBox(width: 10),
                                         Column(
@@ -2478,7 +2341,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     _buildIosReportStat(
-                                      icon: CupertinoIcons.sun_max_fill,
+                                      icon: CupertinoIcons.sun_max,
                                       iconColor: Colors.amber,
                                       title: 'لە بەرخۆر',
                                       value: '${tempSun.toStringAsFixed(1)}°',
@@ -2578,7 +2441,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: const Icon(
-                                    CupertinoIcons.drop_fill,
+                                    CupertinoIcons.drop,
                                     color: Colors.blueAccent,
                                     size: 22,
                                   ),
@@ -2706,7 +2569,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               MainAxisAlignment.center,
                                           children: [
                                             const Icon(
-                                              CupertinoIcons.drop_fill,
+                                              CupertinoIcons.drop,
                                               size: 14,
                                               color: Colors.blueAccent,
                                             ),
@@ -3588,7 +3451,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 _buildWeatherVisualIcon(
                                   weatherCode,
                                   1,
-                                  size: 30,
+                                  size: 38,
                                 ),
                                 const SizedBox(width: 10),
                                 Text(
@@ -3722,7 +3585,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             _buildWeatherVisualIcon(
                                               hCode,
                                               isDayTime,
-                                              size: 20,
+                                              size: 26,
                                             ),
                                             Text(
                                               '${temp.round()}°',
@@ -3757,7 +3620,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 title: 'بارانبارین',
                                 value: '${totalRain.toStringAsFixed(1)} مم',
                                 subtitle: 'بڕی پێشبینیکراو بۆ ئەمڕۆ',
-                                icon: CupertinoIcons.drop_fill,
+                                icon: CupertinoIcons.drop,
                                 iconColor: Colors.blueAccent,
                                 cardBg: iosCardBg,
                                 borderColor: iosBorderColor,
@@ -4346,7 +4209,7 @@ class _HomeScreenState extends State<HomeScreen>
                               const SizedBox(width: 6),
                               Expanded(
                                 child: _buildSummaryCard(
-                                  icon: CupertinoIcons.drop_fill,
+                                  icon: CupertinoIcons.drop,
                                   iconColor: Colors.cyan,
                                   cardColor: _isDarkMode
                                       ? const Color(
@@ -4409,9 +4272,9 @@ class _HomeScreenState extends State<HomeScreen>
                                             _buildWeatherVisualIcon(
                                               0,
                                               isCurrentlyDay ? 1 : 0,
-                                              size: 22,
+                                              size: 26,
                                             ),
-                                            const SizedBox(width: 6),
+                                            const SizedBox(width: 8),
                                             Text(
                                               isCurrentlyDay
                                                   ? 'ئێستا: ڕۆژە'
@@ -4519,7 +4382,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                 _buildWeatherVisualIcon(
                                                   hCode,
                                                   isDayTime,
-                                                  size: 18,
+                                                  size: 22,
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Text(
@@ -4838,7 +4701,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         Row(
                                           children: [
                                             const Icon(
-                                              CupertinoIcons.sunrise_fill,
+                                              CupertinoIcons.sunrise,
                                               color: Colors.amber,
                                               size: 20,
                                             ),
@@ -4863,7 +4726,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         Row(
                                           children: [
                                             const Icon(
-                                              CupertinoIcons.sunset_fill,
+                                              CupertinoIcons.sunset,
                                               color: Colors.deepOrange,
                                               size: 20,
                                             ),
@@ -4900,7 +4763,7 @@ class _HomeScreenState extends State<HomeScreen>
                               const SizedBox(width: 8),
                               _buildActionCard(
                                 title: 'بڕی باران',
-                                icon: CupertinoIcons.drop_fill,
+                                icon: CupertinoIcons.drop,
                                 color: Colors.blueAccent,
                                 onTap: () =>
                                     _showRainReportDialog(context, data),
@@ -4952,30 +4815,18 @@ class _HomeScreenState extends State<HomeScreen>
                                     children: [
                                       Row(
                                         children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: _isDarkMode
-                                                  ? Colors.white12
-                                                  : Colors.black.withValues(
-                                                      alpha: 0.06,
-                                                    ),
-                                              borderRadius:
-                                                  BorderRadius.circular(14),
-                                            ),
-                                            child: AnimatedBuilder(
-                                              animation: _rotateAnimation,
-                                              builder: (context, child) {
-                                                return Transform.rotate(
-                                                  angle: _rotateAnimation.value,
-                                                  child: child,
-                                                );
-                                              },
-                                              child: _buildWeatherVisualIcon(
-                                                code,
-                                                1,
-                                                size: 26,
-                                              ),
+                                          AnimatedBuilder(
+                                            animation: _rotateAnimation,
+                                            builder: (context, child) {
+                                              return Transform.rotate(
+                                                angle: _rotateAnimation.value,
+                                                child: child,
+                                              );
+                                            },
+                                            child: _buildWeatherVisualIcon(
+                                              code,
+                                              1,
+                                              size: 34,
                                             ),
                                           ),
                                           const SizedBox(width: 12),
@@ -5098,50 +4949,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   double maRrains(List<double> list, int i) => list.length > i ? list[i] : 0.0;
-}
-
-class _VectorSunPainter extends CustomPainter {
-  final Color sunColor;
-
-  _VectorSunPainter({required this.sunColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width * 0.28;
-
-    final paintCircle = Paint()
-      ..color = sunColor
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(center, radius, paintCircle);
-
-    final paintRay = Paint()
-      ..color = sunColor
-      ..strokeWidth = size.width * 0.08
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    const int rayCount = 8;
-    final double rayStart = radius + (size.width * 0.08);
-    final double rayEnd = radius + (size.width * 0.22);
-
-    for (int i = 0; i < rayCount; i++) {
-      final double angle = (i * 2 * pi) / rayCount;
-      final p1 = Offset(
-        center.dx + rayStart * cos(angle),
-        center.dy + rayStart * sin(angle),
-      );
-      final p2 = Offset(
-        center.dx + rayEnd * cos(angle),
-        center.dy + rayEnd * sin(angle),
-      );
-      canvas.drawLine(p1, p2, paintRay);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class WeatherModel {
