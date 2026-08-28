@@ -8,6 +8,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' hide Path;
@@ -96,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Future<WeatherModel> _weatherData;
   late Future<List<EarthquakeModel>> _earthquakeData;
 
+  final FlutterTts _flutterTts = FlutterTts();
+
   bool _isLocationLoading = false;
   bool _isDarkMode = false;
   bool _isManualLocation = false;
@@ -136,26 +139,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ];
 
   List<BoxShadow> get _neuShadows => [
-    BoxShadow(
-      color: _isDarkMode
-          ? Colors.black.withValues(alpha: 0.45)
-          : const Color(0xFF1E293B).withValues(alpha: 0.12),
-      offset: const Offset(0, 8),
-      blurRadius: 20,
-      spreadRadius: -2,
-    ),
-  ];
+        BoxShadow(
+          color: _isDarkMode
+              ? Colors.black.withValues(alpha: 0.45)
+              : const Color(0xFF1E293B).withValues(alpha: 0.12),
+          offset: const Offset(0, 8),
+          blurRadius: 20,
+          spreadRadius: -2,
+        ),
+      ];
 
   List<BoxShadow> get _neuShadowsSmall => [
-    BoxShadow(
-      color: _isDarkMode
-          ? Colors.black.withValues(alpha: 0.35)
-          : const Color(0xFF1E293B).withValues(alpha: 0.08),
-      offset: const Offset(0, 4),
-      blurRadius: 12,
-      spreadRadius: -1,
-    ),
-  ];
+        BoxShadow(
+          color: _isDarkMode
+              ? Colors.black.withValues(alpha: 0.35)
+              : const Color(0xFF1E293B).withValues(alpha: 0.08),
+          offset: const Offset(0, 4),
+          blurRadius: 12,
+          spreadRadius: -1,
+        ),
+      ];
 
   late AnimationController _pulseController;
   late Animation<double> _locationBounceAnimation;
@@ -171,6 +174,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _initTts();
 
     _splashAnimController = AnimationController(
       vsync: this,
@@ -187,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _splashAnimController.forward();
 
-    _splashTimer = Timer(const Duration(seconds: 4), () {
+    _splashTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         setState(() {
           _showSplash = false;
@@ -231,8 +235,85 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _initTts() async {
+    try {
+      final dynamic languages = await _flutterTts.getLanguages;
+      if (languages is List &&
+          (languages.contains("ku") || languages.contains("ckb"))) {
+        await _flutterTts.setLanguage(languages.contains("ckb") ? "ckb" : "ku");
+      } else {
+        await _flutterTts.setLanguage("ar");
+      }
+    } catch (_) {
+      await _flutterTts.setLanguage("ar");
+    }
+    await _flutterTts.setSpeechRate(0.45);
+    await _flutterTts.setVolume(1.0);
+    await _flutterTts.setPitch(1.0);
+  }
+
+  String _numberToKurdishWords(int number) {
+    if (number < 0) return 'ژێر سفر ${number.abs()}';
+    if (number == 0) return 'سفر';
+
+    final List<String> ones = [
+      '',
+      'یەک',
+      'دوو',
+      'سێ',
+      'چوار',
+      'پێنج',
+      'شەش',
+      'حەوت',
+      'هەشت',
+      'نۆ',
+      'دە',
+      'یازدە',
+      'دوازدە',
+      'سێزدە',
+      'چواردە',
+      'پازدە',
+      'شازدە',
+      'حەڤدە',
+      'هەژدە',
+      'نۆزدە'
+    ];
+    final List<String> tens = [
+      '',
+      '',
+      'بیست',
+      'سی',
+      'چل',
+      'پەنجا',
+      'شەست',
+      'حەفتا',
+      'هەشتا',
+      'نەوەد'
+    ];
+
+    if (number < 20) {
+      return ones[number];
+    } else if (number < 100) {
+      int t = number ~/ 10;
+      int o = number % 10;
+      return o == 0 ? tens[t] : '${tens[t]} و ${ones[o]}';
+    }
+    return '$number';
+  }
+
+  Future<void> _speakForecast(
+      String dayName, String weatherDesc, int maxT, int minT) async {
+    await _flutterTts.stop();
+    final String maxWord = _numberToKurdishWords(maxT);
+    final String minWord = _numberToKurdishWords(minT);
+    final String speechText =
+        "$dayName دۆخی کەشوهەوا $weatherDesc، پلەی گەرمی بەرزترین $maxWord پلە و نزمترین $minWord پلەیە.";
+    await _flutterTts.speak(speechText);
+  }
+
   @override
   void dispose() {
+    _flutterTts.stop();
     _splashTimer?.cancel();
     _splashAnimController.dispose();
     _refreshTimer?.cancel();
@@ -243,9 +324,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _fetchLiveRadarTimestamp() async {
     try {
-      final res = await http.get(
-        Uri.parse('https://api.rainviewer.com/public/weather-maps.json'),
-      );
+      final res = await http
+          .get(
+            Uri.parse('https://api.rainviewer.com/public/weather-maps.json'),
+          )
+          .timeout(const Duration(seconds: 6));
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['radar'] != null &&
@@ -266,18 +349,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _startLocationStream() {
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.medium,
-      distanceFilter: 200,
+      distanceFilter: 300,
     );
 
     _positionStreamSubscription =
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-          (Position position) {
-            if (!_isManualLocation) {
-              _updateLiveElevationAndLocation(position);
-            }
-          },
-          onError: (_) {},
-        );
+      (Position position) {
+        if (!_isManualLocation) {
+          _updateLiveElevationAndLocation(position);
+        }
+      },
+      onError: (_) {},
+    );
   }
 
   void _updateLiveElevationAndLocation(Position position) {
@@ -306,17 +389,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _fetchCityAndWeather(Position position) async {
-    if (!mounted) return;
-
-    setState(() {
-      _isLocationLoading = true;
-    });
-
     try {
       final detectedCity = await LocationWeatherService.getCityName(
         position.latitude,
         position.longitude,
-      );
+      ).timeout(const Duration(seconds: 5));
 
       if (mounted) {
         setState(() {
@@ -331,13 +408,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     }
 
-    if (!mounted) return;
-
-    setState(() {
-      _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
-      _isLocationLoading = false;
-    });
-    _fetchElevation(_latitude, _longitude);
+    if (mounted) {
+      setState(() {
+        _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
+      });
+      _fetchElevation(_latitude, _longitude);
+    }
   }
 
   Future<void> _fetchElevation(double lat, double lon) async {
@@ -345,7 +421,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final url = Uri.parse(
         'https://api.open-meteo.com/v1/elevation?latitude=$lat&longitude=$lon',
       );
-      final response = await http.get(url).timeout(const Duration(seconds: 7));
+      final response = await http.get(url).timeout(const Duration(seconds: 6));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['elevation'] != null) {
@@ -370,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final url = Uri.parse(
         'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&timezone=auto',
       );
-      final response = await http.get(url).timeout(const Duration(seconds: 7));
+      final response = await http.get(url).timeout(const Duration(seconds: 6));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data != null && data['current'] != null) {
@@ -386,9 +462,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final url = Uri.parse(
         'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=6&accept-language=ckb,ku,ar',
       );
-      final response = await http
-          .get(url, headers: {'User-Agent': 'com.zheer.weatherapp'})
-          .timeout(const Duration(seconds: 7));
+      final response = await http.get(url, headers: {
+        'User-Agent': 'com.zheer.weatherapp'
+      }).timeout(const Duration(seconds: 6));
       if (response.statusCode == 200) {
         return json.decode(response.body) as List<dynamic>;
       }
@@ -432,8 +508,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return {
         'status': 'پیسە',
         'color': const Color(0xFFEF4444),
-        'desc':
-            'هەوا پیس و ژەهراوییە و دەبێت هاوڵاتییان بەتایبەت نەخۆش ئاگاداربن.',
+        'desc': 'هەوا پیس  دەبێت هاوڵاتییان بەتایبەت نەخۆش ئاگاداربن.',
       };
     } else {
       return {
@@ -1029,7 +1104,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ),
                           Text(
-                            'ژەهراوی',
+                            'پیسە',
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w900,
@@ -1111,16 +1186,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&zoom=10&accept-language=ckb,ku,ar',
       );
 
-      final response = await http
-          .get(url, headers: {'User-Agent': 'com.zheer.weatherapp'})
-          .timeout(const Duration(seconds: 7));
+      final response = await http.get(url, headers: {
+        'User-Agent': 'com.zheer.weatherapp'
+      }).timeout(const Duration(seconds: 6));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['address'] != null) {
           final addr = data['address'];
-          String place =
-              addr['village'] ??
+          String place = addr['village'] ??
               addr['town'] ??
               addr['city'] ??
               addr['county'] ??
@@ -1165,7 +1239,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<Position?> _getFastLocation() async {
     try {
-      final lastPos = await Geolocator.getLastKnownPosition();
+      final lastPos = await Geolocator.getLastKnownPosition()
+          .timeout(const Duration(seconds: 2));
       if (lastPos != null) {
         return lastPos;
       }
@@ -1174,18 +1249,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 8),
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 4),
         ),
       );
     } catch (_) {
-      return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
-          timeLimit: Duration(seconds: 6),
-        ),
-      );
+      try {
+        return await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 3),
+          ),
+        );
+      } catch (_) {
+        try {
+          return await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.low,
+              timeLimit: Duration(seconds: 3),
+            ),
+          );
+        } catch (_) {}
+      }
     }
+    return null;
   }
 
   Future<void> _getCurrentLocationAndWeather({bool showError = true}) async {
@@ -1202,29 +1289,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         serviceEnabled = await Geolocator.openLocationSettings();
-        if (!serviceEnabled && mounted) {
-          setState(() => _isLocationLoading = false);
-          if (showError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                backgroundColor: _isDarkMode
-                    ? const Color(0xFF1E293B)
-                    : Colors.white,
-                content: const Text(
-                  'تکایە خزمەتگوزاری لۆکەیشن (GPS) لە مۆبایلەکەتدا کارا بکە!',
-                  textAlign: TextAlign.right,
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    color: CupertinoColors.destructiveRed,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-          return;
+        if (!serviceEnabled) {
+          throw Exception('GPS_DISABLED');
         }
       }
 
@@ -1232,50 +1298,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          if (mounted) setState(() => _isLocationLoading = false);
-          return;
+          throw Exception('PERMISSION_DENIED');
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        if (mounted) setState(() => _isLocationLoading = false);
-        if (showError && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: _isDarkMode
-                  ? const Color(0xFF1E293B)
-                  : Colors.white,
-              content: const Text(
-                'مۆڵەتی شوێن ڕەتکراوەتەوە. تکایە لە ڕێکخستنی مۆبایل مۆڵەتەکە بدە.',
-                textAlign: TextAlign.right,
-                textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  color: CupertinoColors.destructiveRed,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return;
+        throw Exception('PERMISSION_PERMANENTLY_DENIED');
       }
 
       final Position? position = await _getFastLocation();
 
       if (position == null) {
-        throw Exception('Position was null');
+        throw Exception('POSITION_NULL');
       }
 
-      _updateLiveElevationAndLocation(position);
+      if (mounted) {
+        setState(() {
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+          if (position.altitude != 0.0) {
+            _elevation = position.altitude;
+          }
+        });
+      }
+
+      _lastFetchedPosition = position;
+      await _fetchCityAndWeather(position);
 
       if (mounted && showError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: _isDarkMode
-                ? const Color(0xFF1E293B)
-                : Colors.white,
+            backgroundColor:
+                _isDarkMode ? const Color(0xFF1E293B) : Colors.white,
             content: Text(
               'شوێنەکەت بە سەرکەوتوویی دۆزرایەوە: $_cityName',
               textAlign: TextAlign.right,
@@ -1294,25 +1348,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         );
       }
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isLocationLoading = false;
-      });
+    } catch (e) {
+      if (showError && mounted) {
+        String msg = 'کێشە لە دۆزینەوەی شوێن یان هێڵی ئینتەرنێتدا هەیە!';
+        if (e.toString().contains('GPS_DISABLED')) {
+          msg = 'تکایە خزمەتگوزاری لۆکەیشن (GPS) کارا بکە!';
+        } else if (e.toString().contains('PERMISSION')) {
+          msg = 'مۆڵەتی بەکارهێنانی شوێن ڕەتکراوەتەوە!';
+        }
 
-      if (showError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: _isDarkMode
-                ? const Color(0xFF1E293B)
-                : Colors.white,
-            content: const Text(
-              'کێشە لە دۆزینەوەی شوێن یان هێڵی ئینتەرنێتدا هەیە!',
+            backgroundColor:
+                _isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+            content: Text(
+              msg,
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
-              style: TextStyle(
+              style: const TextStyle(
                 color: CupertinoColors.destructiveRed,
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1323,6 +1378,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             behavior: SnackBarBehavior.floating,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLocationLoading = false;
+        });
       }
     }
   }
@@ -1435,7 +1496,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               children: [
                                 TileLayer(
                                   urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
                                   maxZoom: 18.0,
                                   maxNativeZoom: 18,
                                   userAgentPackageName: 'com.zheer.weatherapp',
@@ -1565,11 +1626,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             if (_mapLayerType == 'normal') {
               baseTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
             } else if (_mapLayerType == 'temp') {
-              // نەخشەی تۆپۆگرافی ڕاستەقینە بۆ دەرخستنی بەرزونزمی و چیاکان
               baseTileUrl =
                   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
             } else if (_mapLayerType == 'wind') {
-              // نەخشەی تاریکی ESRI بەبێ پێویستی بە هیچ API KEY یەک
               baseTileUrl =
                   'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
             }
@@ -1614,7 +1673,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 maxNativeZoom: 18,
                                 userAgentPackageName: 'com.zheer.weatherapp',
                               ),
-                              // چینی سێبەری بەرزی و نزمی بۆ پلەی گەرمی
                               if (_mapLayerType == 'temp')
                                 TileLayer(
                                   urlTemplate:
@@ -1631,7 +1689,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   maxNativeZoom: 8,
                                   userAgentPackageName: 'com.zheer.weatherapp',
                                 ),
-                              // چینی ڕاستەقینەی نەخشەی پلەی گەرمی ناوچەکان
                               if (_mapLayerType == 'temp')
                                 Opacity(
                                   opacity: 0.75,
@@ -1644,7 +1701,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         'com.zheer.weatherapp',
                                   ),
                                 ),
-                              // چینی جوڵەی با و شەپۆلی زیندوو
                               if (_mapLayerType == 'wind')
                                 Opacity(
                                   opacity: 0.85,
@@ -1714,8 +1770,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ],
                           ),
-
-                          // پەیامی ئاگاداری زووم کاتێک زووم لە ئاستی ڕادار تێپەڕ دەبێت
                           if (isZoomTooHighForRadar)
                             Positioned(
                               top: 80,
@@ -1780,8 +1834,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ),
                               ),
                             ),
-
-                          // دوگمەی داخستن
                           Positioned(
                             top: 16,
                             left: 16,
@@ -1815,8 +1867,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ),
                           ),
-
-                          // لیستی چینەکانی نەخشە
                           Positioned(
                             top: 16,
                             right: 16,
@@ -1880,8 +1930,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ),
                           ),
-
-                          // ڕێبەری ڕەنگەکان و زانیاری دۆخی چالاک
                           Positioned(
                             bottom: 20,
                             left: 20,
@@ -1919,10 +1967,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             color: _mapLayerType == 'radar'
                                                 ? Colors.greenAccent
                                                 : _mapLayerType == 'wind'
-                                                ? Colors.cyanAccent
-                                                : _mapLayerType == 'temp'
-                                                ? Colors.orangeAccent
-                                                : Colors.blueAccent,
+                                                    ? Colors.cyanAccent
+                                                    : _mapLayerType == 'temp'
+                                                        ? Colors.orangeAccent
+                                                        : Colors.blueAccent,
                                             size: 10,
                                           ),
                                           const SizedBox(width: 8),
@@ -1930,13 +1978,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             _mapLayerType == 'radar'
                                                 ? 'ڕاداری ڕاستەوخۆ و جوڵەی بارانی سات بە سات'
                                                 : _mapLayerType == 'wind'
-                                                ? 'نەخشەی شەپۆل و ئاراستەی جوڵەی با'
-                                                : _mapLayerType == 'temp'
-                                                ? 'نەخشەی بەرزی و نزمی لەگەڵ پلەی گەرمی ناوچەکان'
-                                                : _mapLayerType ==
-                                                      'google_earth'
-                                                ? 'نەخشەی مانگی دەستکرد (Google Earth)'
-                                                : 'نەخشەی تۆپۆگرافی ئاسایی',
+                                                    ? 'نەخشەی شەپۆل و ئاراستەی جوڵەی با'
+                                                    : _mapLayerType == 'temp'
+                                                        ? 'نەخشەی بەرزی و نزمی لەگەڵ پلەی گەرمی ناوچەکان'
+                                                        : _mapLayerType ==
+                                                                'google_earth'
+                                                            ? 'نەخشەی مانگی دەستکرد (Google Earth)'
+                                                            : 'نەخشەی تۆپۆگرافی ئاسایی',
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 12.5,
@@ -2062,8 +2110,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             color: isSelected
                 ? _purple
                 : (_isDarkMode
-                      ? Colors.white10
-                      : Colors.black.withValues(alpha: 0.06)),
+                    ? Colors.white10
+                    : Colors.black.withValues(alpha: 0.06)),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -2230,7 +2278,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ? null
                                   : () async {
                                       Navigator.pop(dialogContext);
-                                      await _getCurrentLocationAndWeather();
+                                      await _getCurrentLocationAndWeather(
+                                          showError: true);
                                     },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
@@ -2274,6 +2323,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ),
                               ),
                             ),
+                          if (searchQuery.isEmpty) const SizedBox(height: 16),
+                          if (searchQuery.isEmpty)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'شارە باوەکان:',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  color: _secondaryText,
+                                ),
+                              ),
+                            ),
+                          if (searchQuery.isEmpty) const SizedBox(height: 8),
+                          if (searchQuery.isEmpty)
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.start,
+                              children: [
+                                _buildCityChip('سلێمانی', 35.5558, 45.4351),
+                                _buildCityChip('هەولێر', 36.1901, 44.0091),
+                                _buildCityChip('دهۆک', 36.8679, 42.9885),
+                                _buildCityChip('هەڵەبجە', 35.1772, 45.9877),
+                                _buildCityChip('کەرکووک', 35.4681, 44.3922),
+                              ],
+                            ),
                           if (searchQuery.isNotEmpty && isSearching)
                             const Padding(
                               padding: EdgeInsets.all(24.0),
@@ -2315,8 +2391,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   final result = searchResults[index];
                                   final fullName =
                                       result['display_name'] as String;
-                                  final shortName =
-                                      result['name'] as String? ??
+                                  final shortName = result['name'] as String? ??
                                       fullName.split(',').first;
 
                                   return PressableCard(
@@ -2333,9 +2408,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         _cityName = shortName;
                                         _weatherData =
                                             _loadWeatherForCoordinates(
-                                              _latitude,
-                                              _longitude,
-                                            );
+                                          _latitude,
+                                          _longitude,
+                                        );
                                       });
                                       _fetchElevation(_latitude, _longitude);
                                     },
@@ -2410,6 +2485,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildCityChip(String name, double lat, double lon) {
+    final bool isDark = _isDarkMode;
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context);
+        setState(() {
+          _isManualLocation = true;
+          _latitude = lat;
+          _longitude = lon;
+          _cityName = name;
+          _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
+        });
+        _fetchElevation(lat, lon);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _iosGlassBorder),
+        ),
+        child: Text(
+          name,
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: _darkText,
+          ),
+        ),
+      ),
+    );
+  }
+
   Map<String, String> _getSunTimes(String dateStr) {
     try {
       final DateTime date = DateTime.parse(dateStr);
@@ -2426,8 +2537,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       const double timeZoneOffset = 3.0;
       const double zenith = 90.833 * pi / 180;
 
-      double cosHourAngle =
-          (cos(zenith) - sin(latRad) * sin(decRad)) /
+      double cosHourAngle = (cos(zenith) - sin(latRad) * sin(decRad)) /
           (cos(latRad) * cos(decRad));
       cosHourAngle = cosHourAngle.clamp(-1.0, 1.0);
       final double hourAngle = acos(cosHourAngle) * 180 / pi;
@@ -2752,9 +2862,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ? data.weatherCodes[i]
                               : 0;
 
-                          final double tempSun = maxT is num
-                              ? maxT.toDouble()
-                              : 35.0;
+                          final double tempSun =
+                              maxT is num ? maxT.toDouble() : 35.0;
                           final double tempShadow = tempSun - 3.5;
 
                           return PressableCard(
@@ -2977,16 +3086,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               final String date = data.times[i].split('T')[0];
                               final dynamic rainAmount =
                                   data.precipitationSums.length > i
-                                  ? data.precipitationSums[i]
-                                  : 0.0;
+                                      ? data.precipitationSums[i]
+                                      : 0.0;
                               final dynamic snowAmount =
                                   data.snowfallSums.length > i
-                                  ? data.snowfallSums[i]
-                                  : 0.0;
+                                      ? data.snowfallSums[i]
+                                      : 0.0;
                               final dynamic rainProb =
                                   data.precipitationProbabilities.length > i
-                                  ? data.precipitationProbabilities[i]
-                                  : 0;
+                                      ? data.precipitationProbabilities[i]
+                                      : 0;
 
                               return PressableCard(
                                 onTap: () {},
@@ -3018,7 +3127,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            date,
+                                            date.length > 5
+                                                ? date.substring(5)
+                                                : date,
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w700,
@@ -3347,29 +3458,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             }
                           }).toList();
 
-                          final displayedEarthquakes = thisMonthEarthquakes
-                              .where((eq) {
-                                if (selectedFilter == 0) {
-                                  final distance =
-                                      Geolocator.distanceBetween(
-                                        _latitude,
-                                        _longitude,
-                                        eq.lat,
-                                        eq.lon,
-                                      ) /
-                                      1000;
-                                  return distance <= 250;
-                                } else {
-                                  final p = eq.place.toLowerCase();
-                                  return p.contains('iraq') ||
-                                      p.contains('kurdistan') ||
-                                      (eq.lat >= 29.0 &&
-                                          eq.lat <= 38.0 &&
-                                          eq.lon >= 38.5 &&
-                                          eq.lon <= 49.0);
-                                }
-                              })
-                              .toList();
+                          final displayedEarthquakes =
+                              thisMonthEarthquakes.where((eq) {
+                            if (selectedFilter == 0) {
+                              final distance = Geolocator.distanceBetween(
+                                    _latitude,
+                                    _longitude,
+                                    eq.lat,
+                                    eq.lon,
+                                  ) /
+                                  1000;
+                              return distance <= 250;
+                            } else {
+                              final p = eq.place.toLowerCase();
+                              return p.contains('iraq') ||
+                                  p.contains('kurdistan') ||
+                                  (eq.lat >= 29.0 &&
+                                      eq.lat <= 38.0 &&
+                                      eq.lon >= 38.5 &&
+                                      eq.lon <= 49.0);
+                            }
+                          }).toList();
 
                           return Column(
                             children: [
@@ -3542,9 +3651,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         initialCenter: selectedFilter == 0
                                             ? LatLng(_latitude, _longitude)
                                             : const LatLng(35.0, 44.5),
-                                        initialZoom: selectedFilter == 0
-                                            ? 7.5
-                                            : 5.8,
+                                        initialZoom:
+                                            selectedFilter == 0 ? 7.5 : 5.8,
                                         maxZoom: 18.0,
                                         minZoom: 2.0,
                                       ),
@@ -3645,14 +3753,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                             .spaceBetween,
                                                     children: [
                                                       Expanded(
-                                                        child: FutureBuilder<String>(
+                                                        child: FutureBuilder<
+                                                            String>(
                                                           future:
                                                               _getRealMapLocationName(
-                                                                eq.lat,
-                                                                eq.lon,
-                                                                eq.place,
-                                                              ),
-                                                          builder: (context, snap) {
+                                                            eq.lat,
+                                                            eq.lon,
+                                                            eq.place,
+                                                          ),
+                                                          builder:
+                                                              (context, snap) {
                                                             return Text(
                                                               snap.data ??
                                                                   _translateEarthquakePlace(
@@ -3676,24 +3786,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                       ),
                                                       Container(
                                                         padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 7,
-                                                              vertical: 2,
-                                                            ),
-                                                        decoration: BoxDecoration(
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                          horizontal: 7,
+                                                          vertical: 2,
+                                                        ),
+                                                        decoration:
+                                                            BoxDecoration(
                                                           color: Colors
                                                               .deepOrangeAccent
                                                               .withValues(
-                                                                alpha: 0.18,
-                                                              ),
+                                                            alpha: 0.18,
+                                                          ),
                                                           borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
+                                                              BorderRadius
+                                                                  .circular(
+                                                            8,
+                                                          ),
                                                         ),
                                                         child: Text(
                                                           'گوڕ: ${eq.mag} ڕێختەر',
-                                                          style: const TextStyle(
+                                                          style:
+                                                              const TextStyle(
                                                             fontSize: 11.5,
                                                             fontWeight:
                                                                 FontWeight.w900,
@@ -4033,10 +4147,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           data.hourlyTimes[realIdx];
                                       final String timeOnly =
                                           fullTime.contains('T')
-                                          ? fullTime
-                                                .split('T')[1]
-                                                .substring(0, 5)
-                                          : fullTime;
+                                              ? fullTime
+                                                  .split('T')[1]
+                                                  .substring(0, 5)
+                                              : fullTime;
 
                                       String formattedTime12 = timeOnly;
                                       int hour24 = 0;
@@ -4044,9 +4158,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         hour24 = int.parse(
                                           timeOnly.split(':')[0],
                                         );
-                                        String period = hour24 >= 12
-                                            ? 'پ.ن'
-                                            : 'ب';
+                                        String period =
+                                            hour24 >= 12 ? 'پ.ن' : 'ب';
                                         int hour12 = hour24 % 12;
                                         if (hour12 == 0) hour12 = 12;
                                         formattedTime12 = '$hour12 $period';
@@ -4245,8 +4358,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           width: double.infinity,
           padding: padding ?? const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color:
-                customColor ??
+            color: customColor ??
                 (isDark
                     ? const Color(0xFF1E293B).withValues(alpha: 0.55)
                     : Colors.white.withValues(alpha: 0.6)),
@@ -4934,48 +5046,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         itemBuilder: (context, index) {
                                           String fullTime =
                                               (data.hourlyTimes.isNotEmpty &&
-                                                  data.hourlyTimes.length >
-                                                      index)
-                                              ? data.hourlyTimes[index]
-                                              : '00:00';
+                                                      data.hourlyTimes.length >
+                                                          index)
+                                                  ? data.hourlyTimes[index]
+                                                  : '00:00';
                                           String timeOnly =
                                               fullTime.contains('T')
-                                              ? fullTime
-                                                    .split('T')[1]
-                                                    .substring(0, 5)
-                                              : fullTime;
-                                          int hour24 =
-                                              int.tryParse(
+                                                  ? fullTime
+                                                      .split('T')[1]
+                                                      .substring(0, 5)
+                                                  : fullTime;
+                                          int hour24 = int.tryParse(
                                                 timeOnly.split(':')[0],
                                               ) ??
                                               0;
-                                          String period = hour24 >= 12
-                                              ? 'د.ن'
-                                              : 'ب';
+                                          String period =
+                                              hour24 >= 12 ? 'د.ن' : 'ب';
                                           int hour12 = hour24 % 12;
                                           if (hour12 == 0) hour12 = 12;
                                           String formattedTime =
                                               '$hour12 $period';
-                                          int hCode =
-                                              (data
-                                                      .hourlyWeatherCodes
+                                          int hCode = (data.hourlyWeatherCodes
                                                       .isNotEmpty &&
-                                                  data
-                                                          .hourlyWeatherCodes
+                                                  data.hourlyWeatherCodes
                                                           .length >
                                                       index)
                                               ? data.hourlyWeatherCodes[index]
                                               : 0;
                                           int isDayTime =
                                               (hour24 >= 6 && hour24 < 19)
-                                              ? 1
-                                              : 0;
+                                                  ? 1
+                                                  : 0;
                                           double currentMaTemp =
                                               maTemps.length > index
-                                              ? maTemps[index]
-                                              : (rawTemps.length > index
-                                                    ? rawTemps[index]
-                                                    : 0.0);
+                                                  ? maTemps[index]
+                                                  : (rawTemps.length > index
+                                                      ? rawTemps[index]
+                                                      : 0.0);
 
                                           return PressableCard(
                                             onTap: () {},
@@ -5034,16 +5141,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             drawVerticalLine: true,
                                             getDrawingHorizontalLine: (value) =>
                                                 FlLine(
-                                                  color: _secondaryText
-                                                      .withValues(alpha: 0.08),
-                                                  strokeWidth: 1,
-                                                ),
+                                              color: _secondaryText.withValues(
+                                                  alpha: 0.08),
+                                              strokeWidth: 1,
+                                            ),
                                             getDrawingVerticalLine: (value) =>
                                                 FlLine(
-                                                  color: _secondaryText
-                                                      .withValues(alpha: 0.08),
-                                                  strokeWidth: 1,
-                                                ),
+                                              color: _secondaryText.withValues(
+                                                  alpha: 0.08),
+                                              strokeWidth: 1,
+                                            ),
                                           ),
                                           titlesData: const FlTitlesData(
                                             rightTitles: AxisTitles(
@@ -5074,8 +5181,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 hourlyCount,
                                                 (i) {
                                                   double temp = maTemps[i];
-                                                  double mappedY =
-                                                      18.0 +
+                                                  double mappedY = 18.0 +
                                                       (temp - 15.0) * 0.7;
                                                   return FlSpot(
                                                     i.toDouble(),
@@ -5090,21 +5196,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               isStrokeCapRound: true,
                                               dotData: FlDotData(
                                                 show: true,
-                                                getDotPainter:
-                                                    (
-                                                      spot,
-                                                      percent,
-                                                      bar,
-                                                      index,
-                                                    ) {
-                                                      return FlDotCirclePainter(
-                                                        radius: 1.5,
-                                                        color: Colors.white,
-                                                        strokeWidth: 1.2,
-                                                        strokeColor:
-                                                            Colors.orange,
-                                                      );
-                                                    },
+                                                getDotPainter: (
+                                                  spot,
+                                                  percent,
+                                                  bar,
+                                                  index,
+                                                ) {
+                                                  return FlDotCirclePainter(
+                                                    radius: 1.5,
+                                                    color: Colors.white,
+                                                    strokeWidth: 1.2,
+                                                    strokeColor: Colors.orange,
+                                                  );
+                                                },
                                               ),
                                               belowBarData: BarAreaData(
                                                 show: true,
@@ -5129,8 +5233,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   double temp = maTemps[i];
                                                   double lowEstimate =
                                                       temp - 4.5;
-                                                  double mappedY =
-                                                      18.0 +
+                                                  double mappedY = 18.0 +
                                                       (lowEstimate - 15.0) *
                                                           0.7;
                                                   return FlSpot(
@@ -5146,22 +5249,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               isStrokeCapRound: true,
                                               dotData: FlDotData(
                                                 show: true,
-                                                getDotPainter:
-                                                    (
-                                                      spot,
-                                                      percent,
-                                                      bar,
-                                                      index,
-                                                    ) {
-                                                      return FlDotCirclePainter(
-                                                        radius: 1.2,
-                                                        color: Colors.white,
-                                                        strokeWidth: 1.0,
-                                                        strokeColor: Colors
-                                                            .tealAccent
-                                                            .shade400,
-                                                      );
-                                                    },
+                                                getDotPainter: (
+                                                  spot,
+                                                  percent,
+                                                  bar,
+                                                  index,
+                                                ) {
+                                                  return FlDotCirclePainter(
+                                                    radius: 1.2,
+                                                    color: Colors.white,
+                                                    strokeWidth: 1.0,
+                                                    strokeColor: Colors
+                                                        .tealAccent.shade400,
+                                                  );
+                                                },
                                               ),
                                               belowBarData: BarAreaData(
                                                 show: false,
@@ -5190,25 +5291,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               isStrokeCapRound: true,
                                               dotData: FlDotData(
                                                 show: true,
-                                                getDotPainter:
-                                                    (
-                                                      spot,
-                                                      percent,
-                                                      bar,
-                                                      index,
-                                                    ) {
-                                                      return FlDotCirclePainter(
-                                                        radius: spot.y > 0
-                                                            ? 1.8
-                                                            : 0,
-                                                        color: Colors.white,
-                                                        strokeWidth: 1.2,
-                                                        strokeColor:
-                                                            const Color(
-                                                              0xFF38BDF8,
-                                                            ),
-                                                      );
-                                                    },
+                                                getDotPainter: (
+                                                  spot,
+                                                  percent,
+                                                  bar,
+                                                  index,
+                                                ) {
+                                                  return FlDotCirclePainter(
+                                                    radius:
+                                                        spot.y > 0 ? 1.8 : 0,
+                                                    color: Colors.white,
+                                                    strokeWidth: 1.2,
+                                                    strokeColor: const Color(
+                                                      0xFF38BDF8,
+                                                    ),
+                                                  );
+                                                },
                                               ),
                                               belowBarData: BarAreaData(
                                                 show: true,
@@ -5403,18 +5501,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ? data.weatherCodes[i]
                                 : 0;
                             final Color cardTint = _getWeatherCardTint(code);
+                            final String weatherDesc =
+                                _getWeatherDescription(code);
+                            final int roundMax = maxT?.round() ?? 0;
+                            final int roundMin = minT?.round() ?? 0;
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8.0),
                               child: PressableCard(
-                                onTap: () => _showDayDetailDialog(
-                                  context,
-                                  date,
-                                  maxT,
-                                  minT,
-                                  code,
-                                  data,
-                                ),
+                                onTap: () {
+                                  _speakForecast(
+                                      dayName, weatherDesc, roundMax, roundMin);
+                                  _showDayDetailDialog(
+                                    context,
+                                    date,
+                                    maxT,
+                                    minT,
+                                    code,
+                                    data,
+                                  );
+                                },
                                 child: _buildNeuContainer(
                                   radius: 18,
                                   padding: const EdgeInsets.symmetric(
@@ -5477,7 +5583,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 CrossAxisAlignment.end,
                                             children: [
                                               Text(
-                                                '${maxT?.round() ?? 0}° / ${minT?.round() ?? 0}°',
+                                                '$roundMax° / $roundMin°',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w900,
                                                   fontSize: 15.5,
@@ -5487,7 +5593,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               ),
                                               const SizedBox(height: 2),
                                               Text(
-                                                _getWeatherDescription(code),
+                                                weatherDesc,
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w800,
                                                   fontSize: 13,
@@ -5515,8 +5621,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Icon(
-                                                CupertinoIcons
-                                                    .hand_point_left_fill,
+                                                CupertinoIcons.speaker_2_fill,
                                                 size: 15,
                                                 color: _purple,
                                               ),
@@ -5621,8 +5726,7 @@ class WeatherModel {
     }
 
     return WeatherModel(
-      currentTemp:
-          (currentWeather['temperature_2m'] ??
+      currentTemp: (currentWeather['temperature_2m'] ??
                   currentWeather['temperature'] as num?)
               ?.toDouble() ??
           0.0,
