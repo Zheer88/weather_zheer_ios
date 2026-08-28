@@ -1,12 +1,12 @@
 name: weather_zheer
-description: "A new Flutter project."
+description: "A cross-platform Flutter weather application."
 
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.12.2
+  sdk: '>=3.2.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -34,7 +34,13 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/
+    - assets/images/
+    - assets/icon/
+
 flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
