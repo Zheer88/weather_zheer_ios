@@ -185,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _splashAnimController.forward();
 
-    _splashTimer = Timer(const Duration(milliseconds: 3000), () {
+    _splashTimer = Timer(const Duration(seconds: 6), () {
       if (mounted) {
         setState(() {
           _showSplash = false;
@@ -311,6 +311,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
       _isLocationLoading = false;
     });
+    _fetchElevation(_latitude, _longitude);
   }
 
   Future<void> _fetchElevation(double lat, double lon) async {
@@ -1122,7 +1123,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _initLiveLocation() async {
-    await _getCurrentLocationAndWeather(showError: false);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        await _getCurrentLocationAndWeather(showError: false);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          await _getCurrentLocationAndWeather(showError: false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        await _getCurrentLocationAndWeather(showError: false);
+        return;
+      }
+
+      await _getCurrentLocationAndWeather(showError: false);
+    } catch (_) {
+      await _getCurrentLocationAndWeather(showError: false);
+    }
   }
 
   Future<void> _getCurrentLocationAndWeather({bool showError = true}) async {
@@ -1853,34 +1878,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ),
                               ),
                             ),
-                          if (searchQuery.isEmpty) const SizedBox(height: 16),
-                          if (searchQuery.isEmpty)
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Text(
-                                'شارە باوەکان:',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
-                                  color: _secondaryText,
-                                ),
-                              ),
-                            ),
-                          if (searchQuery.isEmpty) const SizedBox(height: 8),
-                          if (searchQuery.isEmpty)
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.start,
-                              children: [
-                                _buildCityChip('سلێمانی', 35.5558, 45.4351),
-                                _buildCityChip('هەولێر', 36.1901, 44.0091),
-                                _buildCityChip('دهۆک', 36.8679, 42.9885),
-                                _buildCityChip('هەڵەبجە', 35.1772, 45.9877),
-                                _buildCityChip('کەرکووک', 35.4681, 44.3922),
-                                _buildCityChip('سیدصادق', 35.371102, 45.856458),
-                              ],
-                            ),
                           if (searchQuery.isNotEmpty && isSearching)
                             const Padding(
                               padding: EdgeInsets.all(24.0),
@@ -2014,42 +2011,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildCityChip(String name, double lat, double lon) {
-    final bool isDark = _isDarkMode;
-    return PressableCard(
-      onTap: () {
-        Navigator.pop(context);
-        setState(() {
-          _isManualLocation = true;
-          _latitude = lat;
-          _longitude = lon;
-          _cityName = name;
-          _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
-        });
-        _fetchElevation(lat, lon);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _iosGlassBorder),
-        ),
-        child: Text(
-          name,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-            color: _darkText,
-          ),
-        ),
-      ),
     );
   }
 
