@@ -24,6 +24,7 @@ dependencies:
   fl_chart: ^0.68.0
   device_preview: ^3.0.0-prerelease3
   flutter_tts: ^4.2.5
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:
