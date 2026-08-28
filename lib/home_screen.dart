@@ -185,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _splashAnimController.forward();
 
-    _splashTimer = Timer(const Duration(seconds: 6), () {
+    _splashTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) {
         setState(() {
           _showSplash = false;
@@ -240,8 +240,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _startLocationStream() {
     const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 100,
+      accuracy: LocationAccuracy.medium,
+      distanceFilter: 200,
     );
 
     _positionStreamSubscription =
@@ -251,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               _updateLiveElevationAndLocation(position);
             }
           },
+          onError: (_) {},
         );
   }
 
@@ -273,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               position.latitude,
               position.longitude,
             ) >
-            5000) {
+            3000) {
       _lastFetchedPosition = position;
       _fetchCityAndWeather(position);
     }
@@ -300,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _cityName = 'لۆکەیشنی ئێستات';
+          _cityName = 'شوێنی دیاریکراو';
         });
       }
     }
@@ -1126,27 +1127,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        await _getCurrentLocationAndWeather(showError: false);
         return;
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          await _getCurrentLocationAndWeather(showError: false);
-          return;
-        }
       }
 
-      if (permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
         await _getCurrentLocationAndWeather(showError: false);
-        return;
       }
+    } catch (_) {}
+  }
 
-      await _getCurrentLocationAndWeather(showError: false);
+  Future<Position?> _getFastLocation() async {
+    try {
+      final lastPos = await Geolocator.getLastKnownPosition();
+      if (lastPos != null) {
+        return lastPos;
+      }
+    } catch (_) {}
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
     } catch (_) {
-      await _getCurrentLocationAndWeather(showError: false);
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low,
+          timeLimit: Duration(seconds: 6),
+        ),
+      );
     }
   }
 
@@ -1161,8 +1178,75 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     try {
-      final Position position =
-          await LocationWeatherService.getCurrentLocation();
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        serviceEnabled = await Geolocator.openLocationSettings();
+        if (!serviceEnabled && mounted) {
+          setState(() => _isLocationLoading = false);
+          if (showError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: _isDarkMode
+                    ? const Color(0xFF1E293B)
+                    : Colors.white,
+                content: const Text(
+                  'تکایە خزمەتگوزاری لۆکەیشن (GPS) لە مۆبایلەکەتدا کارا بکە!',
+                  textAlign: TextAlign.right,
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    color: CupertinoColors.destructiveRed,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) setState(() => _isLocationLoading = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _isLocationLoading = false);
+        if (showError && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: _isDarkMode
+                  ? const Color(0xFF1E293B)
+                  : Colors.white,
+              content: const Text(
+                'مۆڵەتی شوێن ڕەتکراوەتەوە. تکایە لە ڕێکخستنی مۆبایل مۆڵەتەکە بدە.',
+                textAlign: TextAlign.right,
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  color: CupertinoColors.destructiveRed,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      final Position? position = await _getFastLocation();
+
+      if (position == null) {
+        throw Exception('Position was null');
+      }
+
       _updateLiveElevationAndLocation(position);
 
       if (mounted && showError) {
@@ -1172,7 +1256,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ? const Color(0xFF1E293B)
                 : Colors.white,
             content: Text(
-              'شوێنەکەت دۆزرایەوە: $_cityName',
+              'شوێنەکەت بە سەرکەوتوویی دۆزرایەوە: $_cityName',
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
               style: TextStyle(
@@ -1202,7 +1286,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ? const Color(0xFF1E293B)
                 : Colors.white,
             content: const Text(
-              'کێشە لە پەیوەستبوون بە هێڵی ئینتەرنێت یان GPS ڕوویدا!',
+              'کێشە لە دۆزینەوەی شوێن یان هێڵی ئینتەرنێتدا هەیە!',
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
               style: TextStyle(

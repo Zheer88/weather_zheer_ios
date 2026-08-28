@@ -4,10 +4,15 @@
 <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    
+    <!-- Location Permissions -->
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>پێویستمان بە شوێنەکەت هەیە بۆ پیشاندانی کەشوهەوا و نەخشەی ڕاستەوخۆ.</string>
     <key>NSLocationAlwaysUsageDescription</key>
-    <string>ئەم ئەپە پێویستی بە شوێنەکەت هەیە بۆ پیشاندانی کەشوهەوای ناوچەکەت.</string>
+    <string>ئەم ئەپە پێویستی بە شوێنەکەت هەیە بۆ پیشاندانی کەشوهەوای ناوچەکەت لە پاشبنەمادا.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>پێویستمان بە شوێنەکەت هەیە بۆ پیشاندانی کەشوهەوا و نوێکردنەوەی بەردەوام.</string>
+
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>

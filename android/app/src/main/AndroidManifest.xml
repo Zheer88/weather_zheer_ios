@@ -1,12 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Allow the app to access the Internet -->
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Permissions for Location -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Permissions for Internet & Network -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:label="weather_zheer"
+        android:label="Weather Zheer"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"
