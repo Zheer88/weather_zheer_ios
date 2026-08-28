@@ -86,8 +86,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  bool _showSplash = true;
+  late AnimationController _splashAnimController;
+  late Animation<double> _splashScaleAnimation;
+  late Animation<double> _splashFadeAnimation;
+  Timer? _splashTimer;
+
   late Future<WeatherModel> _weatherData;
   late Future<List<EarthquakeModel>> _earthquakeData;
 
@@ -165,6 +170,29 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
 
+    _splashAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    _splashScaleAnimation = Tween<double>(begin: 0.75, end: 1.0).animate(
+      CurvedAnimation(parent: _splashAnimController, curve: Curves.easeOutBack),
+    );
+
+    _splashFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _splashAnimController, curve: Curves.easeIn),
+    );
+
+    _splashAnimController.forward();
+
+    _splashTimer = Timer(const Duration(milliseconds: 3000), () {
+      if (mounted) {
+        setState(() {
+          _showSplash = false;
+        });
+      }
+    });
+
     _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
     _earthquakeData = EarthquakeService.getRecentEarthquakes();
     _fetchElevation(_latitude, _longitude);
@@ -202,6 +230,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _splashTimer?.cancel();
+    _splashAnimController.dispose();
     _refreshTimer?.cancel();
     _pulseController.dispose();
     _positionStreamSubscription?.cancel();
@@ -1539,6 +1569,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       _buildMapLayerButton(
                                         icon: CupertinoIcons.play_circle_fill,
@@ -4068,8 +4099,118 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildSplashScreenView() {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF38BDF8),
+              Color(0xFF60A5FA),
+              Color(0xFF818CF8),
+              Color(0xFF1E1B4B),
+              Color(0xFF0F172A),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: FadeTransition(
+            opacity: _splashFadeAnimation,
+            child: ScaleTransition(
+              scale: _splashScaleAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 175,
+                    height: 175,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(40),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 35,
+                          offset: const Offset(0, 16),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(40),
+                      child: Image.asset(
+                        'assets/images/app_icon.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/app_icon.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx2, err2, st2) {
+                              return Image.asset(
+                                'assets/images/logo.png',
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx3, err3, st3) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFFF7A00),
+                                          Color(0xFF0066FF),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(40),
+                                    ),
+                                    child: const Center(
+                                      child: Icon(
+                                        CupertinoIcons.cloud_sun_bolt_fill,
+                                        color: Colors.white,
+                                        size: 85,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  const Text(
+                    'کەشوهەوای ژیر',
+                    style: TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  const CupertinoActivityIndicator(
+                    radius: 14,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_showSplash) {
+      return _buildSplashScreenView();
+    }
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
