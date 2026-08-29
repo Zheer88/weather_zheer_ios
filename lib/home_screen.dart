@@ -1030,7 +1030,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'پیس',
                             style: TextStyle(
-                              fontSize: 1.5,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFEF4444),
                             ),
@@ -4323,6 +4323,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     EdgeInsetsGeometry? padding,
     double radius = 20,
     Color? customColor,
+    double? width,
   }) {
     final bool isDark = _isDarkMode;
     return ClipRRect(
@@ -4330,7 +4331,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
         child: Container(
-          width: double.infinity,
+          width: width,
           padding: padding ?? const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: customColor ??
@@ -4564,7 +4565,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// هێڵکاری کەشوهەوا بە هەمان ڕەنگ و ستایلی ناسکی کارتی ٦ ڕۆژەکە لەگەڵ ئایکۆنی گەورەی خۆرهەڵات و خۆرئاوابوون
+  /// هێڵکاری کەشوهەوا لەگەڵ ئایکۆن و کاتەکانی خۆرهەڵات و خۆرئاوابوون بە تەواوی لەم سەر و ئەو سەری کارتەکە
   Widget _buildWeatherChartCard(WeatherModel data) {
     final int currentHour = DateTime.now().hour;
     final bool isCurrentlyDay = currentHour >= 6 && currentHour < 19;
@@ -4864,22 +4865,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 10),
 
-            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون گواسترایەوە بۆ ژێرەوەی کاتژمێرەکانی کەش و هەوا
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildWeatherInfoBadge(
-                  label: 'خۆرهەڵات',
-                  customIconPath: 'assets/images/sunrise.png',
-                  value: sunTimes['sunrise'] ?? '05:42',
-                ),
-                const SizedBox(width: 20),
-                _buildWeatherInfoBadge(
-                  label: 'خۆرئاوابوون',
-                  customIconPath: 'assets/images/sunset.png',
-                  value: sunTimes['sunset'] ?? '19:12',
-                ),
-              ],
+            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون لەم سەر و ئەو سەری کارتەکە
+            Directionality(
+              textDirection: TextDirection.rtl,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildWeatherInfoBadge(
+                    label: 'خۆرهەڵات',
+                    customIconPath: 'assets/images/sunrise.png',
+                    value: sunTimes['sunrise'] ?? '05:42',
+                  ),
+                  _buildWeatherInfoBadge(
+                    label: 'خۆرئاوابوون',
+                    customIconPath: 'assets/images/sunset.png',
+                    value: sunTimes['sunset'] ?? '19:12',
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -4887,6 +4890,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// ڕێکخستنی بەشی خۆرهەڵات و خۆرئاوابوون: (١- نوسین، ٢- ئایکۆن، ٣- کاتەکە)
   Widget _buildWeatherInfoBadge({
     required String label,
     required String customIconPath,
@@ -4894,27 +4898,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // ١- نوسین
         Text(
           label,
           style: TextStyle(
             color: _secondaryText,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
+        // ٢- ئایکۆن
         Image.asset(
           customIconPath,
-          width: 22,
-          height: 22,
+          width: 24,
+          height: 24,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(
+              customIconPath.contains('sunrise') ||
+                      customIconPath.contains('hhhh')
+                  ? CupertinoIcons.sunrise_fill
+                  : CupertinoIcons.sunset_fill,
+              size: 22,
+              color: const Color(0xFFFBBF24),
+            );
+          },
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
+        // ٣- کاتەکە
         Text(
           value,
+          textDirection: TextDirection.ltr,
           style: TextStyle(
             color: _darkText,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -4927,8 +4947,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_showSplash) {
       return _buildSplashScreenView();
     }
-
-    final bool isDark = _isDarkMode;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -4987,7 +5005,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Expanded(
+                              Flexible(
                                 child: PressableCard(
                                   onTap: () =>
                                       _showLocationSearchDialog(context),
@@ -4998,8 +5016,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     ),
                                     radius: 16,
                                     child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
                                         AnimatedBuilder(
                                           animation: _locationBounceAnimation,
@@ -5019,7 +5036,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                         ),
                                         const SizedBox(width: 6),
-                                        Expanded(
+                                        Flexible(
                                           child: Text(
                                             _cityName,
                                             textAlign: TextAlign.right,
@@ -5371,7 +5388,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                         height: 6,
                                                         decoration:
                                                             BoxDecoration(
-                                                          color: isDark
+                                                          color: _isDarkMode
                                                               ? Colors.white
                                                                   .withValues(
                                                                       alpha:
@@ -5433,7 +5450,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                   .circle,
                                                               border:
                                                                   Border.all(
-                                                                color: isDark
+                                                                color: _isDarkMode
                                                                     ? const Color(
                                                                         0xFF0F172A)
                                                                     : const Color(
