@@ -2483,13 +2483,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           h += 1;
           m = 0;
         }
-        final String period = h >= 12 ? 'پاشنیوەڕۆ' : 'بەیانی';
         int displayH = h % 12;
         if (displayH == 0) {
           displayH = 12;
         }
         final String displayM = m.toString().padLeft(2, '0');
-        return '$displayH:$displayM $period';
+        return '$displayH:$displayM';
       }
 
       return {
@@ -2497,7 +2496,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'sunset': formatTime(sunsetHours),
       };
     } catch (_) {
-      return {'sunrise': '٠٥:٣٠ بەیانی', 'sunset': '٠٧:١٥ پاشنیوەڕۆ'};
+      return {'sunrise': '05:42', 'sunset': '19:12'};
     }
   }
 
@@ -2630,23 +2629,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       'یەکشەممە',
     ];
     return kurdishDays[date.weekday - 1];
-  }
-
-  List<double> _calculateMovingAverage(List<double> data, int windowSize) {
-    if (data.isEmpty) return [];
-    List<double> ma = [];
-    for (int i = 0; i < data.length; i++) {
-      int start = max(0, i - windowSize ~/ 2);
-      int end = min(data.length - 1, i + windowSize ~/ 2);
-      double sum = 0.0;
-      int count = 0;
-      for (int j = start; j <= end; j++) {
-        sum += data[j];
-        count++;
-      }
-      ma.add(count > 0 ? (sum / count) : data[i]);
-    }
-    return ma;
   }
 
   void _showDetailedAIReportDialog(BuildContext context, WeatherModel data) {
@@ -2859,7 +2841,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final int totalDays = min(6, data.times.length);
     final bool isDark = _isDarkMode;
     final Color iosCardBg = isDark
-        ? const Color(0xFF1E293B).withValues(alpha: 0.65)
+        ? const Color(0xFF1E293B).withValues(alpha: 0.6)
         : Colors.white.withValues(alpha: 0.65);
     final Color iosBorderColor = _iosGlassBorder;
 
@@ -2875,279 +2857,155 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     }
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) {
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 24,
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _iosAtmosphereGradient,
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(32),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF0F172A).withValues(alpha: 0.75)
-                          : Colors.white.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(color: iosBorderColor, width: 1.5),
-                      boxShadow: _neuShadows,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(7),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blueAccent.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    CupertinoIcons.drop,
-                                    color: Colors.blueAccent,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'پێشبینی باران و بەفر',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.4,
-                                    color: _darkText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            PressableCard(
-                              onTap: () => Navigator.pop(dialogContext),
+                        PressableCard(
+                          onTap: () => Navigator.pop(bottomSheetContext),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                               child: Container(
-                                padding: const EdgeInsets.all(5),
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   color: isDark
-                                      ? Colors.white12
-                                      : Colors.black.withValues(alpha: 0.08),
+                                      ? Colors.black.withValues(alpha: 0.4)
+                                      : Colors.white.withValues(alpha: 0.6),
                                   shape: BoxShape.circle,
+                                  border: Border.all(color: iosBorderColor),
                                 ),
                                 child: Icon(
                                   CupertinoIcons.xmark,
                                   color: _darkText,
-                                  size: 16,
+                                  size: 18,
                                 ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          height: 170,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: totalDays,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(width: 8),
-                            itemBuilder: (context, i) {
-                              final String dayName = _getKurdishDayName(
-                                data.times[i],
-                              );
-                              final String date = data.times[i].split('T')[0];
-                              final dynamic rainAmount =
-                                  data.precipitationSums.length > i
-                                      ? data.precipitationSums[i]
-                                      : 0.0;
-                              final dynamic snowAmount =
-                                  data.snowfallSums.length > i
-                                      ? data.snowfallSums[i]
-                                      : 0.0;
-                              final dynamic rainProb =
-                                  data.precipitationProbabilities.length > i
-                                      ? data.precipitationProbabilities[i]
-                                      : 0;
-
-                              return PressableCard(
-                                onTap: () {},
-                                child: Container(
-                                  width: 110,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                    horizontal: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: iosCardBg,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: iosBorderColor),
-                                    boxShadow: _neuShadowsSmall,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        children: [
-                                          Text(
-                                            dayName,
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w900,
-                                              color: _darkText,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            date.length > 5
-                                                ? date.substring(5)
-                                                : date,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: _secondaryText,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blueAccent.withValues(
-                                            alpha: 0.18,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '$rainProb٪',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w900,
-                                            color: Colors.blueAccent,
-                                          ),
-                                        ),
-                                      ),
-                                      Column(
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              const Icon(
-                                                CupertinoIcons.drop,
-                                                size: 14,
-                                                color: Colors.blueAccent,
-                                              ),
-                                              const SizedBox(width: 3),
-                                              Text(
-                                                '$rainAmount مم',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: _darkText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              const Icon(
-                                                CupertinoIcons.snow,
-                                                size: 14,
-                                                color: Colors.lightBlueAccent,
-                                              ),
-                                              const SizedBox(width: 3),
-                                              Text(
-                                                '$snowAmount سم',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: _darkText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$_cityName • پێشبینی باران و بەفر',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.4,
+                                  color: _darkText,
                                 ),
-                              );
-                            },
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'ڕاپۆرتی وردی $totalDays ڕۆژی داهاتوو',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: _secondaryText,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(width: 44),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF1E3A8A).withValues(alpha: 0.3)
-                                : Colors.blue.shade50.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: Colors.blueAccent.withValues(alpha: 0.4),
-                              width: 1.2,
-                            ),
+                            color: iosCardBg,
+                            borderRadius: BorderRadius.circular(24),
+                            border:
+                                Border.all(color: iosBorderColor, width: 1.5),
+                            boxShadow: _neuShadows,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Row(
                                 children: [
-                                  const Icon(
-                                    CupertinoIcons.chart_bar_alt_fill,
-                                    color: Colors.blueAccent,
-                                    size: 18,
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent
+                                          .withValues(alpha: 0.18),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      CupertinoIcons.chart_bar_alt_fill,
+                                      color: Colors.blueAccent,
+                                      size: 20,
+                                    ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 10),
                                   Text(
                                     'کۆی گشتی پێشبینیکراوی ($totalDays ڕۆژ)',
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w900,
                                       color: _darkText,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 14),
                               Row(
                                 children: [
                                   Expanded(
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 6,
+                                        vertical: 12,
+                                        horizontal: 10,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: iosCardBg,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: iosBorderColor,
-                                        ),
+                                        color: isDark
+                                            ? Colors.white
+                                                .withValues(alpha: 0.05)
+                                            : Colors.black
+                                                .withValues(alpha: 0.03),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border:
+                                            Border.all(color: iosBorderColor),
                                       ),
                                       child: Column(
                                         children: [
@@ -3159,11 +3017,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               color: _secondaryText,
                                             ),
                                           ),
-                                          const SizedBox(height: 2),
+                                          const SizedBox(height: 4),
                                           Text(
                                             '${sumTotalRain.toStringAsFixed(1)} مم',
                                             style: const TextStyle(
-                                              fontSize: 17,
+                                              fontSize: 18,
                                               fontWeight: FontWeight.w900,
                                               color: Colors.blueAccent,
                                             ),
@@ -3172,19 +3030,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 12),
                                   Expanded(
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 6,
+                                        vertical: 12,
+                                        horizontal: 10,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: iosCardBg,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: iosBorderColor,
-                                        ),
+                                        color: isDark
+                                            ? Colors.white
+                                                .withValues(alpha: 0.05)
+                                            : Colors.black
+                                                .withValues(alpha: 0.03),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border:
+                                            Border.all(color: iosBorderColor),
                                       ),
                                       child: Column(
                                         children: [
@@ -3196,11 +3057,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               color: _secondaryText,
                                             ),
                                           ),
-                                          const SizedBox(height: 2),
+                                          const SizedBox(height: 4),
                                           Text(
                                             '${sumTotalSnow.toStringAsFixed(1)} سم',
                                             style: TextStyle(
-                                              fontSize: 17,
+                                              fontSize: 18,
                                               fontWeight: FontWeight.w900,
                                               color: isDark
                                                   ? Colors.lightBlueAccent
@@ -3216,10 +3077,166 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 14),
+                        ...List.generate(totalDays, (i) {
+                          final String dayName =
+                              _getKurdishDayName(data.times[i]);
+                          final String date = data.times[i].split('T')[0];
+                          final dynamic rainAmount =
+                              data.precipitationSums.length > i
+                                  ? data.precipitationSums[i]
+                                  : 0.0;
+                          final dynamic snowAmount =
+                              data.snowfallSums.length > i
+                                  ? data.snowfallSums[i]
+                                  : 0.0;
+                          final dynamic rainProb =
+                              data.precipitationProbabilities.length > i
+                                  ? data.precipitationProbabilities[i]
+                                  : 0;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: PressableCard(
+                              onTap: () {},
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                  horizontal: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: iosCardBg,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: iosBorderColor),
+                                  boxShadow: _neuShadowsSmall,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blueAccent
+                                                .withValues(alpha: 0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(14),
+                                          ),
+                                          child: const Icon(
+                                            CupertinoIcons.drop_fill,
+                                            color: Colors.blueAccent,
+                                            size: 22,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              dayName,
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w900,
+                                                color: _darkText,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              date,
+                                              style: TextStyle(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: _secondaryText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blueAccent
+                                                .withValues(alpha: 0.18),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '$rainProb٪',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.blueAccent,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  '$rainAmount مم',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: _darkText,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Icon(
+                                                  CupertinoIcons.drop,
+                                                  size: 14,
+                                                  color: Colors.blueAccent,
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  '$snowAmount سم',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: _darkText,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Icon(
+                                                  CupertinoIcons.snow,
+                                                  size: 14,
+                                                  color: Colors.lightBlueAccent,
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -3777,42 +3794,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(16),
+            Expanded(
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(icon, size: 24, color: iconColor),
                   ),
-                  child: Icon(icon, size: 24, color: iconColor),
-                ),
-                const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.3,
-                        color: _darkText,
-                      ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                            color: _darkText,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _secondaryText,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _secondaryText,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
               value,
               textDirection: TextDirection.ltr,
@@ -4538,6 +4564,367 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// هێڵکاری کەشوهەوا بە هەمان ڕەنگ و ستایلی ناسکی کارتی ٦ ڕۆژەکە لەگەڵ ئایکۆنی گەورەی خۆرهەڵات و خۆرئاوابوون
+  Widget _buildWeatherChartCard(WeatherModel data) {
+    final int currentHour = DateTime.now().hour;
+    final bool isCurrentlyDay = currentHour >= 6 && currentHour < 19;
+    final int currentWeatherCode =
+        data.weatherCodes.isNotEmpty ? data.weatherCodes[0] : 0;
+    final String currentCondition = _getWeatherDescription(currentWeatherCode);
+
+    final String todayDate = data.times.isNotEmpty
+        ? data.times[0]
+        : DateTime.now().toIso8601String().split('T').first;
+    final Map<String, String> sunTimes = _getSunTimes(todayDate);
+
+    // دیاریکردنی کاتژمێرەکان: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00
+    final List<int> targetHours = [0, 3, 6, 9, 12, 15, 18, 21];
+    final List<String> hourLabels = [
+      '00:00',
+      '03:00',
+      '06:00',
+      '09:00',
+      '12:00',
+      '15:00',
+      '18:00',
+      '21:00'
+    ];
+
+    List<double> sampledTemps = [];
+    List<double> sampledRain = [];
+    List<double> sampledMinTemps = [];
+    List<int> sampledCodes = [];
+
+    for (int h in targetHours) {
+      if (data.hourlyTemperatures.length > h) {
+        sampledTemps.add(data.hourlyTemperatures[h]);
+      } else {
+        sampledTemps.add(data.currentTemp);
+      }
+
+      if (data.hourlyPrecipitations.length > h) {
+        sampledRain.add(data.hourlyPrecipitations[h]);
+      } else {
+        sampledRain.add(0.0);
+      }
+
+      if (data.hourlyTemperatures.length > h) {
+        sampledMinTemps.add(data.hourlyTemperatures[h] - 4.0);
+      } else {
+        sampledMinTemps.add(data.currentTemp - 4.0);
+      }
+
+      if (data.hourlyWeatherCodes.length > h) {
+        sampledCodes.add(data.hourlyWeatherCodes[h]);
+      } else {
+        sampledCodes.add(0);
+      }
+    }
+
+    double minT = sampledTemps.reduce(min);
+    double maxT = sampledTemps.reduce(max);
+    if (minT == maxT) {
+      minT -= 5;
+      maxT += 5;
+    }
+
+    double maxRain = sampledRain.isNotEmpty ? sampledRain.reduce(max) : 1.0;
+    if (maxRain <= 0) maxRain = 1.0;
+
+    return _buildNeuContainer(
+      radius: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. بەشی سەرەوە: پلەی گەرمی ئێستا لە چەپ و نوسینی بارودۆخەکە لە ڕاست بە ستایلی تۆخ
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _floatingIconAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(0, _floatingIconAnimation.value * 0.5),
+                          child: child,
+                        );
+                      },
+                      child: _buildWeatherVisualIcon(
+                        currentWeatherCode,
+                        isCurrentlyDay ? 1 : 0,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${data.currentTemp.round()}°',
+                      style: TextStyle(
+                        color: _darkText,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  currentCondition,
+                  style: TextStyle(
+                    color: _darkText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Divider(
+              color: _iosGlassBorder,
+              height: 1,
+            ),
+            const SizedBox(height: 10),
+
+            // 2. کاتژمێرەکان لە سەرەوەی هێڵکارییەکە بە تەواوی پانی
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: hourLabels.map((lbl) {
+                return Text(
+                  lbl,
+                  style: TextStyle(
+                    color: _secondaryText,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 8),
+
+            // 3. هێڵکاری پلەی گەرمی (ڕاستەقینە لەگەڵ ئایکۆنی جوڵاو) و هێڵی باران/پلەی نزم لە خوارەوەی هێڵی زەرد
+            SizedBox(
+              height: 155,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: LineChart(
+                      LineChartData(
+                        minX: 0,
+                        maxX: 7,
+                        minY: minT - 6,
+                        maxY: maxT + 10,
+                        gridData: const FlGridData(show: false),
+                        titlesData: const FlTitlesData(show: false),
+                        borderData: FlBorderData(show: false),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: List.generate(8, (i) {
+                              return FlSpot(
+                                i.toDouble(),
+                                sampledTemps[i],
+                              );
+                            }),
+                            isCurved: true,
+                            curveSmoothness: 0.35,
+                            color: const Color(0xFFFBBF24),
+                            barWidth: 2.5,
+                            isStrokeCapRound: true,
+                            dotData: FlDotData(
+                              show: true,
+                              getDotPainter: (spot, percent, bar, index) {
+                                return FlDotCirclePainter(
+                                  radius:
+                                      index == (currentHour ~/ 3).clamp(0, 7)
+                                          ? 5.0
+                                          : 3.5,
+                                  color: index == (currentHour ~/ 3).clamp(0, 7)
+                                      ? Colors.orangeAccent
+                                      : (_isDarkMode
+                                          ? const Color(0xFF0F172A)
+                                          : Colors.white),
+                                  strokeWidth: 2.2,
+                                  strokeColor: const Color(0xFFFBBF24),
+                                );
+                              },
+                            ),
+                          ),
+                          LineChartBarData(
+                            spots: List.generate(8, (i) {
+                              return FlSpot(
+                                i.toDouble(),
+                                minT - 3 + (sampledRain[i] / maxRain) * 3,
+                              );
+                            }),
+                            isCurved: true,
+                            curveSmoothness: 0.35,
+                            color: Colors.blueAccent,
+                            barWidth: 2.0,
+                            isStrokeCapRound: true,
+                            dotData: const FlDotData(show: false),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(8, (idx) {
+                        double t = sampledTemps[idx];
+                        double ratio = (t - minT) / (maxT - minT);
+                        double topPos = 40 - (ratio * 30);
+                        return SizedBox(
+                          width: 20,
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                height: topPos.clamp(0, 60),
+                              ),
+                              Text(
+                                '${t.round()}°',
+                                style: TextStyle(
+                                  color: _darkText,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Divider(
+              color: _iosGlassBorder,
+              height: 1,
+            ),
+            const SizedBox(height: 10),
+
+            // 4. ئایکۆن و پلەکانی گەرمی بە تەواوی پانی کارتەکە
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(8, (i) {
+                final String time = hourLabels[i];
+                final double temp = sampledTemps[i];
+                final int code = sampledCodes[i];
+                final int hourNum = targetHours[i];
+                final bool isDayTime = hourNum >= 6 && hourNum < 19;
+
+                return Column(
+                  children: [
+                    Text(
+                      time,
+                      style: TextStyle(
+                        color: _secondaryText,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    AnimatedBuilder(
+                      animation: _floatingIconAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(
+                            0,
+                            (i % 2 == 0 ? 1 : -1) *
+                                _floatingIconAnimation.value *
+                                0.5,
+                          ),
+                          child: child,
+                        );
+                      },
+                      child: _buildWeatherVisualIcon(
+                        code,
+                        isDayTime ? 1 : 0,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${temp.round()}°',
+                      style: TextStyle(
+                        color: _darkText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+            const SizedBox(height: 10),
+            Divider(
+              color: _iosGlassBorder,
+              height: 1,
+            ),
+            const SizedBox(height: 10),
+
+            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون گواسترایەوە بۆ ژێرەوەی کاتژمێرەکانی کەش و هەوا
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildWeatherInfoBadge(
+                  label: 'خۆرهەڵات',
+                  icon: CupertinoIcons.sunrise,
+                  iconColor: Colors.orangeAccent,
+                  value: sunTimes['sunrise'] ?? '05:42',
+                ),
+                const SizedBox(width: 20),
+                _buildWeatherInfoBadge(
+                  label: 'خۆرئاوابوون',
+                  icon: CupertinoIcons.sunset,
+                  iconColor: Colors.amberAccent,
+                  value: sunTimes['sunset'] ?? '19:12',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeatherInfoBadge({
+    required String label,
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 20, color: iconColor),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: _secondaryText,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: _darkText,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_showSplash) {
@@ -4578,16 +4965,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 }
 
                 final WeatherModel data = snapshot.data!;
-                final double todayMax = data.maxTemps.isNotEmpty
-                    ? data.maxTemps[0]
-                    : data.currentTemp.toDouble();
-                final double todayMin = data.minTemps.isNotEmpty
-                    ? data.minTemps[0]
-                    : data.currentTemp.toDouble();
-                final String todayDate = data.times.isNotEmpty
-                    ? data.times[0]
-                    : DateTime.now().toIso8601String().split('T').first;
-                final Map<String, String> sunTimes = _getSunTimes(todayDate);
                 final int forecastDays = min(
                   6,
                   min(
@@ -4766,673 +5143,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          Builder(
-                            builder: (context) {
-                              final int hourlyCount = min(
-                                24,
-                                data.hourlyTemperatures.length,
-                              );
-                              final List<double> rawTemps = data
-                                  .hourlyTemperatures
-                                  .take(hourlyCount)
-                                  .toList();
-                              final List<double> rawRains =
-                                  (data.hourlyPrecipitations.isNotEmpty
-                                          ? data.hourlyPrecipitations
-                                          : List.filled(hourlyCount, 0.0))
-                                      .take(hourlyCount)
-                                      .map((e) => (e as num).toDouble())
-                                      .toList();
+                          const SizedBox(height: 12),
 
-                              final List<double> maTemps =
-                                  _calculateMovingAverage(rawTemps, 3);
-                              final List<double> maRains =
-                                  _calculateMovingAverage(rawRains, 3);
+                          // کارتی هێڵکاری کەشوهەوا
+                          _buildWeatherChartCard(data),
 
-                              final int currentHour = DateTime.now().hour;
-                              final bool isCurrentlyDay =
-                                  currentHour >= 6 && currentHour < 19;
-                              final int currentWeatherCode =
-                                  data.weatherCodes.isNotEmpty
-                                      ? data.weatherCodes[0]
-                                      : 0;
-                              final String currentCondition =
-                                  _getWeatherDescription(currentWeatherCode);
-
-                              return _buildNeuContainer(
-                                radius: 24,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 14,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: _isDarkMode
-                                              ? [
-                                                  Colors.white
-                                                      .withValues(alpha: 0.07),
-                                                  Colors.white
-                                                      .withValues(alpha: 0.02),
-                                                ]
-                                              : [
-                                                  Colors.white
-                                                      .withValues(alpha: 0.85),
-                                                  Colors.white
-                                                      .withValues(alpha: 0.45),
-                                                ],
-                                          begin: Alignment.topRight,
-                                          end: Alignment.bottomLeft,
-                                        ),
-                                        borderRadius: BorderRadius.circular(18),
-                                        border: Border.all(
-                                          color: _iosGlassBorder.withValues(
-                                            alpha: 0.5,
-                                          ),
-                                          width: 1.0,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              AnimatedBuilder(
-                                                animation:
-                                                    _floatingIconAnimation,
-                                                builder: (context, child) {
-                                                  return Transform.translate(
-                                                    offset: Offset(
-                                                      0,
-                                                      _floatingIconAnimation
-                                                          .value,
-                                                    ),
-                                                    child: child,
-                                                  );
-                                                },
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(
-                                                    8,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: _isDarkMode
-                                                        ? Colors.black26
-                                                        : Colors.white
-                                                            .withValues(
-                                                            alpha: 0.7,
-                                                          ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                          alpha: 0.08,
-                                                        ),
-                                                        blurRadius: 10,
-                                                        offset:
-                                                            const Offset(0, 4),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child:
-                                                      _buildWeatherVisualIcon(
-                                                    currentWeatherCode,
-                                                    isCurrentlyDay ? 1 : 0,
-                                                    size: 38,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        '${data.currentTemp.round()}',
-                                                        style: TextStyle(
-                                                          fontSize: 34,
-                                                          fontWeight:
-                                                              FontWeight.w900,
-                                                          letterSpacing: -1.5,
-                                                          height: 1.0,
-                                                          color: _darkText,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        '°C',
-                                                        style: TextStyle(
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                          color: _purple,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    currentCondition,
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: _darkText,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 3,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _purple.withValues(
-                                                    alpha: 0.15,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  isCurrentlyDay
-                                                      ? 'ڕۆژ ☀️'
-                                                      : 'شەو 🌙',
-                                                  style: TextStyle(
-                                                    fontSize: 11.5,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: _purple,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    CupertinoIcons.arrow_up,
-                                                    size: 11,
-                                                    color: CupertinoColors
-                                                        .systemRed,
-                                                  ),
-                                                  Text(
-                                                    '${todayMax.round()}° ',
-                                                    style: TextStyle(
-                                                      fontSize: 12.5,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: _darkText,
-                                                    ),
-                                                  ),
-                                                  Icon(
-                                                    CupertinoIcons.arrow_down,
-                                                    size: 11,
-                                                    color: Colors.blueAccent,
-                                                  ),
-                                                  Text(
-                                                    '${todayMin.round()}°',
-                                                    style: TextStyle(
-                                                      fontSize: 12.5,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: _darkText,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    SizedBox(
-                                      height: 64,
-                                      child: ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: hourlyCount,
-                                        itemBuilder: (context, index) {
-                                          String fullTime =
-                                              (data.hourlyTimes.isNotEmpty &&
-                                                      data.hourlyTimes.length >
-                                                          index)
-                                                  ? data.hourlyTimes[index]
-                                                  : '00:00';
-                                          String timeOnly =
-                                              fullTime.contains('T')
-                                                  ? fullTime
-                                                      .split('T')[1]
-                                                      .substring(0, 5)
-                                                  : fullTime;
-                                          int hour24 = int.tryParse(
-                                                timeOnly.split(':')[0],
-                                              ) ??
-                                              0;
-                                          String period =
-                                              hour24 >= 12 ? 'د.ن' : 'ب';
-                                          int hour12 = hour24 % 12;
-                                          if (hour12 == 0) hour12 = 12;
-                                          String formattedTime =
-                                              '$hour12 $period';
-                                          int hCode = (data.hourlyWeatherCodes
-                                                      .isNotEmpty &&
-                                                  data.hourlyWeatherCodes
-                                                          .length >
-                                                      index)
-                                              ? data.hourlyWeatherCodes[index]
-                                              : 0;
-                                          int isDayTime =
-                                              (hour24 >= 6 && hour24 < 19)
-                                                  ? 1
-                                                  : 0;
-                                          double currentMaTemp =
-                                              maTemps.length > index
-                                                  ? maTemps[index]
-                                                  : (rawTemps.length > index
-                                                      ? rawTemps[index]
-                                                      : 0.0);
-
-                                          return PressableCard(
-                                            onTap: () {},
-                                            child: Container(
-                                              width: 48,
-                                              alignment: Alignment.center,
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    formattedTime,
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: _secondaryText,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  _buildWeatherVisualIcon(
-                                                    hCode,
-                                                    isDayTime,
-                                                    size: 22,
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    '${currentMaTemp.round()}°',
-                                                    style: TextStyle(
-                                                      fontSize: 12.5,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: _darkText,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    SizedBox(
-                                      height: 58,
-                                      child: LineChart(
-                                        LineChartData(
-                                          minX: 0,
-                                          maxX: (hourlyCount - 1)
-                                              .toDouble()
-                                              .clamp(0.0, 23.0),
-                                          minY: 0,
-                                          maxY: 45,
-                                          gridData: FlGridData(
-                                            show: true,
-                                            drawVerticalLine: true,
-                                            getDrawingHorizontalLine: (value) =>
-                                                FlLine(
-                                              color: _secondaryText.withValues(
-                                                  alpha: 0.08),
-                                              strokeWidth: 1,
-                                            ),
-                                            getDrawingVerticalLine: (value) =>
-                                                FlLine(
-                                              color: _secondaryText.withValues(
-                                                  alpha: 0.08),
-                                              strokeWidth: 1,
-                                            ),
-                                          ),
-                                          titlesData: const FlTitlesData(
-                                            rightTitles: AxisTitles(
-                                              sideTitles: SideTitles(
-                                                showTitles: false,
-                                              ),
-                                            ),
-                                            topTitles: AxisTitles(
-                                              sideTitles: SideTitles(
-                                                showTitles: false,
-                                              ),
-                                            ),
-                                            leftTitles: AxisTitles(
-                                              sideTitles: SideTitles(
-                                                showTitles: false,
-                                              ),
-                                            ),
-                                            bottomTitles: AxisTitles(
-                                              sideTitles: SideTitles(
-                                                showTitles: false,
-                                              ),
-                                            ),
-                                          ),
-                                          borderData: FlBorderData(show: false),
-                                          lineBarsData: [
-                                            LineChartBarData(
-                                              spots: List.generate(
-                                                hourlyCount,
-                                                (i) {
-                                                  double temp = maTemps[i];
-                                                  double mappedY = 18.0 +
-                                                      (temp - 15.0) * 0.7;
-                                                  return FlSpot(
-                                                    i.toDouble(),
-                                                    mappedY.clamp(12.0, 42.0),
-                                                  );
-                                                },
-                                              ),
-                                              isCurved: true,
-                                              curveSmoothness: 0.35,
-                                              color: Colors.orange,
-                                              barWidth: 2.2,
-                                              isStrokeCapRound: true,
-                                              dotData: FlDotData(
-                                                show: true,
-                                                getDotPainter: (
-                                                  spot,
-                                                  percent,
-                                                  bar,
-                                                  index,
-                                                ) {
-                                                  return FlDotCirclePainter(
-                                                    radius: 1.5,
-                                                    color: Colors.white,
-                                                    strokeWidth: 1.2,
-                                                    strokeColor: Colors.orange,
-                                                  );
-                                                },
-                                              ),
-                                              belowBarData: BarAreaData(
-                                                show: true,
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Colors.orange.withValues(
-                                                      alpha: 0.2,
-                                                    ),
-                                                    Colors.orange.withValues(
-                                                      alpha: 0.0,
-                                                    ),
-                                                  ],
-                                                  begin: Alignment.topCenter,
-                                                  end: Alignment.bottomCenter,
-                                                ),
-                                              ),
-                                            ),
-                                            LineChartBarData(
-                                              spots: List.generate(
-                                                hourlyCount,
-                                                (i) {
-                                                  double temp = maTemps[i];
-                                                  double lowEstimate =
-                                                      temp - 4.5;
-                                                  double mappedY = 18.0 +
-                                                      (lowEstimate - 15.0) *
-                                                          0.7;
-                                                  return FlSpot(
-                                                    i.toDouble(),
-                                                    mappedY.clamp(6.0, 36.0),
-                                                  );
-                                                },
-                                              ),
-                                              isCurved: true,
-                                              curveSmoothness: 0.35,
-                                              color: Colors.tealAccent.shade400,
-                                              barWidth: 1.8,
-                                              isStrokeCapRound: true,
-                                              dotData: FlDotData(
-                                                show: true,
-                                                getDotPainter: (
-                                                  spot,
-                                                  percent,
-                                                  bar,
-                                                  index,
-                                                ) {
-                                                  return FlDotCirclePainter(
-                                                    radius: 1.2,
-                                                    color: Colors.white,
-                                                    strokeWidth: 1.0,
-                                                    strokeColor: Colors
-                                                        .tealAccent.shade400,
-                                                  );
-                                                },
-                                              ),
-                                              belowBarData: BarAreaData(
-                                                show: false,
-                                              ),
-                                            ),
-                                            LineChartBarData(
-                                              spots: List.generate(
-                                                hourlyCount,
-                                                (i) {
-                                                  double rain = maRrains(
-                                                    maRains,
-                                                    i,
-                                                  );
-                                                  double mappedY = (rain * 5.0)
-                                                      .clamp(0.0, 22.0);
-                                                  return FlSpot(
-                                                    i.toDouble(),
-                                                    mappedY,
-                                                  );
-                                                },
-                                              ),
-                                              isCurved: true,
-                                              curveSmoothness: 0.25,
-                                              color: const Color(0xFF38BDF8),
-                                              barWidth: 2.0,
-                                              isStrokeCapRound: true,
-                                              dotData: FlDotData(
-                                                show: true,
-                                                getDotPainter: (
-                                                  spot,
-                                                  percent,
-                                                  bar,
-                                                  index,
-                                                ) {
-                                                  return FlDotCirclePainter(
-                                                    radius:
-                                                        spot.y > 0 ? 1.8 : 0,
-                                                    color: Colors.white,
-                                                    strokeWidth: 1.2,
-                                                    strokeColor: const Color(
-                                                      0xFF38BDF8,
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                              belowBarData: BarAreaData(
-                                                show: true,
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    const Color(
-                                                      0xFF38BDF8,
-                                                    ).withValues(alpha: 0.25),
-                                                    const Color(
-                                                      0xFF38BDF8,
-                                                    ).withValues(alpha: 0.01),
-                                                  ],
-                                                  begin: Alignment.topCenter,
-                                                  end: Alignment.bottomCenter,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: const BoxDecoration(
-                                                color: Colors.orange,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 5),
-                                            Text(
-                                              'گەرمی',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w800,
-                                                color: _secondaryText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Row(
-                                          children: [
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    Colors.tealAccent.shade400,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 5),
-                                            Text(
-                                              'نزمی',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w800,
-                                                color: _secondaryText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Row(
-                                          children: [
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFF38BDF8),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 5),
-                                            Text(
-                                              'باران',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w800,
-                                                color: _secondaryText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Divider(
-                                      color: _secondaryText.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      height: 1,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceAround,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              CupertinoIcons.sunrise,
-                                              color: Colors.amber,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'خۆرهەڵاتن: ${sunTimes['sunrise'] ?? ''}',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Container(
-                                          height: 16,
-                                          width: 1.2,
-                                          color: _secondaryText.withValues(
-                                            alpha: 0.25,
-                                          ),
-                                        ),
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              CupertinoIcons.sunset,
-                                              color: Colors.deepOrange,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'خۆرئاوا: ${sunTimes['sunset'] ?? ''}',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           Row(
                             children: [
                               _buildActionCard(
@@ -5822,8 +5538,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-
-  double maRrains(List<double> list, int i) => list.length > i ? list[i] : 0.0;
 }
 
 class WeatherModel {
