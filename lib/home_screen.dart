@@ -12,7 +12,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' hide Path;
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'earthquake_service.dart';
@@ -82,7 +81,7 @@ class _PressableCardState extends State<PressableCard> {
   }
 }
 
-/// ویجێتی پەنجەرەی نەخشەی ڕاستەوخۆی Zoom Earth بە قەبارەی ٩٠٪
+/// ویجێتی پەنجەرەی نەخشەی ڕاستەوخۆی Zoom Earth بە قەبارەی ٩٥٪ لەگەڵ ڕێگریکردن لە پەنجەرە زیادەکان
 class ZoomEarthDialogView extends StatefulWidget {
   final bool isDarkMode;
   final Color darkText;
@@ -107,6 +106,38 @@ class _ZoomEarthDialogViewState extends State<ZoomEarthDialogView> {
   final String _targetUrl =
       'https://zoom.earth/maps/satellite/#view=34.233,45.242,6z/overlays=wind';
 
+  final String _cleanupScript = """
+    (function() {
+      var style = document.createElement('style');
+      style.type = 'text/css';
+      style.innerHTML = `
+        .app-promo, .modal, .dialog, .banner, .promo, 
+        div[class*="promo"], div[class*="modal"], div[class*="download"],
+        div[class*="location-forecast"], div[class*="forecast-panel"],
+        button[class*="download"], a[class*="download"],
+        .leaflet-popup, .mapboxgl-popup {
+          display: none !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+
+      setInterval(function() {
+        var buttons = document.querySelectorAll('button, a, div');
+        buttons.forEach(function(el) {
+          var text = (el.innerText || '').toLowerCase();
+          if (text.includes('continue') || text.includes('download app')) {
+            if (el.getAttribute('aria-label') === 'Close' || text.includes('continue')) {
+              el.click();
+            }
+          }
+        });
+      }, 500);
+    })();
+  """;
+
   @override
   void initState() {
     super.initState();
@@ -124,6 +155,7 @@ class _ZoomEarthDialogViewState extends State<ZoomEarthDialogView> {
               },
               onPageFinished: (String url) {
                 if (mounted) setState(() => _isLoading = false);
+                _webController?.runJavaScript(_cleanupScript);
               },
             ),
           )
@@ -135,8 +167,8 @@ class _ZoomEarthDialogViewState extends State<ZoomEarthDialogView> {
   @override
   Widget build(BuildContext context) {
     final Size screenSize = MediaQuery.of(context).size;
-    final double dialogWidth = screenSize.width * 0.90;
-    final double dialogHeight = screenSize.height * 0.90;
+    final double dialogWidth = screenSize.width * 0.95;
+    final double dialogHeight = screenSize.height * 0.95;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -152,8 +184,8 @@ class _ZoomEarthDialogViewState extends State<ZoomEarthDialogView> {
               height: dialogHeight,
               decoration: BoxDecoration(
                 color: widget.isDarkMode
-                    ? const Color(0xFF0F172A).withValues(alpha: 0.88)
-                    : Colors.white.withValues(alpha: 0.92),
+                    ? const Color(0xFF0F172A).withValues(alpha: 0.90)
+                    : Colors.white.withValues(alpha: 0.94),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(color: widget.iosGlassBorder, width: 1.5),
                 boxShadow: widget.neuShadows,
@@ -186,7 +218,7 @@ class _ZoomEarthDialogViewState extends State<ZoomEarthDialogView> {
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              'نەخشەی ڕاستەوخۆ (Zoom Earth)',
+                              '  (نەخشەی راستەوخۆی جولەی باران و هەورەکان  )',
                               style: TextStyle(
                                 fontSize: 16.5,
                                 fontWeight: FontWeight.w900,
@@ -228,64 +260,7 @@ class _ZoomEarthDialogViewState extends State<ZoomEarthDialogView> {
                           if (!kIsWeb && _webController != null)
                             WebViewWidget(controller: _webController!)
                           else
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      CupertinoIcons.globe,
-                                      size: 64,
-                                      color: Colors.blueAccent,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'کردنەوەی نەخشەی گەردەلوول و با لە Zoom Earth',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900,
-                                        color: widget.darkText,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    PressableCard(
-                                      onTap: () async {
-                                        final uri = Uri.parse(_targetUrl);
-                                        if (await canLaunchUrl(uri)) {
-                                          await launchUrl(
-                                            uri,
-                                            mode:
-                                                LaunchMode.externalApplication,
-                                          );
-                                        }
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 22,
-                                          vertical: 12,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blueAccent,
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'کردنەوە لە پەڕەی دەرەکی',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                            const SizedBox.shrink(),
                           if (!kIsWeb && _isLoading)
                             Container(
                               color: widget.isDarkMode
@@ -2741,9 +2716,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            date.length > 5
-                                                ? date.substring(5)
-                                                : date,
+                                            date,
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w700,
@@ -3610,7 +3583,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   padding: const EdgeInsets.all(7),
                                   decoration: BoxDecoration(
                                     color: isDark
-                                        ? Colors.white.withValues(alpha: 0.12)
+                                        ? Colors.white12
                                         : Colors.black.withValues(alpha: 0.06),
                                     shape: BoxShape.circle,
                                   ),
