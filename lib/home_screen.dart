@@ -4702,7 +4702,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             // 3. هێڵکاری پلەی گەرمی (ڕاستەقینە لەگەڵ ئایکۆنی جوڵاو) و هێڵی باران/پلەی نزم لە خوارەوەی هێڵی زەرد
             SizedBox(
-              height: 60,
+              height: 70,
               child: Stack(
                 children: [
                   Positioned.fill(
