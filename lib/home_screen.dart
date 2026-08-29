@@ -4870,17 +4870,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 _buildWeatherInfoBadge(
                   label: 'خۆرهەڵات',
-                  icon: CupertinoIcons
-                      .sunrise_fill, // ئایکۆنی پڕ و جوانی خۆرهەڵات
-                  iconColor: const Color(0xFFFF9500),
+                  customIconPath: 'assets/images/sunrise.png',
                   value: sunTimes['sunrise'] ?? '05:42',
                 ),
                 const SizedBox(width: 20),
                 _buildWeatherInfoBadge(
                   label: 'خۆرئاوابوون',
-                  icon: CupertinoIcons
-                      .sunset_fill, // ئایکۆنی پڕ و جوانی خۆرئاوابوون
-                  iconColor: const Color(0xFFFFCC00),
+                  customIconPath: 'assets/images/sunset.png',
                   value: sunTimes['sunset'] ?? '19:12',
                 ),
               ],
@@ -4893,14 +4889,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildWeatherInfoBadge({
     required String label,
-    required IconData icon,
-    required Color iconColor,
+    required String customIconPath,
     required String value,
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ١. نوسینەکە (Label)
         Text(
           label,
           style: TextStyle(
@@ -4910,17 +4904,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(width: 6),
-        // ٢. ئایکۆنە جوان و ڕاقییەکە (Icon)
-        Container(
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 18, color: iconColor),
+        Image.asset(
+          customIconPath,
+          width: 22,
+          height: 22,
         ),
         const SizedBox(width: 6),
-        // ٣. کاتەکە (Value)
         Text(
           value,
           style: TextStyle(
