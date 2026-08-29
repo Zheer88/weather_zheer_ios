@@ -5,14 +5,12 @@ import 'dart:ui';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' hide Path;
-import 'package:webview_flutter/webview_flutter.dart';
 
 import 'earthquake_service.dart';
 import 'location_weather_service.dart';
@@ -81,209 +79,6 @@ class _PressableCardState extends State<PressableCard> {
   }
 }
 
-/// ویجێتی پەنجەرەی نەخشەی ڕاستەوخۆی Zoom Earth بە قەبارەی ٩٥٪ لەگەڵ ڕێگریکردن لە پەنجەرە زیادەکان
-class ZoomEarthDialogView extends StatefulWidget {
-  final bool isDarkMode;
-  final Color darkText;
-  final Color iosGlassBorder;
-  final List<BoxShadow> neuShadows;
-
-  const ZoomEarthDialogView({
-    super.key,
-    required this.isDarkMode,
-    required this.darkText,
-    required this.iosGlassBorder,
-    required this.neuShadows,
-  });
-
-  @override
-  State<ZoomEarthDialogView> createState() => _ZoomEarthDialogViewState();
-}
-
-class _ZoomEarthDialogViewState extends State<ZoomEarthDialogView> {
-  WebViewController? _webController;
-  bool _isLoading = true;
-  final String _targetUrl =
-      'https://zoom.earth/maps/satellite/#view=34.233,45.242,6z/overlays=wind';
-
-  final String _cleanupScript = """
-    (function() {
-      var style = document.createElement('style');
-      style.type = 'text/css';
-      style.innerHTML = `
-        .app-promo, .modal, .dialog, .banner, .promo, 
-        div[class*="promo"], div[class*="modal"], div[class*="download"],
-        div[class*="location-forecast"], div[class*="forecast-panel"],
-        button[class*="download"], a[class*="download"],
-        .leaflet-popup, .mapboxgl-popup {
-          display: none !important;
-          opacity: 0 !important;
-          visibility: hidden !important;
-          pointer-events: none !important;
-        }
-      `;
-      document.head.appendChild(style);
-
-      setInterval(function() {
-        var buttons = document.querySelectorAll('button, a, div');
-        buttons.forEach(function(el) {
-          var text = (el.innerText || '').toLowerCase();
-          if (text.includes('continue') || text.includes('download app')) {
-            if (el.getAttribute('aria-label') === 'Close' || text.includes('continue')) {
-              el.click();
-            }
-          }
-        });
-      }, 500);
-    })();
-  """;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!kIsWeb) {
-      try {
-        _webController = WebViewController()
-          ..setJavaScriptMode(JavaScriptMode.unrestricted)
-          ..setBackgroundColor(
-            widget.isDarkMode ? const Color(0xFF0F172A) : Colors.white,
-          )
-          ..setNavigationDelegate(
-            NavigationDelegate(
-              onPageStarted: (String url) {
-                if (mounted) setState(() => _isLoading = true);
-              },
-              onPageFinished: (String url) {
-                if (mounted) setState(() => _isLoading = false);
-                _webController?.runJavaScript(_cleanupScript);
-              },
-            ),
-          )
-          ..loadRequest(Uri.parse(_targetUrl));
-      } catch (_) {}
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final Size screenSize = MediaQuery.of(context).size;
-    final double dialogWidth = screenSize.width * 0.95;
-    final double dialogHeight = screenSize.height * 0.95;
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.zero,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-            child: Container(
-              width: dialogWidth,
-              height: dialogHeight,
-              decoration: BoxDecoration(
-                color: widget.isDarkMode
-                    ? const Color(0xFF0F172A).withValues(alpha: 0.90)
-                    : Colors.white.withValues(alpha: 0.94),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: widget.iosGlassBorder, width: 1.5),
-                boxShadow: widget.neuShadows,
-              ),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(7),
-                              decoration: BoxDecoration(
-                                color: Colors.blueAccent.withValues(
-                                  alpha: 0.18,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                CupertinoIcons.globe,
-                                color: Colors.blueAccent,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              '  (نەخشەی راستەوخۆی جولەی باران و هەورەکان  )',
-                              style: TextStyle(
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.3,
-                                color: widget.darkText,
-                              ),
-                            ),
-                          ],
-                        ),
-                        PressableCard(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: widget.isDarkMode
-                                  ? Colors.white12
-                                  : Colors.black.withValues(alpha: 0.08),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              CupertinoIcons.xmark,
-                              color: widget.darkText,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1, thickness: 1),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(32),
-                        bottomRight: Radius.circular(32),
-                      ),
-                      child: Stack(
-                        children: [
-                          if (!kIsWeb && _webController != null)
-                            WebViewWidget(controller: _webController!)
-                          else
-                            const SizedBox.shrink(),
-                          if (!kIsWeb && _isLoading)
-                            Container(
-                              color: widget.isDarkMode
-                                  ? const Color(0xFF0F172A)
-                                  : Colors.white,
-                              child: const Center(
-                                child: CupertinoActivityIndicator(radius: 18),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -305,11 +100,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isDarkMode = false;
   bool _isManualLocation = false;
 
+  final MapController _fullscreenMapController = MapController();
+  double _currentMapZoom = 7.0;
+
   double _latitude = 35.5558;
   double _longitude = 45.4351;
   double _elevation = 850.0;
 
   String _cityName = 'سلێمانی';
+  String _mapLayerType = 'radar';
+  String? _latestRadarPath;
 
   Color get _darkText =>
       _isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
@@ -359,7 +159,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   late AnimationController _pulseController;
   late Animation<double> _locationBounceAnimation;
-  late Animation<double> _rotateAnimation;
+  late Animation<double> _mapIconBounceAnimation;
+  late Animation<double> _floatingIconAnimation;
+  late Animation<double> _handBounceAnimation;
 
   StreamSubscription<Position>? _positionStreamSubscription;
   Position? _lastFetchedPosition;
@@ -397,6 +199,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
     _earthquakeData = EarthquakeService.getRecentEarthquakes();
     _fetchElevation(_latitude, _longitude);
+    _fetchLiveRadarTimestamp();
 
     _refreshTimer = Timer.periodic(const Duration(hours: 6), (timer) {
       if (mounted) {
@@ -408,15 +211,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
 
     _locationBounceAnimation = Tween<double>(begin: -3.0, end: 3.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutCubic),
     );
 
-    _rotateAnimation = Tween<double>(begin: -0.05, end: 0.05).animate(
+    _mapIconBounceAnimation = Tween<double>(begin: -5.0, end: 5.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutCubic),
+    );
+
+    _floatingIconAnimation = Tween<double>(begin: -4.0, end: 4.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
+    );
+
+    _handBounceAnimation = Tween<double>(begin: -4.0, end: 4.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -433,6 +244,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _pulseController.dispose();
     _positionStreamSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _fetchLiveRadarTimestamp() async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse('https://api.rainviewer.com/public/weather-maps.json'),
+          )
+          .timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        if (data['radar'] != null &&
+            data['radar']['past'] != null &&
+            (data['radar']['past'] as List).isNotEmpty) {
+          final pastList = data['radar']['past'] as List;
+          final latestItem = pastList.last;
+          if (mounted) {
+            setState(() {
+              _latestRadarPath = latestItem['path'];
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   void _startLocationStream() {
@@ -597,7 +432,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return {
         'status': 'پیس',
         'color': const Color(0xFFEF4444),
-        'desc': 'هەوا پیس  دەبێت هاوڵاتییان بەتایبەت نەخۆش ئاگاداربن.',
+        'desc': 'هەوا پیس دەبێت هاوڵاتییان بەتایبەت نەخۆش ئاگاداربن.',
       };
     } else {
       return {
@@ -1698,18 +1533,518 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showZoomEarthMapDialog(BuildContext context) {
+  void _showFullscreenMapDialog(BuildContext context) {
+    if (_latestRadarPath == null) {
+      _fetchLiveRadarTimestamp();
+    }
+
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.65),
       builder: (dialogContext) {
-        return ZoomEarthDialogView(
-          isDarkMode: _isDarkMode,
-          darkText: _darkText,
-          iosGlassBorder: _iosGlassBorder,
-          neuShadows: _neuShadows,
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            String baseTileUrl =
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
+            if (_mapLayerType == 'normal') {
+              baseTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+            } else if (_mapLayerType == 'temp') {
+              baseTileUrl =
+                  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+            } else if (_mapLayerType == 'wind') {
+              baseTileUrl =
+                  'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+            }
+
+            final bool isRadar = _mapLayerType == 'radar';
+            final bool isZoomTooHighForRadar = isRadar && _currentMapZoom > 8.5;
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: EdgeInsets.zero,
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Container(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  padding: const EdgeInsets.all(12),
+                  child: SafeArea(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(32),
+                      child: Stack(
+                        children: [
+                          FlutterMap(
+                            mapController: _fullscreenMapController,
+                            options: MapOptions(
+                              initialCenter: LatLng(_latitude, _longitude),
+                              initialZoom: _currentMapZoom,
+                              maxZoom: 18.0,
+                              minZoom: 2.0,
+                              onPositionChanged: (position, hasGesture) {
+                                if (position.zoom != null &&
+                                    position.zoom != _currentMapZoom) {
+                                  setStateDialog(() {
+                                    _currentMapZoom = position.zoom!;
+                                  });
+                                }
+                              },
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate: baseTileUrl,
+                                maxZoom: 18.0,
+                                maxNativeZoom: 18,
+                                userAgentPackageName: 'com.zheer.weatherapp',
+                              ),
+                              if (_mapLayerType == 'temp')
+                                TileLayer(
+                                  urlTemplate:
+                                      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}',
+                                  maxZoom: 13.0,
+                                  maxNativeZoom: 13,
+                                  userAgentPackageName: 'com.zheer.weatherapp',
+                                ),
+                              if (isRadar && _latestRadarPath != null)
+                                TileLayer(
+                                  urlTemplate:
+                                      'https://tilecache.rainviewer.com$_latestRadarPath/256/{z}/{x}/{y}/2/1_1.png',
+                                  maxZoom: 18.0,
+                                  maxNativeZoom: 8,
+                                  userAgentPackageName: 'com.zheer.weatherapp',
+                                ),
+                              if (_mapLayerType == 'temp')
+                                Opacity(
+                                  opacity: 0.75,
+                                  child: TileLayer(
+                                    urlTemplate:
+                                        'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=9aa93b9c725757b0a302f69461246761',
+                                    maxZoom: 18.0,
+                                    maxNativeZoom: 10,
+                                    userAgentPackageName:
+                                        'com.zheer.weatherapp',
+                                  ),
+                                ),
+                              if (_mapLayerType == 'wind')
+                                Opacity(
+                                  opacity: 0.85,
+                                  child: TileLayer(
+                                    urlTemplate:
+                                        'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+                                    maxZoom: 18.0,
+                                    maxNativeZoom: 18,
+                                    userAgentPackageName:
+                                        'com.zheer.weatherapp',
+                                  ),
+                                ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(_latitude, _longitude),
+                                    width: 75,
+                                    height: 65,
+                                    child: AnimatedBuilder(
+                                      animation: _mapIconBounceAnimation,
+                                      builder: (context, child) {
+                                        return Transform.translate(
+                                          offset: Offset(
+                                            0,
+                                            _mapIconBounceAnimation.value,
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: CupertinoColors.systemRed,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              boxShadow: const [
+                                                BoxShadow(
+                                                  color: Colors.black26,
+                                                  blurRadius: 6,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Text(
+                                              _cityName,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          const Icon(
+                                            CupertinoIcons.location_solid,
+                                            color: CupertinoColors.systemRed,
+                                            size: 30,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          if (isZoomTooHighForRadar)
+                            Positioned(
+                              top: 80,
+                              left: 20,
+                              right: 20,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 16,
+                                    sigmaY: 16,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade900.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.25,
+                                          ),
+                                          blurRadius: 10,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          CupertinoIcons
+                                              .exclamationmark_triangle_fill,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'ئاستی زووم زۆر بەرزە! ڕاداری جوڵەی باران تەنها لە دوورەوە دەبینرێت (زووم کەم بکەرەوە)',
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            top: 16,
+                            left: 16,
+                            child: PressableCard(
+                              onTap: () => Navigator.pop(dialogContext),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 20,
+                                    sigmaY: 20,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: _isDarkMode
+                                          ? Colors.black45
+                                          : Colors.white60,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: _iosGlassBorder,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.xmark,
+                                      color: _darkText,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(22),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                  sigmaX: 20,
+                                  sigmaY: 20,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: _isDarkMode
+                                        ? Colors.black45
+                                        : Colors.white60,
+                                    borderRadius: BorderRadius.circular(22),
+                                    border: Border.all(color: _iosGlassBorder),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      _buildMapLayerButton(
+                                        icon: CupertinoIcons.cloud_rain_fill,
+                                        label: 'جوڵەی باران و هەور',
+                                        type: 'radar',
+                                        setStateDialog: setStateDialog,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      _buildMapLayerButton(
+                                        icon: CupertinoIcons.wind,
+                                        label: 'جوڵەی با و هەڵکردن',
+                                        type: 'wind',
+                                        setStateDialog: setStateDialog,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      _buildMapLayerButton(
+                                        icon: CupertinoIcons.thermometer,
+                                        label: 'پلەی گەرمی و بەرزونزمی',
+                                        type: 'temp',
+                                        setStateDialog: setStateDialog,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      _buildMapLayerButton(
+                                        icon: CupertinoIcons.globe,
+                                        label: 'Google Earth',
+                                        type: 'google_earth',
+                                        setStateDialog: setStateDialog,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      _buildMapLayerButton(
+                                        icon: CupertinoIcons.map_pin_ellipse,
+                                        label: 'نەخشەی ئاسایی',
+                                        type: 'normal',
+                                        setStateDialog: setStateDialog,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 20,
+                            left: 20,
+                            right: 20,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                  sigmaX: 16,
+                                  sigmaY: 16,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.75),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.circle_fill,
+                                            color: _mapLayerType == 'radar'
+                                                ? Colors.greenAccent
+                                                : _mapLayerType == 'wind'
+                                                    ? Colors.cyanAccent
+                                                    : _mapLayerType == 'temp'
+                                                        ? Colors.orangeAccent
+                                                        : Colors.blueAccent,
+                                            size: 10,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _mapLayerType == 'radar'
+                                                ? 'ڕاداری ڕاستەوخۆ و جوڵەی بارانی سات بە سات'
+                                                : _mapLayerType == 'wind'
+                                                    ? 'نەخشەی شەپۆل و ئاراستەی جوڵەی با'
+                                                    : _mapLayerType == 'temp'
+                                                        ? 'نەخشەی بەرزی و نزمی لەگەڵ پلەی گەرمی ناوچەکان'
+                                                        : _mapLayerType ==
+                                                                'google_earth'
+                                                            ? 'نەخشەی مانگی دەستکرد (Google Earth)'
+                                                            : 'نەخشەی تۆپۆگرافی ئاسایی',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (_mapLayerType == 'temp') ...[
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: const [
+                                            Text(
+                                              'سارد / بەفر 🔵  ',
+                                              style: TextStyle(
+                                                color: Colors.lightBlueAccent,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              'مامناوەند 🟢  ',
+                                              style: TextStyle(
+                                                color: Colors.greenAccent,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              'گەرم 🟡  ',
+                                              style: TextStyle(
+                                                color: Colors.amberAccent,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              'زۆر گەرم 🔴',
+                                              style: TextStyle(
+                                                color: Colors.redAccent,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                      if (_mapLayerType == 'wind') ...[
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: const [
+                                            Text(
+                                              'هێمن ⚪  ',
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              'شەپۆلی ئاسایی 🔵  ',
+                                              style: TextStyle(
+                                                color: Colors.cyanAccent,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              'بای بەهێز و توند 🟣',
+                                              style: TextStyle(
+                                                color: Colors.purpleAccent,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildMapLayerButton({
+    required IconData icon,
+    required String label,
+    required String type,
+    required StateSetter setStateDialog,
+  }) {
+    final bool isSelected = _mapLayerType == type;
+    return Tooltip(
+      message: label,
+      child: PressableCard(
+        onTap: () {
+          setStateDialog(() {
+            _mapLayerType = type;
+          });
+          setState(() {
+            _mapLayerType = type;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? _purple
+                : (_isDarkMode
+                    ? Colors.white10
+                    : Colors.black.withValues(alpha: 0.06)),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: isSelected ? Colors.white : _darkText,
+            size: 18,
+          ),
+        ),
+      ),
     );
   }
 
@@ -2268,46 +2603,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Color _getWeatherCardTint(int code) {
-    if (_isDarkMode) {
-      if (code == 0) return const Color(0xFF2E261A).withValues(alpha: 0.6);
-      if (code >= 1 && code <= 3) {
-        return const Color(0xFF1E293B).withValues(alpha: 0.6);
-      }
-      if (code >= 45 && code <= 48) {
-        return const Color(0xFF334155).withValues(alpha: 0.6);
-      }
-      if (code >= 51 && code <= 67 || code >= 80 && code <= 82) {
-        return const Color(0xFF1E3A8A).withValues(alpha: 0.5);
-      }
-      if (code >= 71 && code <= 77 || code == 85 || code == 86) {
-        return const Color(0xFF0F766E).withValues(alpha: 0.5);
-      }
-      if (code >= 95 && code <= 99) {
-        return const Color(0xFF4C1D95).withValues(alpha: 0.5);
-      }
-      return Colors.white.withValues(alpha: 0.08);
-    }
-
-    if (code == 0) return const Color(0xFFFFFBEB).withValues(alpha: 0.7);
-    if (code >= 1 && code <= 3) {
-      return const Color(0xFFF1F5F9).withValues(alpha: 0.7);
-    }
-    if (code >= 45 && code <= 48) {
-      return const Color(0xFFF8FAFC).withValues(alpha: 0.7);
-    }
-    if (code >= 51 && code <= 67 || code >= 80 && code <= 82) {
-      return const Color(0xFFEFF6FF).withValues(alpha: 0.7);
-    }
-    if (code >= 71 && code <= 77 || code == 85 || code == 86) {
-      return const Color(0xFFF0FDF4).withValues(alpha: 0.7);
-    }
-    if (code >= 95 && code <= 99) {
-      return const Color(0xFFFAF5FF).withValues(alpha: 0.7);
-    }
-    return Colors.white.withValues(alpha: 0.7);
-  }
-
   String _getWeatherDescription(int code) {
     if (code == 0) return 'ساماڵ و ڕووناک';
     if (code == 1) return 'کەمێک هەور';
@@ -2716,7 +3011,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            date,
+                                            date.length > 5
+                                                ? date.substring(5)
+                                                : date,
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w700,
@@ -3457,6 +3754,81 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildHorizontalDetailRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required String value,
+    required Color cardBg,
+    required Color borderColor,
+  }) {
+    return PressableCard(
+      onTap: () {},
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: borderColor),
+          boxShadow: _neuShadowsSmall,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(icon, size: 24, color: iconColor),
+                ),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                        color: _darkText,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: _secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Text(
+              value,
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+                color: _darkText,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showDayDetailDialog(
     BuildContext context,
     String date,
@@ -3534,406 +3906,389 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     final bool isDark = _isDarkMode;
     final Color iosCardBg = isDark
-        ? const Color(0xFF1E293B).withValues(alpha: 0.55)
-        : Colors.white.withValues(alpha: 0.55);
+        ? const Color(0xFF1E293B).withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.65);
     final Color iosBorderColor = _iosGlassBorder;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) {
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 20,
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _iosAtmosphereGradient,
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(36),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35),
-                  child: Container(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 18,
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF0F172A).withValues(alpha: 0.82)
-                          : const Color(0xFFF1F5F9).withValues(alpha: 0.88),
-                      borderRadius: BorderRadius.circular(36),
-                      border: Border.all(color: iosBorderColor, width: 1.5),
-                      boxShadow: _neuShadows,
-                    ),
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        PressableCard(
+                          onTap: () => Navigator.pop(bottomSheetContext),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.black.withValues(alpha: 0.4)
+                                      : Colors.white.withValues(alpha: 0.6),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: iosBorderColor),
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.xmark,
+                                  color: _darkText,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              PressableCard(
-                                onTap: () => Navigator.pop(dialogContext),
-                                child: Container(
-                                  padding: const EdgeInsets.all(7),
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? Colors.white12
-                                        : Colors.black.withValues(alpha: 0.06),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    CupertinoIcons.xmark,
-                                    color: _darkText,
-                                    size: 15,
-                                  ),
+                              Text(
+                                '$_cityName • $dayName',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.4,
+                                  color: _darkText,
                                 ),
                               ),
-                              Expanded(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      '$_cityName • $dayName',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.4,
-                                        color: _darkText,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      date,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: _secondaryText,
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(height: 2),
+                              Text(
+                                date,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: _secondaryText,
                                 ),
-                              ),
-                              const SizedBox(width: 32),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: iosCardBg,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: iosBorderColor),
-                              boxShadow: _neuShadowsSmall,
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    _buildWeatherVisualIcon(
-                                      weatherCode,
-                                      1,
-                                      size: 46,
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Text(
-                                      '${maxT?.round() ?? 0}°',
-                                      style: TextStyle(
-                                        fontSize: 42,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -1.5,
-                                        color: _darkText,
-                                        height: 1.0,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _getWeatherDescription(weatherCode),
-                                  style: TextStyle(
-                                    fontSize: 15.5,
-                                    fontWeight: FontWeight.w900,
-                                    color: _purple,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'بەرزترین: ${maxT?.round() ?? 0}°  •  نزمترین: ${minT?.round() ?? 0}°',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: _secondaryText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: iosCardBg,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: iosBorderColor),
-                              boxShadow: _neuShadowsSmall,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.clock_fill,
-                                      size: 15,
-                                      color: _secondaryText,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'پێشبینی کاتژمێر بە کاتژمێر',
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w900,
-                                        color: _secondaryText,
-                                        letterSpacing: -0.2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Divider(color: iosBorderColor, height: 1),
-                                const SizedBox(height: 10),
-                                SizedBox(
-                                  height: 98,
-                                  child: ListView.separated(
-                                    scrollDirection: Axis.horizontal,
-                                    physics: const BouncingScrollPhysics(),
-                                    itemCount: matchedIndices.length,
-                                    separatorBuilder: (context, i) =>
-                                        const SizedBox(width: 10),
-                                    itemBuilder: (context, index) {
-                                      final realIdx = matchedIndices[index];
-                                      final String fullTime =
-                                          data.hourlyTimes[realIdx];
-                                      final String timeOnly =
-                                          fullTime.contains('T')
-                                              ? fullTime
-                                                  .split('T')[1]
-                                                  .substring(0, 5)
-                                              : fullTime;
-
-                                      String formattedTime12 = timeOnly;
-                                      int hour24 = 0;
-                                      try {
-                                        hour24 = int.parse(
-                                          timeOnly.split(':')[0],
-                                        );
-                                        String period =
-                                            hour24 >= 12 ? 'پ.ن' : 'ب';
-                                        int hour12 = hour24 % 12;
-                                        if (hour12 == 0) hour12 = 12;
-                                        formattedTime12 = '$hour12 $period';
-                                      } catch (_) {}
-
-                                      final double temp =
-                                          data.hourlyTemperatures[realIdx];
-                                      final int hCode =
-                                          data.hourlyWeatherCodes[realIdx];
-                                      final int isDayTime =
-                                          (hour24 >= 6 && hour24 < 19) ? 1 : 0;
-
-                                      return Container(
-                                        width: 54,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.white
-                                                  .withValues(alpha: 0.05)
-                                              : Colors.black
-                                                  .withValues(alpha: 0.03),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: iosBorderColor.withValues(
-                                              alpha: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              formattedTime12,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                                color: _secondaryText,
-                                              ),
-                                            ),
-                                            _buildWeatherVisualIcon(
-                                              hCode,
-                                              isDayTime,
-                                              size: 24,
-                                            ),
-                                            Text(
-                                              '${temp.round()}°',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          GridView.count(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 1.35,
-                            children: [
-                              _buildIosInfoCard(
-                                title: 'بارانبارین',
-                                value: '${totalRain.toStringAsFixed(1)} مم',
-                                subtitle: 'بڕی پێشبینیکراو',
-                                icon: CupertinoIcons.drop_fill,
-                                iconColor: Colors.blueAccent,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                              _buildIosInfoCard(
-                                title: 'بڕی بەفر',
-                                value: '${totalSnow.toStringAsFixed(1)} سم',
-                                subtitle: 'کۆی بەفربارین',
-                                icon: CupertinoIcons.snow,
-                                iconColor: Colors.lightBlueAccent,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                              _buildIosInfoCard(
-                                title: 'خێرایی با',
-                                value: '${maxWind.round()} کم/س',
-                                subtitle: 'بەرزترین هەڵکردن',
-                                icon: CupertinoIcons.wind,
-                                iconColor: Colors.tealAccent.shade700,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
-                              ),
-                              _buildIosInfoCard(
-                                title: 'شێی هەوا',
-                                value: '%$avgHumidity',
-                                subtitle: 'تێکڕای ڕێژەی شێ',
-                                icon: CupertinoIcons.circle_grid_hex_fill,
-                                iconColor: Colors.cyan,
-                                cardBg: iosCardBg,
-                                borderColor: iosBorderColor,
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 44),
+                      ],
                     ),
                   ),
-                ),
+                  Expanded(
+                    child: ListView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 18,
+                          ),
+                          decoration: BoxDecoration(
+                            color: iosCardBg,
+                            borderRadius: BorderRadius.circular(28),
+                            border:
+                                Border.all(color: iosBorderColor, width: 1.5),
+                            boxShadow: _neuShadows,
+                          ),
+                          child: Column(
+                            children: [
+                              AnimatedBuilder(
+                                animation: _floatingIconAnimation,
+                                builder: (context, child) {
+                                  return Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      _floatingIconAnimation.value,
+                                    ),
+                                    child: child,
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isDark
+                                        ? Colors.black26
+                                        : Colors.white.withValues(alpha: 0.7),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: _buildWeatherVisualIcon(
+                                    weatherCode,
+                                    1,
+                                    size: 58,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                '${maxT?.round() ?? 0}°',
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -2.0,
+                                  color: _darkText,
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _getWeatherDescription(weatherCode),
+                                style: TextStyle(
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: _purple,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.arrow_up,
+                                    size: 13,
+                                    color: CupertinoColors.systemRed,
+                                  ),
+                                  Text(
+                                    ' بەرزترین: ${maxT?.round() ?? 0}°  ',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: _secondaryText,
+                                    ),
+                                  ),
+                                  Container(
+                                    height: 12,
+                                    width: 1,
+                                    color: iosBorderColor,
+                                  ),
+                                  Icon(
+                                    CupertinoIcons.arrow_down,
+                                    size: 13,
+                                    color: Colors.blueAccent,
+                                  ),
+                                  Text(
+                                    ' نزمترین: ${minT?.round() ?? 0}°',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: _secondaryText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: iosCardBg,
+                            borderRadius: BorderRadius.circular(26),
+                            border:
+                                Border.all(color: iosBorderColor, width: 1.2),
+                            boxShadow: _neuShadowsSmall,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.clock_fill,
+                                    size: 16,
+                                    color: _secondaryText,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'پێشبینی کاتژمێر بە کاتژمێر',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: _secondaryText,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Divider(color: iosBorderColor, height: 1),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 106,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  itemCount: matchedIndices.length,
+                                  separatorBuilder: (context, i) =>
+                                      const SizedBox(width: 12),
+                                  itemBuilder: (context, index) {
+                                    final realIdx = matchedIndices[index];
+                                    final String fullTime =
+                                        data.hourlyTimes[realIdx];
+                                    final String timeOnly = fullTime
+                                            .contains('T')
+                                        ? fullTime.split('T')[1].substring(0, 5)
+                                        : fullTime;
+
+                                    String formattedTime12 = timeOnly;
+                                    int hour24 = 0;
+                                    try {
+                                      hour24 = int.parse(
+                                        timeOnly.split(':')[0],
+                                      );
+                                      String period =
+                                          hour24 >= 12 ? 'پ.ن' : 'ب';
+                                      int hour12 = hour24 % 12;
+                                      if (hour12 == 0) hour12 = 12;
+                                      formattedTime12 = '$hour12 $period';
+                                    } catch (_) {}
+
+                                    final double temp =
+                                        data.hourlyTemperatures[realIdx];
+                                    final int hCode =
+                                        data.hourlyWeatherCodes[realIdx];
+                                    final int isDayTime =
+                                        (hour24 >= 6 && hour24 < 19) ? 1 : 0;
+
+                                    return Container(
+                                      width: 58,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.white
+                                                .withValues(alpha: 0.05)
+                                            : Colors.black
+                                                .withValues(alpha: 0.03),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: iosBorderColor.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            formattedTime12,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: _secondaryText,
+                                            ),
+                                          ),
+                                          _buildWeatherVisualIcon(
+                                            hCode,
+                                            isDayTime,
+                                            size: 26,
+                                          ),
+                                          Text(
+                                            '${temp.round()}°',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w900,
+                                              color: _darkText,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _buildHorizontalDetailRow(
+                          icon: CupertinoIcons.drop_fill,
+                          iconColor: Colors.blueAccent,
+                          title: 'بارانبارین',
+                          subtitle: 'بڕی بارانی پێشبینیکراو بۆ ئەم ڕۆژە',
+                          value: '${totalRain.toStringAsFixed(1)} مم',
+                          cardBg: iosCardBg,
+                          borderColor: iosBorderColor,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildHorizontalDetailRow(
+                          icon: CupertinoIcons.snow,
+                          iconColor: Colors.lightBlueAccent,
+                          title: 'بڕی بەفربارین',
+                          subtitle: 'کۆی گشتی بەفری پێشبینیکراو',
+                          value: '${totalSnow.toStringAsFixed(1)} سم',
+                          cardBg: iosCardBg,
+                          borderColor: iosBorderColor,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildHorizontalDetailRow(
+                          icon: CupertinoIcons.wind,
+                          iconColor: Colors.tealAccent.shade700,
+                          title: 'خێرایی با',
+                          subtitle: 'بەرزترین ئاستی هەڵکردنی با لە کاتژمێرێکدا',
+                          value: '${maxWind.round()} کم/س',
+                          cardBg: iosCardBg,
+                          borderColor: iosBorderColor,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildHorizontalDetailRow(
+                          icon: CupertinoIcons.circle_grid_hex_fill,
+                          iconColor: Colors.cyan,
+                          title: 'شێی هەوا',
+                          subtitle: 'تێکڕای ڕێژەی شێداری هەوا بە درێژایی ڕۆژ',
+                          value: '%$avgHumidity',
+                          cardBg: iosCardBg,
+                          borderColor: iosBorderColor,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildIosInfoCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    required Color iconColor,
-    required Color cardBg,
-    required Color borderColor,
-  }) {
-    return PressableCard(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: borderColor),
-          boxShadow: _neuShadowsSmall,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 16, color: iconColor),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: _secondaryText,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: _darkText,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                color: _secondaryText.withValues(alpha: 0.8),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -3961,64 +4316,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             boxShadow: _neuShadows,
           ),
           child: child,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard({
-    required IconData icon,
-    required Color iconColor,
-    required Color cardColor,
-    required String title,
-    required String value,
-    required bool wideScreen,
-  }) {
-    return PressableCard(
-      onTap: () {},
-      child: _buildNeuContainer(
-        radius: 14,
-        customColor: cardColor,
-        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 3),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: iconColor, size: 14),
-            ),
-            const SizedBox(height: 2),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: _secondaryText,
-                ),
-              ),
-            ),
-            const SizedBox(height: 1),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                value,
-                textDirection: TextDirection.ltr,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                  color: _darkText,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -4122,6 +4419,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     _earthquakeData = EarthquakeService.getRecentEarthquakes();
                   });
                   _fetchElevation(_latitude, _longitude);
+                  _fetchLiveRadarTimestamp();
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -4191,6 +4489,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     width: 175,
                     height: 175,
                     decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFFFF7A00),
+                          Color(0xFF0066FF),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       borderRadius: BorderRadius.circular(40),
                       boxShadow: [
                         BoxShadow(
@@ -4200,45 +4506,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(40),
-                      child: Image.asset(
-                        'assets/images/app_icon.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Image.asset(
-                            'assets/app_icon.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (ctx2, err2, st2) {
-                              return Image.asset(
-                                'assets/images/logo.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx3, err3, st3) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFFFF7A00),
-                                          Color(0xFF0066FF),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(40),
-                                    ),
-                                    child: const Center(
-                                      child: Icon(
-                                        CupertinoIcons.cloud_sun_bolt_fill,
-                                        color: Colors.white,
-                                        size: 85,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
+                    child: const Center(
+                      child: Icon(
+                        CupertinoIcons.cloud_sun_bolt_fill,
+                        color: Colors.white,
+                        size: 85,
                       ),
                     ),
                   ),
@@ -4271,6 +4543,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_showSplash) {
       return _buildSplashScreenView();
     }
+
+    final bool isDark = _isDarkMode;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -4310,9 +4584,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 final double todayMin = data.minTemps.isNotEmpty
                     ? data.minTemps[0]
                     : data.currentTemp.toDouble();
-                final double todayRainSum = data.precipitationSums.isNotEmpty
-                    ? data.precipitationSums[0]
-                    : 0.0;
                 final String todayDate = data.times.isNotEmpty
                     ? data.times[0]
                     : DateTime.now().toIso8601String().split('T').first;
@@ -4406,7 +4677,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 children: [
                                   PressableCard(
                                     onTap: () =>
-                                        _showZoomEarthMapDialog(context),
+                                        _showFullscreenMapDialog(context),
                                     child: Container(
                                       padding: const EdgeInsets.all(9),
                                       decoration: BoxDecoration(
@@ -4496,56 +4767,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildSummaryCard(
-                                  icon: CupertinoIcons.thermometer_sun,
-                                  iconColor: CupertinoColors.systemRed,
-                                  cardColor: _isDarkMode
-                                      ? const Color(
-                                          0xFF1E293B,
-                                        ).withValues(alpha: 0.5)
-                                      : Colors.white.withValues(alpha: 0.6),
-                                  title: 'بەرزترین',
-                                  value: '${todayMax.round()}°',
-                                  wideScreen: wideScreen,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: _buildSummaryCard(
-                                  icon: CupertinoIcons.snow,
-                                  iconColor: Colors.blueAccent,
-                                  cardColor: _isDarkMode
-                                      ? const Color(
-                                          0xFF1E293B,
-                                        ).withValues(alpha: 0.5)
-                                      : Colors.white.withValues(alpha: 0.6),
-                                  title: 'نزمترین',
-                                  value: '${todayMin.round()}°',
-                                  wideScreen: wideScreen,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: _buildSummaryCard(
-                                  icon: CupertinoIcons.drop,
-                                  iconColor: Colors.cyan,
-                                  cardColor: _isDarkMode
-                                      ? const Color(
-                                          0xFF1E293B,
-                                        ).withValues(alpha: 0.5)
-                                      : Colors.white.withValues(alpha: 0.6),
-                                  title: 'باران',
-                                  value:
-                                      '${todayRainSum.toStringAsFixed(1)} مم',
-                                  wideScreen: wideScreen,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
                           Builder(
                             builder: (context) {
                               final int hourlyCount = min(
@@ -4572,65 +4793,220 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               final int currentHour = DateTime.now().hour;
                               final bool isCurrentlyDay =
                                   currentHour >= 6 && currentHour < 19;
+                              final int currentWeatherCode =
+                                  data.weatherCodes.isNotEmpty
+                                      ? data.weatherCodes[0]
+                                      : 0;
+                              final String currentCondition =
+                                  _getWeatherDescription(currentWeatherCode);
 
                               return _buildNeuContainer(
-                                radius: 20,
+                                radius: 24,
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 12,
+                                  horizontal: 14,
+                                  vertical: 14,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            _buildWeatherVisualIcon(
-                                              0,
-                                              isCurrentlyDay ? 1 : 0,
-                                              size: 26,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              isCurrentlyDay
-                                                  ? 'ئێستا: ڕۆژە'
-                                                  : 'ئێستا: شەوە',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w900,
-                                                color: _darkText,
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: _isDarkMode
+                                              ? [
+                                                  Colors.white
+                                                      .withValues(alpha: 0.07),
+                                                  Colors.white
+                                                      .withValues(alpha: 0.02),
+                                                ]
+                                              : [
+                                                  Colors.white
+                                                      .withValues(alpha: 0.85),
+                                                  Colors.white
+                                                      .withValues(alpha: 0.45),
+                                                ],
+                                          begin: Alignment.topRight,
+                                          end: Alignment.bottomLeft,
+                                        ),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: _iosGlassBorder.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              AnimatedBuilder(
+                                                animation:
+                                                    _floatingIconAnimation,
+                                                builder: (context, child) {
+                                                  return Transform.translate(
+                                                    offset: Offset(
+                                                      0,
+                                                      _floatingIconAnimation
+                                                          .value,
+                                                    ),
+                                                    child: child,
+                                                  );
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    8,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: _isDarkMode
+                                                        ? Colors.black26
+                                                        : Colors.white
+                                                            .withValues(
+                                                            alpha: 0.7,
+                                                          ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                          alpha: 0.08,
+                                                        ),
+                                                        blurRadius: 10,
+                                                        offset:
+                                                            const Offset(0, 4),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child:
+                                                      _buildWeatherVisualIcon(
+                                                    currentWeatherCode,
+                                                    isCurrentlyDay ? 1 : 0,
+                                                    size: 38,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
+                                              const SizedBox(width: 12),
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        '${data.currentTemp.round()}',
+                                                        style: TextStyle(
+                                                          fontSize: 34,
+                                                          fontWeight:
+                                                              FontWeight.w900,
+                                                          letterSpacing: -1.5,
+                                                          height: 1.0,
+                                                          color: _darkText,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        '°C',
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          color: _purple,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    currentCondition,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      color: _darkText,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: _purple.withValues(
-                                              alpha: 0.18,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 3,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: _purple.withValues(
+                                                    alpha: 0.15,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  isCurrentlyDay
+                                                      ? 'ڕۆژ ☀️'
+                                                      : 'شەو 🌙',
+                                                  style: TextStyle(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: _purple,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    CupertinoIcons.arrow_up,
+                                                    size: 11,
+                                                    color: CupertinoColors
+                                                        .systemRed,
+                                                  ),
+                                                  Text(
+                                                    '${todayMax.round()}° ',
+                                                    style: TextStyle(
+                                                      fontSize: 12.5,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      color: _darkText,
+                                                    ),
+                                                  ),
+                                                  Icon(
+                                                    CupertinoIcons.arrow_down,
+                                                    size: 11,
+                                                    color: Colors.blueAccent,
+                                                  ),
+                                                  Text(
+                                                    '${todayMin.round()}°',
+                                                    style: TextStyle(
+                                                      fontSize: 12.5,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      color: _darkText,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
                                           ),
-                                          child: Text(
-                                            '٢٤ کاتژمێر',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w900,
-                                              color: _purple,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 10),
                                     SizedBox(
                                       height: 64,
                                       child: ListView.builder(
@@ -5085,130 +5461,339 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          ...List.generate(forecastDays, (i) {
-                            final String date = data.times[i];
-                            final String dayName = _getKurdishDayName(date);
-                            final dynamic maxT = data.maxTemps[i];
-                            final dynamic minT = data.minTemps[i];
-                            final int code = data.weatherCodes.length > i
-                                ? data.weatherCodes[i]
-                                : 0;
-                            final Color cardTint = _getWeatherCardTint(code);
-                            final String weatherDesc =
-                                _getWeatherDescription(code);
-                            final int roundMax = maxT?.round() ?? 0;
-                            final int roundMin = minT?.round() ?? 0;
+                          Builder(
+                            builder: (context) {
+                              double minOverall = 100.0;
+                              double maxOverall = -100.0;
 
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: PressableCard(
-                                onTap: () {
-                                  _showDayDetailDialog(
-                                    context,
-                                    date,
-                                    maxT,
-                                    minT,
-                                    code,
-                                    data,
-                                  );
-                                },
-                                child: _buildNeuContainer(
-                                  radius: 18,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
-                                  ),
-                                  customColor: cardTint,
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          AnimatedBuilder(
-                                            animation: _rotateAnimation,
-                                            builder: (context, child) {
-                                              return Transform.rotate(
-                                                angle: _rotateAnimation.value,
-                                                child: child,
-                                              );
-                                            },
-                                            child: _buildWeatherVisualIcon(
-                                              code,
-                                              1,
-                                              size: 34,
+                              for (int j = 0; j < forecastDays; j++) {
+                                if (data.minTemps.length > j &&
+                                    data.minTemps[j] < minOverall) {
+                                  minOverall = data.minTemps[j];
+                                }
+                                if (data.maxTemps.length > j &&
+                                    data.maxTemps[j] > maxOverall) {
+                                  maxOverall = data.maxTemps[j];
+                                }
+                              }
+
+                              if (minOverall >= maxOverall) {
+                                minOverall = 0.0;
+                                maxOverall = 40.0;
+                              }
+
+                              final double tempSpan = maxOverall - minOverall;
+
+                              return Column(
+                                children: List.generate(forecastDays, (i) {
+                                  final String date = data.times[i];
+                                  final String dayName = i == 0
+                                      ? 'ئەمڕۆ'
+                                      : _getKurdishDayName(date);
+                                  final dynamic maxT = data.maxTemps[i];
+                                  final dynamic minT = data.minTemps[i];
+                                  final dynamic rainProb =
+                                      data.precipitationProbabilities.length > i
+                                          ? data.precipitationProbabilities[i]
+                                          : 0;
+                                  final int code = data.weatherCodes.length > i
+                                      ? data.weatherCodes[i]
+                                      : 0;
+
+                                  final double currentMin =
+                                      (minT is num) ? minT.toDouble() : 0.0;
+                                  final double currentMax =
+                                      (maxT is num) ? maxT.toDouble() : 35.0;
+
+                                  final double leftRatio =
+                                      ((currentMin - minOverall) / tempSpan)
+                                          .clamp(0.0, 1.0);
+                                  final double rightRatio =
+                                      ((currentMax - minOverall) / tempSpan)
+                                          .clamp(0.0, 1.0);
+                                  final double widthRatio =
+                                      (rightRatio - leftRatio).clamp(0.05, 1.0);
+
+                                  double currentTempRatio = 0.0;
+                                  if (i == 0) {
+                                    currentTempRatio =
+                                        ((data.currentTemp - currentMin) /
+                                                (currentMax - currentMin))
+                                            .clamp(0.0, 1.0);
+                                  }
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: PressableCard(
+                                      onTap: () {
+                                        _showDayDetailDialog(
+                                          context,
+                                          date,
+                                          maxT,
+                                          minT,
+                                          code,
+                                          data,
+                                        );
+                                      },
+                                      child: _buildNeuContainer(
+                                        radius: 18,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            SizedBox(
+                                              width: 78,
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    dayName,
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      fontWeight: i == 0
+                                                          ? FontWeight.w900
+                                                          : FontWeight.w800,
+                                                      color: _darkText,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    date,
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: _secondaryText
+                                                          .withValues(
+                                                              alpha: 0.85),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                dayName,
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 16.5,
-                                                  letterSpacing: -0.3,
-                                                  color: _darkText,
+                                            AnimatedBuilder(
+                                              animation: _floatingIconAnimation,
+                                              builder: (context, child) {
+                                                return Transform.translate(
+                                                  offset: Offset(
+                                                    0,
+                                                    _floatingIconAnimation
+                                                        .value,
+                                                  ),
+                                                  child: child,
+                                                );
+                                              },
+                                              child: SizedBox(
+                                                width: 38,
+                                                child: _buildWeatherVisualIcon(
+                                                  code,
+                                                  1,
+                                                  size: 26,
                                                 ),
                                               ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                date,
+                                            ),
+                                            if (rainProb > 0)
+                                              SizedBox(
+                                                width: 44,
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(
+                                                      CupertinoIcons.drop_fill,
+                                                      size: 11,
+                                                      color: Colors.blueAccent,
+                                                    ),
+                                                    const SizedBox(width: 2),
+                                                    Text(
+                                                      '$rainProb٪',
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        color:
+                                                            Colors.blueAccent,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            else
+                                              const SizedBox(width: 44),
+                                            SizedBox(
+                                              width: 32,
+                                              child: Text(
+                                                '${currentMin.round()}°',
+                                                textAlign: TextAlign.left,
+                                                textDirection:
+                                                    TextDirection.ltr,
                                                 style: TextStyle(
+                                                  fontSize: 14.5,
                                                   fontWeight: FontWeight.w700,
-                                                  fontSize: 12.5,
-                                                  color: _secondaryText
-                                                      .withValues(alpha: 0.9),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Text(
-                                                '$roundMax° / $roundMin°',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 15.5,
-                                                  letterSpacing: -0.3,
-                                                  color: _darkText,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                weatherDesc,
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w800,
-                                                  fontSize: 13,
                                                   color: _secondaryText,
                                                 ),
                                               ),
-                                            ],
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Icon(
-                                            CupertinoIcons.chevron_back,
-                                            size: 16,
-                                            color: _secondaryText.withValues(
-                                              alpha: 0.7,
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: LayoutBuilder(
+                                                builder:
+                                                    (context, barConstraints) {
+                                                  final double barWidth =
+                                                      barConstraints.maxWidth;
+                                                  final double segmentLeft =
+                                                      barWidth * leftRatio;
+                                                  final double segmentWidth =
+                                                      barWidth * widthRatio;
+
+                                                  return Stack(
+                                                    alignment:
+                                                        Alignment.centerLeft,
+                                                    children: [
+                                                      Container(
+                                                        height: 6,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: isDark
+                                                              ? Colors.white
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.12)
+                                                              : Colors.black
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.08),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(4),
+                                                        ),
+                                                      ),
+                                                      Positioned(
+                                                        left: segmentLeft,
+                                                        child: Container(
+                                                          width: segmentWidth,
+                                                          height: 6,
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        4),
+                                                            gradient:
+                                                                const LinearGradient(
+                                                              colors: [
+                                                                Color(
+                                                                    0xFF38BDF8),
+                                                                Color(
+                                                                    0xFFFBBF24),
+                                                                Color(
+                                                                    0xFFFB923C),
+                                                                Color(
+                                                                    0xFFEF4444),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      if (i == 0)
+                                                        Positioned(
+                                                          left: (segmentLeft +
+                                                                  (segmentWidth *
+                                                                      currentTempRatio) -
+                                                                  5)
+                                                              .clamp(
+                                                            0.0,
+                                                            barWidth - 10,
+                                                          ),
+                                                          child: Container(
+                                                            width: 10,
+                                                            height: 10,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color:
+                                                                  Colors.white,
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                              border:
+                                                                  Border.all(
+                                                                color: isDark
+                                                                    ? const Color(
+                                                                        0xFF0F172A)
+                                                                    : const Color(
+                                                                        0xFF38BDF8),
+                                                                width: 2,
+                                                              ),
+                                                              boxShadow: const [
+                                                                BoxShadow(
+                                                                  color: Colors
+                                                                      .black38,
+                                                                  blurRadius: 4,
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            SizedBox(
+                                              width: 32,
+                                              child: Text(
+                                                '${currentMax.round()}°',
+                                                textAlign: TextAlign.right,
+                                                textDirection:
+                                                    TextDirection.ltr,
+                                                style: TextStyle(
+                                                  fontSize: 14.5,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: _darkText,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            AnimatedBuilder(
+                                              animation: _handBounceAnimation,
+                                              builder: (context, child) {
+                                                return Transform.translate(
+                                                  offset: Offset(
+                                                    _handBounceAnimation.value,
+                                                    0,
+                                                  ),
+                                                  child: child,
+                                                );
+                                              },
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  color: _purple.withValues(
+                                                      alpha: 0.12),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  CupertinoIcons
+                                                      .hand_point_left_fill,
+                                                  size: 13,
+                                                  color: _purple,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
+                                    ),
+                                  );
+                                }),
+                              );
+                            },
+                          ),
                           const SizedBox(height: 12),
                           _buildAirQualityImageBannerCard(),
                           const SizedBox(height: 18),
