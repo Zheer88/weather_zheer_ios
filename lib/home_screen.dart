@@ -4876,10 +4876,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 const SizedBox(width: 20),
                 _buildWeatherInfoBadge(
+                  iconColor: Colors.amberAccent,
+                  icon: CupertinoIcons.sunset,
                   value: sunTimes['sunset'] ?? '19:12',
                   label: 'خۆرئاوابوون',
-                  icon: CupertinoIcons.sunset,
-                  iconColor: Colors.amberAccent,
                 ),
               ],
             ),
