@@ -1030,7 +1030,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'پیس',
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 1.5,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFEF4444),
                             ),
@@ -4577,18 +4577,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         : DateTime.now().toIso8601String().split('T').first;
     final Map<String, String> sunTimes = _getSunTimes(todayDate);
 
-    // دیاریکردنی کاتژمێرەکان: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00
+    // دیاریکردنی کاتژمێرەکان بە سیستەمی 12 سەعەتی (AM / PM)
     final List<int> targetHours = [0, 3, 6, 9, 12, 15, 18, 21];
-    final List<String> hourLabels = [
-      '00:00',
-      '03:00',
-      '06:00',
-      '09:00',
-      '12:00',
-      '15:00',
-      '18:00',
-      '21:00'
-    ];
+    final List<String> hourLabels = targetHours.map((h) {
+      if (h == 0) return '12 AM';
+      if (h < 12) return '$h AM';
+      if (h == 12) return '12 PM';
+      return '${h - 12} PM';
+    }).toList();
 
     List<double> sampledTemps = [];
     List<double> sampledRain = [];
@@ -4706,7 +4702,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             // 3. هێڵکاری پلەی گەرمی (ڕاستەقینە لەگەڵ ئایکۆنی جوڵاو) و هێڵی باران/پلەی نزم لە خوارەوەی هێڵی زەرد
             SizedBox(
-              height: 155,
+              height: 100,
               child: Stack(
                 children: [
                   Positioned.fill(
