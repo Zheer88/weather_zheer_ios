@@ -2631,7 +2631,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return kurdishDays[date.weekday - 1];
   }
 
-  /// هێڵکاری کەشوهەوا لەگەڵ گرادیێنت و سێبەری نەرمی ژێر هێڵی گەرمی و باران
+  /// هێڵکاری کەشوهەوا بە کەمکردنەوەی کاتژمێرەکان و دانانی ئایکۆنی ڕاستەقینەی کەشوهەوا لەسەر پۆینتی ئێستا
   Widget _buildWeatherChartCard(WeatherModel data) {
     final int currentHour = DateTime.now().hour;
     final bool isCurrentlyDay = currentHour >= 6 && currentHour < 19;
@@ -2645,12 +2645,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final Map<String, String> sunTimes = _getSunTimes(todayDate);
 
     final List<int> targetHours = [0, 3, 6, 9, 12, 15, 18, 21];
-    final List<String> hourLabels = targetHours.map((h) {
-      if (h == 0) return '12 AM';
-      if (h < 12) return '$h AM';
-      if (h == 12) return '12 PM';
-      return '${h - 12} PM';
-    }).toList();
+    final int currentTargetIndex = (currentHour ~/ 3).clamp(0, 7);
 
     List<double> sampledTemps = [];
     List<double> sampledRain = [];
@@ -2742,29 +2737,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Divider(
               color: _iosGlassBorder,
               height: 1,
             ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: hourLabels.map((lbl) {
-                return Text(
-                  lbl,
-                  style: TextStyle(
-                    color: _secondaryText,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              }).toList(),
-            ),
             const SizedBox(height: 8),
+
+            // هێڵکاری پلەی گەرمی و باران لەگەڵ سێبەر و ئایکۆنی ڕاستەقینە لەسەر خاڵی کاتی ئێستا
             SizedBox(
-              height: 78,
+              height: 86,
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   Positioned.fill(
                     child: LineChart(
@@ -2772,7 +2756,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         minX: 0,
                         maxX: 7,
                         minY: minT - 6,
-                        maxY: maxT + 10,
+                        maxY: maxT + 12,
                         gridData: const FlGridData(show: false),
                         titlesData: const FlTitlesData(show: false),
                         borderData: FlBorderData(show: false),
@@ -2807,16 +2791,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             dotData: FlDotData(
                               show: true,
                               getDotPainter: (spot, percent, bar, index) {
+                                if (index == currentTargetIndex) {
+                                  return FlDotCirclePainter(
+                                    radius: 0.0,
+                                    color: Colors.transparent,
+                                    strokeWidth: 0,
+                                    strokeColor: Colors.transparent,
+                                  );
+                                }
                                 return FlDotCirclePainter(
-                                  radius:
-                                      index == (currentHour ~/ 3).clamp(0, 7)
-                                          ? 5.0
-                                          : 3.5,
-                                  color: index == (currentHour ~/ 3).clamp(0, 7)
-                                      ? Colors.orangeAccent
-                                      : (_isDarkMode
-                                          ? const Color(0xFF0F172A)
-                                          : Colors.white),
+                                  radius: 3.5,
+                                  color: _isDarkMode
+                                      ? const Color(0xFF0F172A)
+                                      : Colors.white,
                                   strokeWidth: 2.2,
                                   strokeColor: const Color(0xFFFF8A00),
                                 );
@@ -2862,22 +2849,77 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       children: List.generate(8, (idx) {
                         double t = sampledTemps[idx];
                         double ratio = (t - minT) / (maxT - minT);
-                        double topPos = 40 - (ratio * 30);
+                        double topPos = 46 - (ratio * 32);
+                        final bool isCurrentPoint = idx == currentTargetIndex;
+                        final int spotCode = sampledCodes[idx];
+                        final int spotHour = targetHours[idx];
+                        final bool spotIsDay = spotHour >= 6 && spotHour < 19;
+
                         return SizedBox(
-                          width: 20,
-                          child: Column(
+                          width: 28,
+                          child: Stack(
+                            alignment: Alignment.topCenter,
+                            clipBehavior: Clip.none,
                             children: [
-                              SizedBox(
-                                height: topPos.clamp(0, 60),
-                              ),
-                              Text(
-                                '${t.round()}°',
-                                style: TextStyle(
-                                  color: _darkText,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w900,
+                              Positioned(
+                                top: (topPos - 22).clamp(0, 56),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isCurrentPoint)
+                                      AnimatedBuilder(
+                                        animation: _floatingIconAnimation,
+                                        builder: (context, child) {
+                                          return Transform.translate(
+                                            offset: Offset(
+                                              0,
+                                              _floatingIconAnimation.value *
+                                                  0.4,
+                                            ),
+                                            child: child,
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            color: _isDarkMode
+                                                ? const Color(0xFF1E293B)
+                                                : Colors.white,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: const Color(0xFFFF8A00),
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.25,
+                                                ),
+                                                blurRadius: 4,
+                                              ),
+                                            ],
+                                          ),
+                                          child: _buildWeatherVisualIcon(
+                                            spotCode,
+                                            spotIsDay ? 1 : 0,
+                                            size: 15,
+                                          ),
+                                        ),
+                                      ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${t.round()}°',
+                                      style: TextStyle(
+                                        color: isCurrentPoint
+                                            ? const Color(0xFFFF8A00)
+                                            : _darkText,
+                                        fontSize: isCurrentPoint ? 10.5 : 9.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
@@ -2888,19 +2930,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Divider(
               color: _iosGlassBorder,
               height: 1,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
+
+            // کاتژمێر و پلەکانی گەرمی لە بەشی خوارەوە
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: List.generate(8, (i) {
-                final String time = hourLabels[i];
+                final int hourNum = targetHours[i];
+                final String time = hourNum == 0
+                    ? '12 AM'
+                    : hourNum < 12
+                        ? '$hourNum AM'
+                        : hourNum == 12
+                            ? '12 PM'
+                            : '${hourNum - 12} PM';
                 final double temp = sampledTemps[i];
                 final int code = sampledCodes[i];
-                final int hourNum = targetHours[i];
                 final bool isDayTime = hourNum >= 6 && hourNum < 19;
 
                 return Column(
@@ -2913,32 +2963,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    AnimatedBuilder(
-                      animation: _floatingIconAnimation,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(
-                            0,
-                            (i % 2 == 0 ? 1 : -1) *
-                                _floatingIconAnimation.value *
-                                0.5,
-                          ),
-                          child: child,
-                        );
-                      },
-                      child: _buildWeatherVisualIcon(
-                        code,
-                        isDayTime ? 1 : 0,
-                        size: 24,
-                      ),
+                    const SizedBox(height: 4),
+                    _buildWeatherVisualIcon(
+                      code,
+                      isDayTime ? 1 : 0,
+                      size: 20,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       '${temp.round()}°',
                       style: TextStyle(
                         color: _darkText,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -2946,12 +2982,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
               }),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Divider(
               color: _iosGlassBorder,
               height: 1,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
+
+            // بەشی خۆرهەڵاتن و خۆرئاوابوون
             Directionality(
               textDirection: TextDirection.rtl,
               child: Row(
@@ -4760,6 +4798,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// کارتی بچووککراوە و سەرنجڕاکێش بۆ بەشەکانی خوارەوە
   Widget _buildActionCard({
     required String title,
     required IconData icon,
