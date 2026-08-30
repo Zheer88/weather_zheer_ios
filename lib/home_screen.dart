@@ -2631,7 +2631,400 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return kurdishDays[date.weekday - 1];
   }
 
-  /// کردنەوەی ڕاپۆرتی پێشکەوتووی کەشوهەوا بە تەواوی ڕووبەری شاشە (Full-screen Modal)
+  /// هێڵکاری کەشوهەوا لەگەڵ گرادیێنت و سێبەری نەرمی ژێر هێڵی گەرمی و باران
+  Widget _buildWeatherChartCard(WeatherModel data) {
+    final int currentHour = DateTime.now().hour;
+    final bool isCurrentlyDay = currentHour >= 6 && currentHour < 19;
+    final int currentWeatherCode =
+        data.weatherCodes.isNotEmpty ? data.weatherCodes[0] : 0;
+    final String currentCondition = _getWeatherDescription(currentWeatherCode);
+
+    final String todayDate = data.times.isNotEmpty
+        ? data.times[0]
+        : DateTime.now().toIso8601String().split('T').first;
+    final Map<String, String> sunTimes = _getSunTimes(todayDate);
+
+    final List<int> targetHours = [0, 3, 6, 9, 12, 15, 18, 21];
+    final List<String> hourLabels = targetHours.map((h) {
+      if (h == 0) return '12 AM';
+      if (h < 12) return '$h AM';
+      if (h == 12) return '12 PM';
+      return '${h - 12} PM';
+    }).toList();
+
+    List<double> sampledTemps = [];
+    List<double> sampledRain = [];
+    List<double> sampledMinTemps = [];
+    List<int> sampledCodes = [];
+
+    for (int h in targetHours) {
+      if (data.hourlyTemperatures.length > h) {
+        sampledTemps.add(data.hourlyTemperatures[h]);
+      } else {
+        sampledTemps.add(data.currentTemp);
+      }
+
+      if (data.hourlyPrecipitations.length > h) {
+        sampledRain.add(data.hourlyPrecipitations[h]);
+      } else {
+        sampledRain.add(0.0);
+      }
+
+      if (data.hourlyTemperatures.length > h) {
+        sampledMinTemps.add(data.hourlyTemperatures[h] - 4.0);
+      } else {
+        sampledMinTemps.add(data.currentTemp - 4.0);
+      }
+
+      if (data.hourlyWeatherCodes.length > h) {
+        sampledCodes.add(data.hourlyWeatherCodes[h]);
+      } else {
+        sampledCodes.add(0);
+      }
+    }
+
+    double minT = sampledTemps.reduce(min);
+    double maxT = sampledTemps.reduce(max);
+    if (minT == maxT) {
+      minT -= 5;
+      maxT += 5;
+    }
+
+    double maxRain = sampledRain.isNotEmpty ? sampledRain.reduce(max) : 1.0;
+    if (maxRain <= 0) maxRain = 1.0;
+
+    return _buildNeuContainer(
+      radius: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _floatingIconAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(0, _floatingIconAnimation.value * 0.5),
+                          child: child,
+                        );
+                      },
+                      child: _buildWeatherVisualIcon(
+                        currentWeatherCode,
+                        isCurrentlyDay ? 1 : 0,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${data.currentTemp.round()}°',
+                      style: TextStyle(
+                        color: _darkText,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  currentCondition,
+                  style: TextStyle(
+                    color: _darkText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Divider(
+              color: _iosGlassBorder,
+              height: 1,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: hourLabels.map((lbl) {
+                return Text(
+                  lbl,
+                  style: TextStyle(
+                    color: _secondaryText,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 78,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: LineChart(
+                      LineChartData(
+                        minX: 0,
+                        maxX: 7,
+                        minY: minT - 6,
+                        maxY: maxT + 10,
+                        gridData: const FlGridData(show: false),
+                        titlesData: const FlTitlesData(show: false),
+                        borderData: FlBorderData(show: false),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: List.generate(8, (i) {
+                              return FlSpot(
+                                i.toDouble(),
+                                sampledTemps[i],
+                              );
+                            }),
+                            isCurved: true,
+                            curveSmoothness: 0.38,
+                            color: const Color(0xFFFF8A00),
+                            barWidth: 2.8,
+                            isStrokeCapRound: true,
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFFFF8A00)
+                                      .withValues(alpha: 0.38),
+                                  const Color(0xFFFBBF24)
+                                      .withValues(alpha: 0.18),
+                                  const Color(0xFFFBBF24)
+                                      .withValues(alpha: 0.0),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                            dotData: FlDotData(
+                              show: true,
+                              getDotPainter: (spot, percent, bar, index) {
+                                return FlDotCirclePainter(
+                                  radius:
+                                      index == (currentHour ~/ 3).clamp(0, 7)
+                                          ? 5.0
+                                          : 3.5,
+                                  color: index == (currentHour ~/ 3).clamp(0, 7)
+                                      ? Colors.orangeAccent
+                                      : (_isDarkMode
+                                          ? const Color(0xFF0F172A)
+                                          : Colors.white),
+                                  strokeWidth: 2.2,
+                                  strokeColor: const Color(0xFFFF8A00),
+                                );
+                              },
+                            ),
+                          ),
+                          LineChartBarData(
+                            spots: List.generate(8, (i) {
+                              return FlSpot(
+                                i.toDouble(),
+                                minT - 3 + (sampledRain[i] / maxRain) * 4,
+                              );
+                            }),
+                            isCurved: true,
+                            curveSmoothness: 0.38,
+                            color: const Color(0xFF8B5CF6),
+                            barWidth: 2.4,
+                            isStrokeCapRound: true,
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF8B5CF6)
+                                      .withValues(alpha: 0.40),
+                                  const Color(0xFF8B5CF6)
+                                      .withValues(alpha: 0.15),
+                                  const Color(0xFF8B5CF6)
+                                      .withValues(alpha: 0.0),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                            dotData: const FlDotData(show: false),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(8, (idx) {
+                        double t = sampledTemps[idx];
+                        double ratio = (t - minT) / (maxT - minT);
+                        double topPos = 40 - (ratio * 30);
+                        return SizedBox(
+                          width: 20,
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                height: topPos.clamp(0, 60),
+                              ),
+                              Text(
+                                '${t.round()}°',
+                                style: TextStyle(
+                                  color: _darkText,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Divider(
+              color: _iosGlassBorder,
+              height: 1,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(8, (i) {
+                final String time = hourLabels[i];
+                final double temp = sampledTemps[i];
+                final int code = sampledCodes[i];
+                final int hourNum = targetHours[i];
+                final bool isDayTime = hourNum >= 6 && hourNum < 19;
+
+                return Column(
+                  children: [
+                    Text(
+                      time,
+                      style: TextStyle(
+                        color: _secondaryText,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    AnimatedBuilder(
+                      animation: _floatingIconAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(
+                            0,
+                            (i % 2 == 0 ? 1 : -1) *
+                                _floatingIconAnimation.value *
+                                0.5,
+                          ),
+                          child: child,
+                        );
+                      },
+                      child: _buildWeatherVisualIcon(
+                        code,
+                        isDayTime ? 1 : 0,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${temp.round()}°',
+                      style: TextStyle(
+                        color: _darkText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+            const SizedBox(height: 10),
+            Divider(
+              color: _iosGlassBorder,
+              height: 1,
+            ),
+            const SizedBox(height: 10),
+            Directionality(
+              textDirection: TextDirection.rtl,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildWeatherInfoBadge(
+                    label: 'خۆرهەڵات',
+                    customIconPath: 'assets/images/sunrise.png',
+                    value: sunTimes['sunrise'] ?? '05:42',
+                  ),
+                  const SizedBox(width: 24),
+                  _buildWeatherInfoBadge(
+                    label: 'خۆرئاوابوون',
+                    customIconPath: 'assets/images/sunset.png',
+                    value: sunTimes['sunset'] ?? '19:12',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeatherInfoBadge({
+    required String label,
+    required String customIconPath,
+    required String value,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: _secondaryText,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Image.asset(
+          customIconPath,
+          width: 24,
+          height: 24,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(
+              customIconPath.contains('sunrise') ||
+                      customIconPath.contains('hhhh')
+                  ? CupertinoIcons.sunrise_fill
+                  : CupertinoIcons.sunset_fill,
+              size: 22,
+              color: const Color(0xFFFBBF24),
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+        Text(
+          value,
+          textDirection: TextDirection.ltr,
+          style: TextStyle(
+            color: _darkText,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showDetailedAIReportDialog(BuildContext context, WeatherModel data) {
     final int totalDays = min(6, data.times.length);
     final bool isDark = _isDarkMode;
@@ -4367,7 +4760,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// کارتی بچووککراوە و سەرنجڕاکێش بۆ بەشەکانی خوارەوە
   Widget _buildActionCard({
     required String title,
     required IconData icon,
@@ -4582,385 +4974,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-    );
-  }
-
-  /// هێڵکاری کەشوهەوا لەگەڵ ئایکۆن و کاتەکانی خۆرهەڵات و خۆرئاوابوون
-  Widget _buildWeatherChartCard(WeatherModel data) {
-    final int currentHour = DateTime.now().hour;
-    final bool isCurrentlyDay = currentHour >= 6 && currentHour < 19;
-    final int currentWeatherCode =
-        data.weatherCodes.isNotEmpty ? data.weatherCodes[0] : 0;
-    final String currentCondition = _getWeatherDescription(currentWeatherCode);
-
-    final String todayDate = data.times.isNotEmpty
-        ? data.times[0]
-        : DateTime.now().toIso8601String().split('T').first;
-    final Map<String, String> sunTimes = _getSunTimes(todayDate);
-
-    // دیاریکردنی کاتژمێرەکان بە سیستەمی 12 سەعەتی (AM / PM)
-    final List<int> targetHours = [0, 3, 6, 9, 12, 15, 18, 21];
-    final List<String> hourLabels = targetHours.map((h) {
-      if (h == 0) return '12 AM';
-      if (h < 12) return '$h AM';
-      if (h == 12) return '12 PM';
-      return '${h - 12} PM';
-    }).toList();
-
-    List<double> sampledTemps = [];
-    List<double> sampledRain = [];
-    List<double> sampledMinTemps = [];
-    List<int> sampledCodes = [];
-
-    for (int h in targetHours) {
-      if (data.hourlyTemperatures.length > h) {
-        sampledTemps.add(data.hourlyTemperatures[h]);
-      } else {
-        sampledTemps.add(data.currentTemp);
-      }
-
-      if (data.hourlyPrecipitations.length > h) {
-        sampledRain.add(data.hourlyPrecipitations[h]);
-      } else {
-        sampledRain.add(0.0);
-      }
-
-      if (data.hourlyTemperatures.length > h) {
-        sampledMinTemps.add(data.hourlyTemperatures[h] - 4.0);
-      } else {
-        sampledMinTemps.add(data.currentTemp - 4.0);
-      }
-
-      if (data.hourlyWeatherCodes.length > h) {
-        sampledCodes.add(data.hourlyWeatherCodes[h]);
-      } else {
-        sampledCodes.add(0);
-      }
-    }
-
-    double minT = sampledTemps.reduce(min);
-    double maxT = sampledTemps.reduce(max);
-    if (minT == maxT) {
-      minT -= 5;
-      maxT += 5;
-    }
-
-    double maxRain = sampledRain.isNotEmpty ? sampledRain.reduce(max) : 1.0;
-    if (maxRain <= 0) maxRain = 1.0;
-
-    return _buildNeuContainer(
-      radius: 18,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 1. بەشی سەرەوە: پلەی گەرمی ئێستا لە چەپ و نوسینی بارودۆخەکە لە ڕاست بە ستایلی تۆخ
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    AnimatedBuilder(
-                      animation: _floatingIconAnimation,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(0, _floatingIconAnimation.value * 0.5),
-                          child: child,
-                        );
-                      },
-                      child: _buildWeatherVisualIcon(
-                        currentWeatherCode,
-                        isCurrentlyDay ? 1 : 0,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${data.currentTemp.round()}°',
-                      style: TextStyle(
-                        color: _darkText,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  currentCondition,
-                  style: TextStyle(
-                    color: _darkText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Divider(
-              color: _iosGlassBorder,
-              height: 1,
-            ),
-            const SizedBox(height: 10),
-
-            // 2. کاتژمێرەکان لە سەرەوەی هێڵکارییەکە بە تەواوی پانی
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: hourLabels.map((lbl) {
-                return Text(
-                  lbl,
-                  style: TextStyle(
-                    color: _secondaryText,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 8),
-
-            // 3. هێڵکاری پلەی گەرمی و هێڵی باران
-            SizedBox(
-              height: 70,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: LineChart(
-                      LineChartData(
-                        minX: 0,
-                        maxX: 7,
-                        minY: minT - 6,
-                        maxY: maxT + 10,
-                        gridData: const FlGridData(show: false),
-                        titlesData: const FlTitlesData(show: false),
-                        borderData: FlBorderData(show: false),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: List.generate(8, (i) {
-                              return FlSpot(
-                                i.toDouble(),
-                                sampledTemps[i],
-                              );
-                            }),
-                            isCurved: true,
-                            curveSmoothness: 0.35,
-                            color: const Color(0xFFFBBF24),
-                            barWidth: 2.5,
-                            isStrokeCapRound: true,
-                            dotData: FlDotData(
-                              show: true,
-                              getDotPainter: (spot, percent, bar, index) {
-                                return FlDotCirclePainter(
-                                  radius:
-                                      index == (currentHour ~/ 3).clamp(0, 7)
-                                          ? 5.0
-                                          : 3.5,
-                                  color: index == (currentHour ~/ 3).clamp(0, 7)
-                                      ? Colors.orangeAccent
-                                      : (_isDarkMode
-                                          ? const Color(0xFF0F172A)
-                                          : Colors.white),
-                                  strokeWidth: 2.2,
-                                  strokeColor: const Color(0xFFFBBF24),
-                                );
-                              },
-                            ),
-                          ),
-                          LineChartBarData(
-                            spots: List.generate(8, (i) {
-                              return FlSpot(
-                                i.toDouble(),
-                                minT - 3 + (sampledRain[i] / maxRain) * 3,
-                              );
-                            }),
-                            isCurved: true,
-                            curveSmoothness: 0.35,
-                            color: Colors.blueAccent,
-                            barWidth: 2.0,
-                            isStrokeCapRound: true,
-                            dotData: const FlDotData(show: false),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(8, (idx) {
-                        double t = sampledTemps[idx];
-                        double ratio = (t - minT) / (maxT - minT);
-                        double topPos = 40 - (ratio * 30);
-                        return SizedBox(
-                          width: 20,
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                height: topPos.clamp(0, 60),
-                              ),
-                              Text(
-                                '${t.round()}°',
-                                style: TextStyle(
-                                  color: _darkText,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Divider(
-              color: _iosGlassBorder,
-              height: 1,
-            ),
-            const SizedBox(height: 10),
-
-            // 4. ئایکۆن و پلەکانی گەرمی بە تەواوی پانی کارتەکە
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(8, (i) {
-                final String time = hourLabels[i];
-                final double temp = sampledTemps[i];
-                final int code = sampledCodes[i];
-                final int hourNum = targetHours[i];
-                final bool isDayTime = hourNum >= 6 && hourNum < 19;
-
-                return Column(
-                  children: [
-                    Text(
-                      time,
-                      style: TextStyle(
-                        color: _secondaryText,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    AnimatedBuilder(
-                      animation: _floatingIconAnimation,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(
-                            0,
-                            (i % 2 == 0 ? 1 : -1) *
-                                _floatingIconAnimation.value *
-                                0.5,
-                          ),
-                          child: child,
-                        );
-                      },
-                      child: _buildWeatherVisualIcon(
-                        code,
-                        isDayTime ? 1 : 0,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${temp.round()}°',
-                      style: TextStyle(
-                        color: _darkText,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            ),
-            const SizedBox(height: 10),
-            Divider(
-              color: _iosGlassBorder,
-              height: 1,
-            ),
-            const SizedBox(height: 10),
-
-            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون
-            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون
-            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون
-            Directionality(
-              textDirection: TextDirection.rtl,
-              child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center, // دەکەوێتە ناوەڕاست
-                children: [
-                  _buildWeatherInfoBadge(
-                    label: 'خۆرهەڵات',
-                    customIconPath: 'assets/images/sunrise.png',
-                    value: sunTimes['sunrise'] ?? '05:42',
-                  ),
-                  const SizedBox(
-                      width: 24), // <--- ئەم ژمارەیە (24) بۆشایی نێوانیانە
-                  _buildWeatherInfoBadge(
-                    label: 'خۆرئاوابوون',
-                    customIconPath: 'assets/images/sunset.png',
-                    value: sunTimes['sunset'] ?? '19:12',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// ڕێکخستنی بەشی خۆرهەڵات و خۆرئاوابوون
-  Widget _buildWeatherInfoBadge({
-    required String label,
-    required String customIconPath,
-    required String value,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: _secondaryText,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Image.asset(
-          customIconPath,
-          width: 24,
-          height: 24,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(
-              customIconPath.contains('sunrise') ||
-                      customIconPath.contains('hhhh')
-                  ? CupertinoIcons.sunrise_fill
-                  : CupertinoIcons.sunset_fill,
-              size: 22,
-              color: const Color(0xFFFBBF24),
-            );
-          },
-        ),
-        const SizedBox(width: 8),
-        Text(
-          value,
-          textDirection: TextDirection.ltr,
-          style: TextStyle(
-            color: _darkText,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
     );
   }
 
@@ -5180,12 +5193,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ),
                           const SizedBox(height: 12),
-
-                          // کارتی هێڵکاری کەشوهەوا
                           _buildWeatherChartCard(data),
-
                           const SizedBox(height: 12),
-                          // کارتە بچووککراوە و سەرنجڕاکێشەکانی کەشوهەوا، باران و بومەلەرزە
                           Row(
                             children: [
                               _buildActionCard(
