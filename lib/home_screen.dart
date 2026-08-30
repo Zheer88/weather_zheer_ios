@@ -2631,6 +2631,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return kurdishDays[date.weekday - 1];
   }
 
+  /// کردنەوەی ڕاپۆرتی پێشکەوتووی کەشوهەوا بە تەواوی ڕووبەری شاشە (Full-screen Modal)
   void _showDetailedAIReportDialog(BuildContext context, WeatherModel data) {
     final int totalDays = min(6, data.times.length);
     final bool isDark = _isDarkMode;
@@ -2639,84 +2640,98 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         : Colors.white.withValues(alpha: 0.65);
     final Color iosBorderColor = _iosGlassBorder;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) {
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 24,
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _iosAtmosphereGradient,
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(32),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF0F172A).withValues(alpha: 0.75)
-                        : Colors.white.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(32),
-                    border: Border.all(color: iosBorderColor, width: 1.5),
-                    boxShadow: _neuShadows,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(7),
-                                  decoration: BoxDecoration(
-                                    color: _purple.withValues(alpha: 0.18),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    CupertinoIcons.sparkles,
-                                    color: _purple,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'ڕاپۆرتی کەشوهەوا ($_cityName)',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.4,
-                                    color: _darkText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            PressableCard(
-                              onTap: () => Navigator.pop(dialogContext),
+                        PressableCard(
+                          onTap: () => Navigator.pop(bottomSheetContext),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                               child: Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   color: isDark
-                                      ? Colors.white12
-                                      : Colors.black.withValues(alpha: 0.08),
+                                      ? Colors.black.withValues(alpha: 0.4)
+                                      : Colors.white.withValues(alpha: 0.6),
                                   shape: BoxShape.circle,
+                                  border: Border.all(color: iosBorderColor),
                                 ),
                                 child: Icon(
                                   CupertinoIcons.xmark,
                                   color: _darkText,
-                                  size: 16,
+                                  size: 18,
                                 ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 14),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$_cityName • ڕاپۆرتی کەشوهەوا',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.4,
+                                  color: _darkText,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'پێشبینی $totalDays ڕۆژی داهاتوو',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: _secondaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 44),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      children: [
                         ...List.generate(totalDays, (i) {
                           final String dayName = _getKurdishDayName(
                             data.times[i],
@@ -2732,103 +2747,107 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               maxT is num ? maxT.toDouble() : 35.0;
                           final double tempShadow = tempSun - 3.5;
 
-                          return PressableCard(
-                            onTap: () {},
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: iosCardBg,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: iosBorderColor),
-                                boxShadow: _neuShadowsSmall,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          _buildWeatherVisualIcon(
-                                            weatherCode,
-                                            1,
-                                            size: 34,
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                dayName,
-                                                style: TextStyle(
-                                                  fontSize: 16.5,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: _darkText,
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: PressableCard(
+                              onTap: () {},
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: iosCardBg,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: iosBorderColor),
+                                  boxShadow: _neuShadowsSmall,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            _buildWeatherVisualIcon(
+                                              weatherCode,
+                                              1,
+                                              size: 34,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  dayName,
+                                                  style: TextStyle(
+                                                    fontSize: 16.5,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: _darkText,
+                                                  ),
                                                 ),
-                                              ),
-                                              Text(
-                                                date,
-                                                style: TextStyle(
-                                                  fontSize: 12.5,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: _secondaryText,
+                                                Text(
+                                                  date,
+                                                  style: TextStyle(
+                                                    fontSize: 12.5,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: _secondaryText,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      Text(
-                                        _getWeatherDescription(weatherCode),
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                          color: _purple,
+                                              ],
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Divider(color: iosBorderColor, height: 1),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _buildIosReportStat(
-                                        icon: CupertinoIcons.sun_max,
-                                        iconColor: Colors.amber,
-                                        title: 'لە بەرخۆر',
-                                        value: '${tempSun.toStringAsFixed(1)}°',
-                                      ),
-                                      _buildIosReportStat(
-                                        icon: CupertinoIcons.tree,
-                                        iconColor: Colors.teal,
-                                        title: 'لە سێبەر',
-                                        value:
-                                            '${tempShadow.toStringAsFixed(1)}°',
-                                      ),
-                                      _buildIosReportStat(
-                                        icon: CupertinoIcons.snow,
-                                        iconColor: Colors.blueAccent,
-                                        title: 'نزمترین',
-                                        value: '${minT?.round() ?? 0}°',
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                        Text(
+                                          _getWeatherDescription(weatherCode),
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w900,
+                                            color: _purple,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Divider(color: iosBorderColor, height: 1),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        _buildIosReportStat(
+                                          icon: CupertinoIcons.sun_max,
+                                          iconColor: Colors.amber,
+                                          title: 'لە بەرخۆر',
+                                          value:
+                                              '${tempSun.toStringAsFixed(1)}°',
+                                        ),
+                                        _buildIosReportStat(
+                                          icon: CupertinoIcons.tree,
+                                          iconColor: Colors.teal,
+                                          title: 'لە سێبەر',
+                                          value:
+                                              '${tempShadow.toStringAsFixed(1)}°',
+                                        ),
+                                        _buildIosReportStat(
+                                          icon: CupertinoIcons.snow,
+                                          iconColor: Colors.blueAccent,
+                                          title: 'نزمترین',
+                                          value: '${minT?.round() ?? 0}°',
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );
                         }),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -4348,6 +4367,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// کارتی بچووککراوە و سەرنجڕاکێش بۆ بەشەکانی خوارەوە
   Widget _buildActionCard({
     required String title,
     required IconData icon,
@@ -4358,27 +4378,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: PressableCard(
         onTap: onTap,
         child: _buildNeuContainer(
-          radius: 16,
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          radius: 14,
+          padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 3),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, size: 16, color: color),
+                child: Icon(icon, size: 15, color: color),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.2,
                     color: _darkText,
@@ -4565,7 +4585,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// هێڵکاری کەشوهەوا لەگەڵ ئایکۆن و کاتەکانی خۆرهەڵات و خۆرئاوابوون بە تەواوی لەم سەر و ئەو سەری کارتەکە
+  /// هێڵکاری کەشوهەوا لەگەڵ ئایکۆن و کاتەکانی خۆرهەڵات و خۆرئاوابوون
   Widget _buildWeatherChartCard(WeatherModel data) {
     final int currentHour = DateTime.now().hour;
     final bool isCurrentlyDay = currentHour >= 6 && currentHour < 19;
@@ -4701,7 +4721,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 8),
 
-            // 3. هێڵکاری پلەی گەرمی (ڕاستەقینە لەگەڵ ئایکۆنی جوڵاو) و هێڵی باران/پلەی نزم لە خوارەوەی هێڵی زەرد
+            // 3. هێڵکاری پلەی گەرمی و هێڵی باران
             SizedBox(
               height: 70,
               child: Stack(
@@ -4865,17 +4885,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 10),
 
-            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون لەم سەر و ئەو سەری کارتەکە
+            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون
+            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون
+            // 5. بەشی خۆرهەڵاتن و خۆرئاوابوون
             Directionality(
               textDirection: TextDirection.rtl,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // دەکەوێتە ناوەڕاست
                 children: [
                   _buildWeatherInfoBadge(
                     label: 'خۆرهەڵات',
                     customIconPath: 'assets/images/sunrise.png',
                     value: sunTimes['sunrise'] ?? '05:42',
                   ),
+                  const SizedBox(
+                      width: 24), // <--- ئەم ژمارەیە (24) بۆشایی نێوانیانە
                   _buildWeatherInfoBadge(
                     label: 'خۆرئاوابوون',
                     customIconPath: 'assets/images/sunset.png',
@@ -4890,7 +4915,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// ڕێکخستنی بەشی خۆرهەڵات و خۆرئاوابوون: (١- نوسین، ٢- ئایکۆن، ٣- کاتەکە)
+  /// ڕێکخستنی بەشی خۆرهەڵات و خۆرئاوابوون
   Widget _buildWeatherInfoBadge({
     required String label,
     required String customIconPath,
@@ -4900,7 +4925,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // ١- نوسین
         Text(
           label,
           style: TextStyle(
@@ -4910,7 +4934,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(width: 8),
-        // ٢- ئایکۆن
         Image.asset(
           customIconPath,
           width: 24,
@@ -4928,7 +4951,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
         ),
         const SizedBox(width: 8),
-        // ٣- کاتەکە
         Text(
           value,
           textDirection: TextDirection.ltr,
@@ -5163,6 +5185,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           _buildWeatherChartCard(data),
 
                           const SizedBox(height: 12),
+                          // کارتە بچووککراوە و سەرنجڕاکێشەکانی کەشوهەوا، باران و بومەلەرزە
                           Row(
                             children: [
                               _buildActionCard(
@@ -5175,7 +5198,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               const SizedBox(width: 8),
                               _buildActionCard(
                                 title: 'بڕی باران',
-                                icon: CupertinoIcons.drop,
+                                icon: CupertinoIcons.cloud_heavyrain_fill,
                                 color: Colors.blueAccent,
                                 onTap: () =>
                                     _showRainReportDialog(context, data),
