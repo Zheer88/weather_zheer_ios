@@ -2744,9 +2744,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 8),
 
-            // هێڵکاری پلەی گەرمی و باران لەگەڵ سێبەر و ئایکۆنی ڕاستەقینە لەسەر خاڵی کاتی ئێستا
+            // هێڵکاری پلەی گەرمی و باران لەگەڵ سێبەر و ئایکۆنی گەورە و سادەی ڕاستەقینە لەسەر خاڵی کاتی ئێستا
             SizedBox(
-              height: 86,
+              height: 94,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -2856,13 +2856,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         final bool spotIsDay = spotHour >= 6 && spotHour < 19;
 
                         return SizedBox(
-                          width: 28,
+                          width: 32,
                           child: Stack(
                             alignment: Alignment.topCenter,
                             clipBehavior: Clip.none,
                             children: [
                               Positioned(
-                                top: (topPos - 22).clamp(0, 56),
+                                top: (topPos - (isCurrentPoint ? 30 : 22))
+                                    .clamp(-6, 56),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -2879,31 +2880,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             child: child,
                                           );
                                         },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(2),
-                                          decoration: BoxDecoration(
-                                            color: _isDarkMode
-                                                ? const Color(0xFF1E293B)
-                                                : Colors.white,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(0xFFFF8A00),
-                                              width: 1.5,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(
-                                                  alpha: 0.25,
-                                                ),
-                                                blurRadius: 4,
-                                              ),
-                                            ],
-                                          ),
-                                          child: _buildWeatherVisualIcon(
-                                            spotCode,
-                                            spotIsDay ? 1 : 0,
-                                            size: 15,
-                                          ),
+                                        child: _buildWeatherVisualIcon(
+                                          spotCode,
+                                          spotIsDay ? 1 : 0,
+                                          size: 24,
                                         ),
                                       ),
                                     const SizedBox(height: 2),
@@ -2913,7 +2893,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         color: isCurrentPoint
                                             ? const Color(0xFFFF8A00)
                                             : _darkText,
-                                        fontSize: isCurrentPoint ? 10.5 : 9.5,
+                                        fontSize: isCurrentPoint ? 11 : 9.5,
                                         fontWeight: FontWeight.w900,
                                       ),
                                       textAlign: TextAlign.center,
@@ -2989,7 +2969,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 8),
 
-            // بەشی خۆرهەڵاتن و خۆرئاوابوون
+            // بەشی خۆرهەڵاتن و خۆرئاوابوون بە جووڵەی سەرنجڕاکێش
             Directionality(
               textDirection: TextDirection.rtl,
               child: Row(
@@ -3033,21 +3013,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(width: 8),
-        Image.asset(
-          customIconPath,
-          width: 24,
-          height: 24,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(
-              customIconPath.contains('sunrise') ||
-                      customIconPath.contains('hhhh')
-                  ? CupertinoIcons.sunrise_fill
-                  : CupertinoIcons.sunset_fill,
-              size: 22,
-              color: const Color(0xFFFBBF24),
+        AnimatedBuilder(
+          animation: _floatingIconAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, _floatingIconAnimation.value * 0.4),
+              child: child,
             );
           },
+          child: Image.asset(
+            customIconPath,
+            width: 24,
+            height: 24,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(
+                customIconPath.contains('sunrise') ||
+                        customIconPath.contains('hhhh')
+                    ? CupertinoIcons.sunrise_fill
+                    : CupertinoIcons.sunset_fill,
+                size: 22,
+                color: const Color(0xFFFBBF24),
+              );
+            },
+          ),
         ),
         const SizedBox(width: 8),
         Text(
@@ -4410,7 +4399,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 12,
+                      vertical: 8,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4422,7 +4411,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: BackdropFilter(
                               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                               child: Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: isDark
                                       ? Colors.black.withValues(alpha: 0.4)
@@ -4433,7 +4422,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: Icon(
                                   CupertinoIcons.xmark,
                                   color: _darkText,
-                                  size: 18,
+                                  size: 16,
                                 ),
                               ),
                             ),
@@ -4447,18 +4436,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 '$_cityName • $dayName',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 16.5,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -0.4,
                                   color: _darkText,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 1),
                               Text(
                                 date,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 11.5,
                                   fontWeight: FontWeight.w700,
                                   color: _secondaryText,
                                 ),
@@ -4466,7 +4455,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 44),
+                        const SizedBox(width: 38),
                       ],
                     ),
                   ),
@@ -4475,18 +4464,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 6,
+                        vertical: 4,
                       ),
                       children: [
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
+                            horizontal: 18,
+                            vertical: 12,
                           ),
                           decoration: BoxDecoration(
                             color: iosCardBg,
-                            borderRadius: BorderRadius.circular(28),
+                            borderRadius: BorderRadius.circular(22),
                             border:
                                 Border.all(color: iosBorderColor, width: 1.5),
                             boxShadow: _neuShadows,
@@ -4504,51 +4493,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     child: child,
                                   );
                                 },
-                                child: Container(
-                                  padding: const EdgeInsets.all(14),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isDark
-                                        ? Colors.black26
-                                        : Colors.white.withValues(alpha: 0.7),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.08,
-                                        ),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: _buildWeatherVisualIcon(
-                                    weatherCode,
-                                    1,
-                                    size: 58,
-                                  ),
+                                child: _buildWeatherVisualIcon(
+                                  weatherCode,
+                                  1,
+                                  size: 46,
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 6),
                               Text(
                                 '${maxT?.round() ?? 0}°',
                                 style: TextStyle(
-                                  fontSize: 48,
+                                  fontSize: 40,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: -2.0,
+                                  letterSpacing: -1.5,
                                   color: _darkText,
                                   height: 1.0,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Text(
                                 _getWeatherDescription(weatherCode),
                                 style: TextStyle(
-                                  fontSize: 16.5,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w900,
                                   color: _purple,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -4560,7 +4531,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   Text(
                                     ' بەرزترین: ${maxT?.round() ?? 0}°  ',
                                     style: TextStyle(
-                                      fontSize: 13.5,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w800,
                                       color: _secondaryText,
                                     ),
@@ -4578,7 +4549,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   Text(
                                     ' نزمترین: ${minT?.round() ?? 0}°',
                                     style: TextStyle(
-                                      fontSize: 13.5,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w800,
                                       color: _secondaryText,
                                     ),
@@ -4588,13 +4559,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: iosCardBg,
-                            borderRadius: BorderRadius.circular(26),
+                            borderRadius: BorderRadius.circular(22),
                             border:
                                 Border.all(color: iosBorderColor, width: 1.2),
                             boxShadow: _neuShadowsSmall,
@@ -4606,14 +4577,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 children: [
                                   Icon(
                                     CupertinoIcons.clock_fill,
-                                    size: 16,
+                                    size: 15,
                                     color: _secondaryText,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'پێشبینی کاتژمێر بە کاتژمێر',
                                     style: TextStyle(
-                                      fontSize: 13.5,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w900,
                                       color: _secondaryText,
                                       letterSpacing: -0.2,
@@ -4621,17 +4592,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
                               Divider(color: iosBorderColor, height: 1),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 10),
                               SizedBox(
-                                height: 106,
+                                height: 102,
                                 child: ListView.separated(
                                   scrollDirection: Axis.horizontal,
                                   physics: const BouncingScrollPhysics(),
                                   itemCount: matchedIndices.length,
                                   separatorBuilder: (context, i) =>
-                                      const SizedBox(width: 12),
+                                      const SizedBox(width: 10),
                                   itemBuilder: (context, index) {
                                     final realIdx = matchedIndices[index];
                                     final String fullTime =
@@ -4664,7 +4635,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     return Container(
                                       width: 58,
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
+                                        vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
                                         color: isDark
@@ -4672,7 +4643,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 .withValues(alpha: 0.05)
                                             : Colors.black
                                                 .withValues(alpha: 0.03),
-                                        borderRadius: BorderRadius.circular(18),
+                                        borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
                                           color: iosBorderColor.withValues(
                                             alpha: 0.5,
@@ -4687,7 +4658,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             formattedTime12,
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              fontSize: 11.5,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.w800,
                                               color: _secondaryText,
                                             ),
@@ -4695,13 +4666,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           _buildWeatherVisualIcon(
                                             hCode,
                                             isDayTime,
-                                            size: 26,
+                                            size: 24,
                                           ),
                                           Text(
                                             '${temp.round()}°',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              fontSize: 14.5,
+                                              fontSize: 14,
                                               fontWeight: FontWeight.w900,
                                               color: _darkText,
                                             ),
@@ -4715,7 +4686,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         _buildHorizontalDetailRow(
                           icon: CupertinoIcons.drop_fill,
                           iconColor: Colors.blueAccent,
@@ -4725,7 +4696,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           cardBg: iosCardBg,
                           borderColor: iosBorderColor,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         _buildHorizontalDetailRow(
                           icon: CupertinoIcons.snow,
                           iconColor: Colors.lightBlueAccent,
@@ -4735,7 +4706,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           cardBg: iosCardBg,
                           borderColor: iosBorderColor,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         _buildHorizontalDetailRow(
                           icon: CupertinoIcons.wind,
                           iconColor: Colors.tealAccent.shade700,
@@ -4745,7 +4716,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           cardBg: iosCardBg,
                           borderColor: iosBorderColor,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         _buildHorizontalDetailRow(
                           icon: CupertinoIcons.circle_grid_hex_fill,
                           iconColor: Colors.cyan,
@@ -4755,7 +4726,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           cardBg: iosCardBg,
                           borderColor: iosBorderColor,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
