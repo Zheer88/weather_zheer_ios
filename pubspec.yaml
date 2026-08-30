@@ -19,12 +19,13 @@ dependencies:
   latlong2: ^0.9.0
   geolocator: ^14.0.3
   geocoding: ^5.0.0
-  url_launcher: ^6.2.5
+  url_launcher: ^6.3.0
   translator: ^1.0.4+1
   fl_chart: ^0.68.0
   device_preview: ^3.0.0-prerelease3
   flutter_tts: ^4.2.5
   webview_flutter: ^4.10.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
