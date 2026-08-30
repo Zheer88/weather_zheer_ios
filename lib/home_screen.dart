@@ -2483,12 +2483,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           h += 1;
           m = 0;
         }
+        final String period = h >= 12 ? 'PM' : 'AM';
         int displayH = h % 12;
         if (displayH == 0) {
           displayH = 12;
         }
         final String displayM = m.toString().padLeft(2, '0');
-        return '$displayH:$displayM';
+        return '$displayH:$displayM $period';
       }
 
       return {
@@ -2496,7 +2497,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'sunset': formatTime(sunsetHours),
       };
     } catch (_) {
-      return {'sunrise': '05:42', 'sunset': '19:12'};
+      return {'sunrise': '05:42 AM', 'sunset': '07:12 PM'};
     }
   }
 
@@ -2634,7 +2635,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// هێڵکاری کەشوهەوا بە کەمکردنەوەی کاتژمێرەکان و دانانی ئایکۆنی ڕاستەقینەی کەشوهەوا لەسەر پۆینتی ئێستا
   Widget _buildWeatherChartCard(WeatherModel data) {
     final int currentHour = DateTime.now().hour;
-    final bool isCurrentlyDay = currentHour >= 6 && currentHour < 19;
+    final bool isCurrentlyDay =
+        data.isDay == 1 || (currentHour >= 6 && currentHour < 19);
     final int currentWeatherCode =
         data.weatherCodes.isNotEmpty ? data.weatherCodes[0] : 0;
     final String currentCondition = _getWeatherDescription(currentWeatherCode);
@@ -2697,42 +2699,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    AnimatedBuilder(
-                      animation: _floatingIconAnimation,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(0, _floatingIconAnimation.value * 0.5),
-                          child: child,
-                        );
-                      },
-                      child: _buildWeatherVisualIcon(
-                        currentWeatherCode,
-                        isCurrentlyDay ? 1 : 0,
-                        size: 22,
-                      ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedBuilder(
+                          animation: _floatingIconAnimation,
+                          builder: (context, child) {
+                            return Transform.translate(
+                              offset:
+                                  Offset(0, _floatingIconAnimation.value * 0.5),
+                              child: child,
+                            );
+                          },
+                          child: _buildWeatherVisualIcon(
+                            currentWeatherCode,
+                            isCurrentlyDay ? 1 : 0,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${data.currentTemp.round()}°',
+                          style: TextStyle(
+                            color: _darkText,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${data.currentTemp.round()}°',
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      currentCondition,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: _darkText,
-                        fontSize: 22,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-                Text(
-                  currentCondition,
-                  style: TextStyle(
-                    color: _darkText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      isCurrentlyDay ? 'ئێستا: ڕۆژە ☀️' : 'ئێستا: شەوە 🌙',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: isCurrentlyDay
+                            ? const Color(0xFFFF8A00)
+                            : const Color(0xFF818CF8),
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -2969,7 +2999,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 8),
 
-            // بەشی خۆرهەڵاتن و خۆرئاوابوون بە جووڵەی سەرنجڕاکێش
+            // بەشی خۆرهەڵاتن و خۆرئاوابوون بە جووڵەی سەرنجڕاکێش و زیادکردنی AM / PM
             Directionality(
               textDirection: TextDirection.rtl,
               child: Row(
@@ -2978,13 +3008,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _buildWeatherInfoBadge(
                     label: 'خۆرهەڵات',
                     customIconPath: 'assets/images/sunrise.png',
-                    value: sunTimes['sunrise'] ?? '05:42',
+                    value: sunTimes['sunrise'] ?? '05:42 AM',
                   ),
                   const SizedBox(width: 24),
                   _buildWeatherInfoBadge(
                     label: 'خۆرئاوابوون',
                     customIconPath: 'assets/images/sunset.png',
-                    value: sunTimes['sunset'] ?? '19:12',
+                    value: sunTimes['sunset'] ?? '07:12 PM',
                   ),
                 ],
               ),
@@ -4619,7 +4649,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         timeOnly.split(':')[0],
                                       );
                                       String period =
-                                          hour24 >= 12 ? 'پ.ن' : 'ب';
+                                          hour24 >= 12 ? 'PM' : 'AM';
                                       int hour12 = hour24 % 12;
                                       if (hour12 == 0) hour12 = 12;
                                       formattedTime12 = '$hour12 $period';
