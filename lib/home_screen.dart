@@ -166,7 +166,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   StreamSubscription<Position>? _positionStreamSubscription;
   Position? _lastFetchedPosition;
 
-  final Map<String, String> _placeNameCache = {};
   Timer? _refreshTimer;
 
   @override
@@ -886,7 +885,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'کوالێتی هەوا: $_cityName',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.3,
                               color: _darkText,
@@ -909,7 +908,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: Text(
                           statusName,
                           style: TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w900,
                             color: statusColor,
                           ),
@@ -927,7 +926,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'هەوای ئێستا: $statusName',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w800,
                               color: statusColor,
                             ),
@@ -935,7 +934,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'ڕێژە: $aqi ',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w900,
                               color: statusColor,
                             ),
@@ -1000,7 +999,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           return Text(
                             '$val',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w900,
                               color: aqi >= val ? _darkText : _secondaryText,
                             ),
@@ -1014,7 +1013,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'خاوێن',
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF10B981),
                             ),
@@ -1022,7 +1021,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'ئاسایی',
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFF59E0B),
                             ),
@@ -1030,7 +1029,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'پیس',
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFEF4444),
                             ),
@@ -1038,7 +1037,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'مەترسیدار',
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF881337),
                             ),
@@ -1076,7 +1075,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     text = text.replaceAll(' W ', ' ڕۆژئاوای ');
     text = text.replaceAll('km', 'کم');
     text = text.replaceAll(' of ', ' لە ');
+    text = text.replaceAll('Region', 'ناوچەی');
+    text = text.replaceAll('Border', 'سنووری');
     text = text.replaceAll('Iraq', 'عێراق');
+    text = text.replaceAll('Turkey', 'تورکیا');
+    text = text.replaceAll('Iran', 'ئێران');
+    text = text.replaceAll('Syria', 'سوریا');
+    text = text.replaceAll('Indonesia', 'ئیندۆنیزیا');
+    text = text.replaceAll('Japan', 'ژاپۆن');
+    text = text.replaceAll('Malaysia', 'مالیزیا');
+    text = text.replaceAll('India', 'هیندستان');
+    text = text.replaceAll('Nepal', 'نیپاڵ');
+    text = text.replaceAll('Greece', 'یۆنان');
+    text = text.replaceAll('Italy', 'ئیتاڵیا');
     text = text.replaceAll('Kirkuk', 'کەرکووک');
     text = text.replaceAll('Sulaymaniyah', 'سلێمانی');
     text = text.replaceAll('Halabja', 'هەڵەبجە');
@@ -1095,43 +1106,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return text;
   }
 
-  Future<String> _getRealMapLocationName(
-    double lat,
-    double lon,
-    String fallbackName,
-  ) async {
-    final cacheKey = '${lat.toStringAsFixed(2)}_${lon.toStringAsFixed(2)}';
-    if (_placeNameCache.containsKey(cacheKey)) {
-      return _placeNameCache[cacheKey]!;
-    }
+  Color _getMagColor(double mag) {
+    if (mag < 3.0) return const Color(0xFF10B981);
+    if (mag < 4.5) return const Color(0xFFF59E0B);
+    if (mag < 6.0) return const Color(0xFFEF4444);
+    return const Color(0xFF881337);
+  }
 
+  String _getMagImpactDescription(double mag) {
+    if (mag < 3.0) return 'بومەلەرزەی زۆر کەم، زۆرجار هەستی پێناکرێت.';
+    if (mag < 4.5) return 'لەرزینێکی کەم لە ناوەوە هەستی پێدەکرێت.';
+    if (mag < 6.0) return 'لەرزینی بەهێز، لەوانەیە ببێتە هۆی زیانی کەم.';
+    return 'بومەلەرزەی وێرانکەر و زۆر بەهێز!';
+  }
+
+  String _formatKurdishTimeAgo(String timeStr) {
     try {
-      final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&zoom=10&accept-language=ckb,ku,ar',
-      );
-
-      final response = await http.get(url, headers: {
-        'User-Agent': 'com.zheer.weatherapp'
-      }).timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['address'] != null) {
-          final addr = data['address'];
-          String place = addr['village'] ??
-              addr['town'] ??
-              addr['city'] ??
-              addr['county'] ??
-              addr['state'] ??
-              'عێراق';
-          final finalName = 'لەنزیک $place';
-          _placeNameCache[cacheKey] = finalName;
-          return finalName;
-        }
+      final DateTime dt = DateTime.parse(timeStr);
+      final Duration diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 60) {
+        return 'پێش ${diff.inMinutes} خولەک';
+      } else if (diff.inHours < 24) {
+        return 'پێش ${diff.inHours} کاتژمێر';
+      } else {
+        return 'پێش ${diff.inDays} ڕۆژ';
       }
-    } catch (_) {}
-
-    return _translateEarthquakePlace(fallbackName);
+    } catch (_) {
+      return timeStr;
+    }
   }
 
   Future<WeatherModel> _loadWeatherForCoordinates(
@@ -2632,7 +2634,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return kurdishDays[date.weekday - 1];
   }
 
-  /// هێڵکاری کەشوهەوا بە کەمکردنەوەی کاتژمێرەکان و دانانی ئایکۆنی ڕاستەقینەی کەشوهەوا لەسەر پۆینتی ئێستا
+  /// هێڵکاری کەشوهەوا بە قەبارەی نوسین و ئایکۆنی گەورەکراو
   Widget _buildWeatherChartCard(WeatherModel data) {
     final int currentHour = DateTime.now().hour;
     final bool isCurrentlyDay =
@@ -2718,7 +2720,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           child: _buildWeatherVisualIcon(
                             currentWeatherCode,
                             isCurrentlyDay ? 1 : 0,
-                            size: 22,
+                            size: 26,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -2726,7 +2728,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           '${data.currentTemp.round()}°',
                           style: TextStyle(
                             color: _darkText,
-                            fontSize: 22,
+                            fontSize: 24,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
                           ),
@@ -2742,7 +2744,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: _darkText,
-                        fontSize: 13,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -2758,7 +2760,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         color: isCurrentlyDay
                             ? const Color(0xFFFF8A00)
                             : const Color(0xFF818CF8),
-                        fontSize: 14.5,
+                        fontSize: 15,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.3,
                       ),
@@ -2776,7 +2778,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             // هێڵکاری پلەی گەرمی و باران لەگەڵ سێبەر و ئایکۆنی گەورە و سادەی ڕاستەقینە لەسەر خاڵی کاتی ئێستا
             SizedBox(
-              height: 94,
+              height: 104,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -2830,7 +2832,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   );
                                 }
                                 return FlDotCirclePainter(
-                                  radius: 3.5,
+                                  radius: 4.0,
                                   color: _isDarkMode
                                       ? const Color(0xFF0F172A)
                                       : Colors.white,
@@ -2886,13 +2888,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         final bool spotIsDay = spotHour >= 6 && spotHour < 19;
 
                         return SizedBox(
-                          width: 32,
+                          width: 36,
                           child: Stack(
                             alignment: Alignment.topCenter,
                             clipBehavior: Clip.none,
                             children: [
                               Positioned(
-                                top: (topPos - (isCurrentPoint ? 30 : 22))
+                                top: (topPos - (isCurrentPoint ? 34 : 24))
                                     .clamp(-6, 56),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -2913,7 +2915,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         child: _buildWeatherVisualIcon(
                                           spotCode,
                                           spotIsDay ? 1 : 0,
-                                          size: 24,
+                                          size: 28,
                                         ),
                                       ),
                                     const SizedBox(height: 2),
@@ -2923,7 +2925,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         color: isCurrentPoint
                                             ? const Color(0xFFFF8A00)
                                             : _darkText,
-                                        fontSize: isCurrentPoint ? 11 : 9.5,
+                                        fontSize: isCurrentPoint ? 13 : 11.5,
                                         fontWeight: FontWeight.w900,
                                       ),
                                       textAlign: TextAlign.center,
@@ -2969,7 +2971,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       time,
                       style: TextStyle(
                         color: _secondaryText,
-                        fontSize: 10,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -2977,14 +2979,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     _buildWeatherVisualIcon(
                       code,
                       isDayTime ? 1 : 0,
-                      size: 20,
+                      size: 24,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${temp.round()}°',
                       style: TextStyle(
                         color: _darkText,
-                        fontSize: 12,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -3038,7 +3040,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           label,
           style: TextStyle(
             color: _secondaryText,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -3053,8 +3055,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
           child: Image.asset(
             customIconPath,
-            width: 24,
-            height: 24,
+            width: 26,
+            height: 26,
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return Icon(
@@ -3062,7 +3064,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         customIconPath.contains('hhhh')
                     ? CupertinoIcons.sunrise_fill
                     : CupertinoIcons.sunset_fill,
-                size: 22,
+                size: 24,
                 color: const Color(0xFFFBBF24),
               );
             },
@@ -3074,7 +3076,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           textDirection: TextDirection.ltr,
           style: TextStyle(
             color: _darkText,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -3751,13 +3753,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _showEarthquakeReportDialog(BuildContext context) {
-    int selectedFilter = 0;
+    String earthquakeSearchQuery = '';
+    bool isGpsOnly = false;
+    EarthquakeModel? selectedEarthquake;
+    LatLng? searchedLocationPoint;
+    Timer? eqSearchDebounce;
     final MapController mapController = MapController();
+    final TextEditingController searchEqController = TextEditingController();
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) {
-        final double dialogHeight = MediaQuery.of(context).size.height * 0.76;
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
         final bool isDark = _isDarkMode;
         final Color iosCardBg = isDark
             ? const Color(0xFF1E293B).withValues(alpha: 0.65)
@@ -3768,468 +3777,678 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           textDirection: TextDirection.rtl,
           child: StatefulBuilder(
             builder: (context, setModalState) {
-              return Dialog(
-                backgroundColor: Colors.transparent,
-                insetPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 16,
+              return Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _iosAtmosphereGradient,
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(32),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                    child: Container(
-                      height: dialogHeight,
-                      width: double.maxFinite,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF0F172A).withValues(alpha: 0.75)
-                            : Colors.white.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(color: iosBorderColor, width: 1.5),
-                        boxShadow: _neuShadows,
-                      ),
-                      child: FutureBuilder<List<EarthquakeModel>>(
-                        future: _earthquakeData,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CupertinoActivityIndicator(radius: 16),
-                            );
-                          }
-
-                          if (snapshot.hasError) {
-                            return Center(
-                              child: Text(
-                                'هەڵە لە وەرگرتنی داتای بومەلەرزە: هێڵی ئینتەرنێت نییە.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: _darkText,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            PressableCard(
+                              onTap: () => Navigator.pop(bottomSheetContext),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: BackdropFilter(
+                                  filter:
+                                      ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.black.withValues(alpha: 0.4)
+                                          : Colors.white.withValues(alpha: 0.6),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: iosBorderColor),
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.xmark,
+                                      color: _darkText,
+                                      size: 18,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            );
-                          }
+                            ),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    selectedEarthquake != null
+                                        ? _translateEarthquakePlace(
+                                            selectedEarthquake!.place)
+                                        : 'تۆماری بومەلەرزە جیهانی و ناوخۆیی',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.4,
+                                      color: _darkText,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    selectedEarthquake != null
+                                        ? 'وردەکاری شوێنی چەقی بومەلەرزە (Epicenter)'
+                                        : 'تۆماری گوڕی (١.٠ - ١٠.٠) پلەی ڕێختەر',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: _secondaryText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 44),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: iosCardBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: iosBorderColor),
+                                ),
+                                child: TextField(
+                                  controller: searchEqController,
+                                  style: TextStyle(
+                                    color: _darkText,
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        'ناوی شار یان وڵات (وەک: عێراق، ئێران، Japan)...',
+                                    hintStyle: TextStyle(
+                                      color:
+                                          _secondaryText.withValues(alpha: 0.7),
+                                      fontSize: 12.5,
+                                    ),
+                                    prefixIcon: Icon(
+                                      CupertinoIcons.search,
+                                      size: 17,
+                                      color: _secondaryText,
+                                    ),
+                                    suffixIcon: earthquakeSearchQuery.isNotEmpty
+                                        ? IconButton(
+                                            icon: Icon(
+                                              CupertinoIcons
+                                                  .clear_circled_solid,
+                                              size: 16,
+                                              color: _secondaryText,
+                                            ),
+                                            onPressed: () {
+                                              searchEqController.clear();
+                                              setModalState(() {
+                                                earthquakeSearchQuery = '';
+                                                searchedLocationPoint = null;
+                                                selectedEarthquake = null;
+                                              });
+                                            },
+                                          )
+                                        : null,
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                  ),
+                                  onChanged: (val) {
+                                    setModalState(() {
+                                      earthquakeSearchQuery = val.trim();
+                                      selectedEarthquake = null;
+                                      if (val.isNotEmpty) isGpsOnly = false;
+                                    });
 
-                          final allEarthquakes = snapshot.data ?? [];
-                          final now = DateTime.now();
+                                    if (eqSearchDebounce != null &&
+                                        eqSearchDebounce!.isActive) {
+                                      eqSearchDebounce!.cancel();
+                                    }
 
-                          final thisMonthEarthquakes = allEarthquakes.where((
-                            eq,
-                          ) {
-                            try {
-                              final eqTime = DateTime.parse(eq.time);
-                              return eqTime.year == now.year &&
-                                  eqTime.month == now.month;
-                            } catch (_) {
-                              return true;
-                            }
-                          }).toList();
-
-                          final displayedEarthquakes =
-                              thisMonthEarthquakes.where((eq) {
-                            if (selectedFilter == 0) {
-                              final distance = Geolocator.distanceBetween(
-                                    _latitude,
-                                    _longitude,
-                                    eq.lat,
-                                    eq.lon,
-                                  ) /
-                                  1000;
-                              return distance <= 250;
-                            } else {
-                              final p = eq.place.toLowerCase();
-                              return p.contains('iraq') ||
-                                  p.contains('kurdistan') ||
-                                  (eq.lat >= 29.0 &&
-                                      eq.lat <= 38.0 &&
-                                      eq.lon >= 38.5 &&
-                                      eq.lon <= 49.0);
-                            }
-                          }).toList();
-
-                          return Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 16,
-                                  left: 16,
-                                  right: 16,
-                                  bottom: 10,
+                                    eqSearchDebounce =
+                                        Timer(const Duration(milliseconds: 600),
+                                            () async {
+                                      if (val.trim().isEmpty) return;
+                                      final results =
+                                          await _searchCityByName(val.trim());
+                                      if (results.isNotEmpty) {
+                                        final double sLat = double.parse(
+                                            results.first['lat'].toString());
+                                        final double sLon = double.parse(
+                                            results.first['lon'].toString());
+                                        setModalState(() {
+                                          searchedLocationPoint =
+                                              LatLng(sLat, sLon);
+                                        });
+                                        mapController.move(
+                                            LatLng(sLat, sLon), 6.0);
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            PressableCard(
+                              onTap: () {
+                                setModalState(() {
+                                  isGpsOnly = !isGpsOnly;
+                                  if (isGpsOnly) {
+                                    searchEqController.clear();
+                                    earthquakeSearchQuery = '';
+                                    selectedEarthquake = null;
+                                    searchedLocationPoint = null;
+                                    mapController.move(
+                                      LatLng(_latitude, _longitude),
+                                      6.5,
+                                    );
+                                  }
+                                });
+                              },
+                              child: Container(
+                                height: 44,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color: isGpsOnly
+                                      ? Colors.deepOrangeAccent
+                                      : iosCardBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isGpsOnly
+                                        ? Colors.deepOrangeAccent
+                                        : iosBorderColor,
+                                  ),
                                 ),
                                 child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(7),
-                                          decoration: BoxDecoration(
-                                            color: Colors.deepOrangeAccent
-                                                .withValues(alpha: 0.18),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            CupertinoIcons.waveform_path_ecg,
-                                            color: Colors.deepOrangeAccent,
-                                            size: 20,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          'بومەلەرزەکانی ئەم مانگە',
-                                          style: TextStyle(
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -0.4,
-                                            color: _darkText,
-                                          ),
-                                        ),
-                                      ],
+                                    Icon(
+                                      CupertinoIcons.location_fill,
+                                      size: 16,
+                                      color: isGpsOnly
+                                          ? Colors.white
+                                          : Colors.deepOrangeAccent,
                                     ),
-                                    PressableCard(
-                                      onTap: () => Navigator.pop(dialogContext),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(5),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.white12
-                                              : Colors.black.withValues(
-                                                  alpha: 0.08,
-                                                ),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          CupertinoIcons.xmark,
-                                          color: _darkText,
-                                          size: 16,
-                                        ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'GPS',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        color: isGpsOnly
+                                            ? Colors.white
+                                            : _darkText,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 4,
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: iosCardBg,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: iosBorderColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            height: selectedEarthquake != null ? 220 : 190,
+                            decoration: BoxDecoration(
+                              border:
+                                  Border.all(color: iosBorderColor, width: 1.2),
+                            ),
+                            child: FutureBuilder<List<EarthquakeModel>>(
+                              future: _earthquakeData,
+                              builder: (context, snapshot) {
+                                final allEarthquakes = snapshot.data ?? [];
+                                final filteredMapEarthquakes =
+                                    allEarthquakes.where((eq) {
+                                  if (isGpsOnly) {
+                                    final distance = Geolocator.distanceBetween(
+                                          _latitude,
+                                          _longitude,
+                                          eq.lat,
+                                          eq.lon,
+                                        ) /
+                                        1000;
+                                    return distance <= 1200;
+                                  }
+                                  if (earthquakeSearchQuery.isNotEmpty) {
+                                    final q =
+                                        earthquakeSearchQuery.toLowerCase();
+                                    return eq.place.toLowerCase().contains(q) ||
+                                        _translateEarthquakePlace(eq.place)
+                                            .toLowerCase()
+                                            .contains(q);
+                                  }
+                                  return true;
+                                }).toList();
+
+                                LatLng mapCenter =
+                                    LatLng(_latitude, _longitude);
+                                double mapZoom = isGpsOnly ? 6.5 : 3.0;
+
+                                if (selectedEarthquake != null) {
+                                  mapCenter = LatLng(selectedEarthquake!.lat,
+                                      selectedEarthquake!.lon);
+                                  mapZoom = 7.5;
+                                } else if (searchedLocationPoint != null) {
+                                  mapCenter = searchedLocationPoint!;
+                                  mapZoom = 6.0;
+                                } else if (filteredMapEarthquakes.isNotEmpty &&
+                                    earthquakeSearchQuery.isNotEmpty) {
+                                  mapCenter = LatLng(
+                                      filteredMapEarthquakes.first.lat,
+                                      filteredMapEarthquakes.first.lon);
+                                  mapZoom = 5.5;
+                                }
+
+                                return FlutterMap(
+                                  mapController: mapController,
+                                  options: MapOptions(
+                                    initialCenter: mapCenter,
+                                    initialZoom: mapZoom,
+                                    maxZoom: 18.0,
+                                    minZoom: 2.0,
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: PressableCard(
-                                          onTap: () {
-                                            setModalState(() {
-                                              selectedFilter = 0;
-                                            });
-                                            mapController.move(
-                                              LatLng(_latitude, _longitude),
-                                              7.5,
-                                            );
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 7,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: selectedFilter == 0
-                                                  ? Colors.deepOrangeAccent
-                                                  : Colors.transparent,
-                                              borderRadius:
-                                                  BorderRadius.circular(14),
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              'ناوچەی $_cityName',
-                                              style: TextStyle(
-                                                fontSize: 12.5,
-                                                fontWeight: FontWeight.w900,
-                                                color: selectedFilter == 0
-                                                    ? Colors.white
-                                                    : _secondaryText,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: PressableCard(
-                                          onTap: () {
-                                            setModalState(() {
-                                              selectedFilter = 1;
-                                            });
-                                            mapController.move(
-                                              const LatLng(34.0, 44.0),
-                                              5.8,
-                                            );
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 7,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: selectedFilter == 1
-                                                  ? Colors.deepOrangeAccent
-                                                  : Colors.transparent,
-                                              borderRadius:
-                                                  BorderRadius.circular(14),
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              'سنوری عێراق و هەرێم',
-                                              style: TextStyle(
-                                                fontSize: 12.5,
-                                                fontWeight: FontWeight.w900,
-                                                color: selectedFilter == 1
-                                                    ? Colors.white
-                                                    : _secondaryText,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(18),
-                                  child: Container(
-                                    height: 145,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: iosBorderColor),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate:
+                                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      maxZoom: 18.0,
+                                      maxNativeZoom: 18,
+                                      userAgentPackageName:
+                                          'com.zheer.weatherapp',
                                     ),
-                                    child: FlutterMap(
-                                      mapController: mapController,
-                                      options: MapOptions(
-                                        initialCenter: selectedFilter == 0
-                                            ? LatLng(_latitude, _longitude)
-                                            : const LatLng(35.0, 44.5),
-                                        initialZoom:
-                                            selectedFilter == 0 ? 7.5 : 5.8,
-                                        maxZoom: 18.0,
-                                        minZoom: 2.0,
-                                      ),
-                                      children: [
-                                        TileLayer(
-                                          urlTemplate:
-                                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                          maxZoom: 18.0,
-                                          maxNativeZoom: 18,
-                                          userAgentPackageName:
-                                              'com.zheer.weatherapp',
-                                        ),
-                                        MarkerLayer(
-                                          markers: [
-                                            Marker(
-                                              point: LatLng(
-                                                _latitude,
-                                                _longitude,
-                                              ),
-                                              width: 28,
-                                              height: 28,
-                                              child: const Icon(
-                                                CupertinoIcons.location_fill,
-                                                color: Colors.blueAccent,
-                                                size: 22,
-                                              ),
-                                            ),
-                                            ...displayedEarthquakes.map((eq) {
-                                              return Marker(
-                                                point: LatLng(eq.lat, eq.lon),
-                                                width: 32,
-                                                height: 32,
-                                                child: const Icon(
-                                                  CupertinoIcons
-                                                      .waveform_circle_fill,
-                                                  color:
-                                                      Colors.deepOrangeAccent,
-                                                  size: 26,
-                                                ),
-                                              );
-                                            }),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Expanded(
-                                child: displayedEarthquakes.isEmpty
-                                    ? Center(
-                                        child: Text(
-                                          'هیچ بومەلەرزەیەک بۆ ئەم مانگە تۆمار نەکراوە.',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: _secondaryText,
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: LatLng(
+                                            _latitude,
+                                            _longitude,
+                                          ),
+                                          width: 32,
+                                          height: 32,
+                                          child: const Icon(
+                                            CupertinoIcons.location_solid,
+                                            color: CupertinoColors.systemRed,
+                                            size: 28,
                                           ),
                                         ),
-                                      )
-                                    : ListView.separated(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 6,
-                                        ),
-                                        itemCount: displayedEarthquakes.length,
-                                        separatorBuilder: (context, index) =>
-                                            const SizedBox(height: 6),
-                                        itemBuilder: (context, index) {
-                                          final eq =
-                                              displayedEarthquakes[index];
-                                          return PressableCard(
-                                            onTap: () {
-                                              mapController.move(
-                                                LatLng(eq.lat, eq.lon),
-                                                8.5,
-                                              );
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.all(10),
-                                              decoration: BoxDecoration(
-                                                color: iosCardBg,
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                                border: Border.all(
-                                                  color: iosBorderColor,
-                                                ),
-                                                boxShadow: _neuShadowsSmall,
-                                              ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                        if (searchedLocationPoint != null)
+                                          Marker(
+                                            point: searchedLocationPoint!,
+                                            width: 40,
+                                            height: 40,
+                                            child: const Icon(
+                                              CupertinoIcons.map_pin_ellipse,
+                                              color: Colors.blueAccent,
+                                              size: 36,
+                                            ),
+                                          ),
+                                        ...filteredMapEarthquakes.map((eq) {
+                                          final Color magCol =
+                                              _getMagColor(eq.mag);
+                                          final bool isSelected =
+                                              selectedEarthquake == eq;
+
+                                          return Marker(
+                                            point: LatLng(eq.lat, eq.lon),
+                                            width: isSelected ? 50 : 38,
+                                            height: isSelected ? 50 : 38,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                setModalState(() {
+                                                  selectedEarthquake = eq;
+                                                });
+                                                mapController.move(
+                                                  LatLng(eq.lat, eq.lon),
+                                                  8.0,
+                                                );
+                                              },
+                                              child: Stack(
+                                                alignment: Alignment.center,
                                                 children: [
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Expanded(
-                                                        child: FutureBuilder<
-                                                            String>(
-                                                          future:
-                                                              _getRealMapLocationName(
-                                                            eq.lat,
-                                                            eq.lon,
-                                                            eq.place,
-                                                          ),
-                                                          builder:
-                                                              (context, snap) {
-                                                            return Text(
-                                                              snap.data ??
-                                                                  _translateEarthquakePlace(
-                                                                    eq.place,
-                                                                  ),
-                                                              style: TextStyle(
-                                                                fontSize: 13.5,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w900,
-                                                                color:
-                                                                    _darkText,
-                                                              ),
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                            );
-                                                          },
-                                                        ),
-                                                      ),
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                          horizontal: 7,
-                                                          vertical: 2,
-                                                        ),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: Colors
-                                                              .deepOrangeAccent
-                                                              .withValues(
-                                                            alpha: 0.18,
-                                                          ),
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(
-                                                            8,
-                                                          ),
-                                                        ),
-                                                        child: Text(
-                                                          'گوڕ: ${eq.mag} ڕێختەر',
-                                                          style:
-                                                              const TextStyle(
-                                                            fontSize: 11.5,
-                                                            fontWeight:
-                                                                FontWeight.w900,
-                                                            color: Colors
-                                                                .deepOrangeAccent,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
+                                                  Icon(
+                                                    isSelected
+                                                        ? CupertinoIcons
+                                                            .placemark_fill
+                                                        : CupertinoIcons
+                                                            .waveform_circle_fill,
+                                                    color: magCol,
+                                                    size: isSelected ? 46 : 32,
                                                   ),
-                                                  const SizedBox(height: 4),
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        'قوڵی: ${eq.depth.toStringAsFixed(1)} کم',
-                                                        style: TextStyle(
-                                                          fontSize: 11.5,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                          color: Colors
-                                                              .redAccent
-                                                              .shade400,
-                                                        ),
+                                                  Positioned(
+                                                    top: isSelected ? 6 : null,
+                                                    bottom:
+                                                        isSelected ? null : 2,
+                                                    child: Text(
+                                                      '${eq.mag}',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize:
+                                                            isSelected ? 11 : 9,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                       ),
-                                                      Text(
-                                                        eq.time,
-                                                        textDirection:
-                                                            TextDirection.ltr,
-                                                        style: TextStyle(
-                                                          fontSize: 10.5,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: _secondaryText,
-                                                        ),
-                                                      ),
-                                                    ],
+                                                    ),
                                                   ),
                                                 ],
                                               ),
                                             ),
                                           );
-                                        },
-                                      ),
-                              ),
-                            ],
-                          );
-                        },
+                                        }),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: FutureBuilder<List<EarthquakeModel>>(
+                          future: _earthquakeData,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CupertinoActivityIndicator(radius: 16),
+                              );
+                            }
+
+                            if (snapshot.hasError) {
+                              return Center(
+                                child: Text(
+                                  'هەڵە لە وەرگرتنی داتای بومەلەرزە: هێڵی ئینتەرنێت نییە.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: _darkText,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final allEarthquakes = snapshot.data ?? [];
+                            final displayedEarthquakes =
+                                allEarthquakes.where((eq) {
+                              if (isGpsOnly) {
+                                final distance = Geolocator.distanceBetween(
+                                      _latitude,
+                                      _longitude,
+                                      eq.lat,
+                                      eq.lon,
+                                    ) /
+                                    1000;
+                                return distance <= 1200;
+                              }
+                              if (earthquakeSearchQuery.isNotEmpty) {
+                                final q = earthquakeSearchQuery.toLowerCase();
+                                return eq.place.toLowerCase().contains(q) ||
+                                    _translateEarthquakePlace(eq.place)
+                                        .toLowerCase()
+                                        .contains(q);
+                              }
+                              return true;
+                            }).toList();
+
+                            if (displayedEarthquakes.isEmpty) {
+                              return Center(
+                                child: Text(
+                                  'هیچ بومەلەرزەیەک بەم پێوەرە نەدۆزرایەوە.',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: _secondaryText,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return ListView.separated(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              itemCount: displayedEarthquakes.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final eq = displayedEarthquakes[index];
+                                final double distance =
+                                    Geolocator.distanceBetween(
+                                          _latitude,
+                                          _longitude,
+                                          eq.lat,
+                                          eq.lon,
+                                        ) /
+                                        1000;
+                                final Color magColor = _getMagColor(eq.mag);
+                                final String kurdishTimeAgo =
+                                    _formatKurdishTimeAgo(eq.time);
+                                final bool isSelected =
+                                    selectedEarthquake == eq;
+
+                                return PressableCard(
+                                  onTap: () {
+                                    setModalState(() {
+                                      selectedEarthquake = eq;
+                                    });
+                                    mapController.move(
+                                      LatLng(eq.lat, eq.lon),
+                                      8.5,
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? magColor.withValues(alpha: 0.15)
+                                          : iosCardBg,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? magColor
+                                            : iosBorderColor,
+                                        width: isSelected ? 1.8 : 1.0,
+                                      ),
+                                      boxShadow: _neuShadowsSmall,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    _translateEarthquakePlace(
+                                                        eq.place),
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      color: _darkText,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    eq.place,
+                                                    style: TextStyle(
+                                                      fontSize: 11.5,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: _secondaryText,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 5,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: magColor,
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: magColor.withValues(
+                                                        alpha: 0.35),
+                                                    blurRadius: 6,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Text(
+                                                eq.mag.toStringAsFixed(2),
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Divider(
+                                          color: iosBorderColor,
+                                          height: 1,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  CupertinoIcons.location,
+                                                  size: 14,
+                                                  color: _purple,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '${distance.round()} کم دوورە',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: _purple,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  CupertinoIcons
+                                                      .arrow_down_to_line_alt,
+                                                  size: 14,
+                                                  color: Colors.redAccent,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'قووڵی: ${eq.depth.toStringAsFixed(1)} کم',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: Colors
+                                                        .redAccent.shade400,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Text(
+                                              kurdishTimeAgo,
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: _secondaryText,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (isSelected) ...[
+                                          const SizedBox(height: 8),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: magColor.withValues(
+                                                  alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              _getMagImpactDescription(eq.mag),
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: magColor,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -4507,7 +4726,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             color: iosCardBg,
                             borderRadius: BorderRadius.circular(22),
                             border:
-                                Border.all(color: iosBorderColor, width: 1.5),
+                                Border.all(color: iosBorderColor, width: 1.2),
                             boxShadow: _neuShadows,
                           ),
                           child: Column(
@@ -5341,12 +5560,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         radius: 18,
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 14,
-                                          vertical: 10,
+                                          vertical: 11,
                                         ),
                                         child: Row(
                                           children: [
                                             SizedBox(
-                                              width: 78,
+                                              width: 86,
                                               child: Column(
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
@@ -5355,7 +5574,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   Text(
                                                     dayName,
                                                     style: TextStyle(
-                                                      fontSize: 15,
+                                                      fontSize: 16,
                                                       fontWeight: i == 0
                                                           ? FontWeight.w900
                                                           : FontWeight.w800,
@@ -5366,7 +5585,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   Text(
                                                     date,
                                                     style: TextStyle(
-                                                      fontSize: 11,
+                                                      fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w700,
                                                       color: _secondaryText
@@ -5390,31 +5609,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 );
                                               },
                                               child: SizedBox(
-                                                width: 38,
+                                                width: 44,
                                                 child: _buildWeatherVisualIcon(
                                                   code,
                                                   1,
-                                                  size: 26,
+                                                  size: 32,
                                                 ),
                                               ),
                                             ),
                                             if (rainProb > 0)
                                               SizedBox(
-                                                width: 44,
+                                                width: 48,
                                                 child: Row(
                                                   mainAxisSize:
                                                       MainAxisSize.min,
                                                   children: [
                                                     const Icon(
                                                       CupertinoIcons.drop_fill,
-                                                      size: 11,
+                                                      size: 13,
                                                       color: Colors.blueAccent,
                                                     ),
                                                     const SizedBox(width: 2),
                                                     Text(
                                                       '$rainProb٪',
                                                       style: const TextStyle(
-                                                        fontSize: 11,
+                                                        fontSize: 12.5,
                                                         fontWeight:
                                                             FontWeight.w900,
                                                         color:
@@ -5425,17 +5644,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 ),
                                               )
                                             else
-                                              const SizedBox(width: 44),
+                                              const SizedBox(width: 48),
                                             SizedBox(
-                                              width: 32,
+                                              width: 36,
                                               child: Text(
                                                 '${currentMin.round()}°',
                                                 textAlign: TextAlign.left,
                                                 textDirection:
                                                     TextDirection.ltr,
                                                 style: TextStyle(
-                                                  fontSize: 14.5,
-                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
                                                   color: _secondaryText,
                                                 ),
                                               ),
@@ -5457,7 +5676,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                         Alignment.centerLeft,
                                                     children: [
                                                       Container(
-                                                        height: 6,
+                                                        height: 7,
                                                         decoration:
                                                             BoxDecoration(
                                                           color: _isDarkMode
@@ -5478,7 +5697,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                         left: segmentLeft,
                                                         child: Container(
                                                           width: segmentWidth,
-                                                          height: 6,
+                                                          height: 7,
                                                           decoration:
                                                               BoxDecoration(
                                                             borderRadius:
@@ -5506,14 +5725,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                           left: (segmentLeft +
                                                                   (segmentWidth *
                                                                       currentTempRatio) -
-                                                                  5)
+                                                                  6)
                                                               .clamp(
                                                             0.0,
-                                                            barWidth - 10,
+                                                            barWidth - 12,
                                                           ),
                                                           child: Container(
-                                                            width: 10,
-                                                            height: 10,
+                                                            width: 12,
+                                                            height: 12,
                                                             decoration:
                                                                 BoxDecoration(
                                                               color:
@@ -5527,7 +5746,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                         0xFF0F172A)
                                                                     : const Color(
                                                                         0xFF38BDF8),
-                                                                width: 2,
+                                                                width: 2.2,
                                                               ),
                                                               boxShadow: const [
                                                                 BoxShadow(
@@ -5546,14 +5765,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             ),
                                             const SizedBox(width: 6),
                                             SizedBox(
-                                              width: 32,
+                                              width: 36,
                                               child: Text(
                                                 '${currentMax.round()}°',
                                                 textAlign: TextAlign.right,
                                                 textDirection:
                                                     TextDirection.ltr,
                                                 style: TextStyle(
-                                                  fontSize: 14.5,
+                                                  fontSize: 16,
                                                   fontWeight: FontWeight.w900,
                                                   color: _darkText,
                                                 ),
@@ -5573,7 +5792,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               },
                                               child: Container(
                                                 padding:
-                                                    const EdgeInsets.all(4),
+                                                    const EdgeInsets.all(5),
                                                 decoration: BoxDecoration(
                                                   color: _purple.withValues(
                                                       alpha: 0.12),
@@ -5582,7 +5801,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 child: Icon(
                                                   CupertinoIcons
                                                       .hand_point_left_fill,
-                                                  size: 13,
+                                                  size: 15,
                                                   color: _purple,
                                                 ),
                                               ),
