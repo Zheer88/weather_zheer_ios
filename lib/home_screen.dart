@@ -243,12 +243,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  /// پشکنینی ئەوەی ئایا شوێنەکە دەکەوێتە سنوری جوگرافی ئاسیا
   bool _isAsiaCoordinate(double lat, double lon) {
     return lat >= -11.0 && lat <= 81.0 && lon >= 26.0 && lon <= 180.0;
   }
 
-  /// وەرگرتنی ڕاستەوخۆی بومەلەرزەکانی تایبەت بە قارەی ئاسیا تەنها لە ماوەی ٢ ڕۆژی ڕابردوو
   Future<List<EarthquakeModel>> _fetchLiveAsiaEarthquakes() async {
     try {
       final res = await http
@@ -277,7 +275,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               DateTime.fromMillisecondsSinceEpoch(timeMs);
           final String timeIso = eqDateTime.toIso8601String();
 
-          // فلتەرکردنی تەنها ئەو بومەلەرزانەی کە لە ماوەی ٢ ڕۆژی پێش ئێستا (٤٨ کاتژمێر) ڕوویانداوە
           final Duration diff = now.difference(eqDateTime);
           if (diff.inHours <= 48 && _isAsiaCoordinate(lat, lon)) {
             asiaList.add(EarthquakeModel(
@@ -1127,7 +1124,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// پوختەکردن و کوردی کردنی ناوی شوێنەکان بە شێوەیەکی کورت و پاراو
   String _translateEarthquakePlace(String englishPlace) {
     String text = englishPlace;
     text = text.replaceAll(
@@ -1622,9 +1618,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// نەخشەی شێوازی Nullschool Earth بە جوڵەی ڕاستەقینە و سیحراوی با و هەورەکان
-  Widget _buildLiveWindAndCloudSimulationView() {
-    final int zoomInt = (_currentMapZoom * 160).round().clamp(600, 3000);
+  /// نەخشەی شێوازی Nullschool Earth بە شێوەیەکی ستاندارد و کارا
+  Widget _buildLiveWindAndCloudSimulationView(double zoomLevel) {
+    final int zoomInt = (zoomLevel * 160).round().clamp(600, 3000);
     final String viewType =
         'earth-wind-clouds-${_latitude.toStringAsFixed(2)}-${_longitude.toStringAsFixed(2)}-$zoomInt';
 
@@ -1653,7 +1649,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       mapController: _fullscreenMapController,
       options: MapOptions(
         initialCenter: LatLng(_latitude, _longitude),
-        initialZoom: _currentMapZoom,
+        initialZoom: zoomLevel,
         maxZoom: 18.0,
         minZoom: 2.0,
       ),
@@ -1756,7 +1752,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     children: [
                       if (isWindAndClouds)
                         Positioned.fill(
-                          child: _buildLiveWindAndCloudSimulationView(),
+                          child: _buildLiveWindAndCloudSimulationView(
+                              _currentMapZoom),
                         )
                       else
                         Positioned.fill(
@@ -1839,147 +1836,186 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                       Positioned(
-                        bottom: 30,
+                        bottom: 40,
                         right: 20,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(
-                              sigmaX: 20,
-                              sigmaY: 20,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _isDarkMode
+                                  ? const Color(0xFF0F172A)
+                                      .withValues(alpha: 0.85)
+                                  : Colors.white.withValues(alpha: 0.90),
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(
+                                  color: _iosGlassBorder, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  blurRadius: 18,
+                                  spreadRadius: 2,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _isDarkMode
-                                    ? Colors.black.withValues(alpha: 0.6)
-                                    : Colors.white.withValues(alpha: 0.75),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: _iosGlassBorder),
-                                boxShadow: _neuShadowsSmall,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  PressableCard(
-                                    onTap: () => Navigator.pop(dialogContext),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: CupertinoColors.destructiveRed
-                                            .withValues(alpha: 0.15),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        CupertinoIcons.xmark,
-                                        color: CupertinoColors.destructiveRed,
-                                        size: 16,
-                                      ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 10,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    SoundFeedbackService.playClick();
+                                    Navigator.of(dialogContext).pop();
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: CupertinoColors.destructiveRed
+                                          .withValues(alpha: 0.18),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      CupertinoIcons.xmark,
+                                      color: CupertinoColors.destructiveRed,
+                                      size: 18,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    width: 24,
-                                    height: 1,
-                                    color: _iosGlassBorder,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  _buildMapLayerButton(
-                                    icon: CupertinoIcons.wind,
-                                    label: 'جوڵەی ڕاستەقینەی با و هەورەکان',
-                                    type: 'temp',
-                                    setStateDialog: setStateDialog,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  _buildMapLayerButton(
-                                    icon: CupertinoIcons.cloud_rain_fill,
-                                    label: 'جوڵەی ڕاداری باران',
-                                    type: 'radar',
-                                    setStateDialog: setStateDialog,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  _buildMapLayerButton(
-                                    icon: CupertinoIcons.globe,
-                                    label: 'وێنەی مانگی دەستکرد',
-                                    type: 'google_earth',
-                                    setStateDialog: setStateDialog,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    width: 24,
-                                    height: 1,
-                                    color: _iosGlassBorder,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  PressableCard(
-                                    onTap: () {
-                                      final nextZoom = (_currentMapZoom + 1.0)
-                                          .clamp(2.0, 18.0);
-                                      if (!isWindAndClouds) {
-                                        _fullscreenMapController.move(
-                                          _fullscreenMapController
-                                              .camera.center,
-                                          nextZoom,
-                                        );
-                                      }
-                                      setStateDialog(() {
-                                        _currentMapZoom = nextZoom;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: _isDarkMode
-                                            ? Colors.white10
-                                            : Colors.black
-                                                .withValues(alpha: 0.06),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        CupertinoIcons.plus,
-                                        color: _darkText,
-                                        size: 17,
-                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  width: 26,
+                                  height: 1,
+                                  color: Colors.grey.withValues(alpha: 0.3),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInteractiveMapButton(
+                                  icon: CupertinoIcons.wind,
+                                  type: 'temp',
+                                  isSelected: _mapLayerType == 'temp',
+                                  onTap: () {
+                                    SoundFeedbackService.playClick();
+                                    setStateDialog(() {
+                                      _mapLayerType = 'temp';
+                                    });
+                                    setState(() {
+                                      _mapLayerType = 'temp';
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInteractiveMapButton(
+                                  icon: CupertinoIcons.cloud_rain_fill,
+                                  type: 'radar',
+                                  isSelected: _mapLayerType == 'radar',
+                                  onTap: () {
+                                    SoundFeedbackService.playClick();
+                                    setStateDialog(() {
+                                      _mapLayerType = 'radar';
+                                    });
+                                    setState(() {
+                                      _mapLayerType = 'radar';
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInteractiveMapButton(
+                                  icon: CupertinoIcons.globe,
+                                  type: 'google_earth',
+                                  isSelected: _mapLayerType == 'google_earth',
+                                  onTap: () {
+                                    SoundFeedbackService.playClick();
+                                    setStateDialog(() {
+                                      _mapLayerType = 'google_earth';
+                                    });
+                                    setState(() {
+                                      _mapLayerType = 'google_earth';
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  width: 26,
+                                  height: 1,
+                                  color: Colors.grey.withValues(alpha: 0.3),
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: () {
+                                    SoundFeedbackService.playClick();
+                                    final nextZoom = (_currentMapZoom + 1.0)
+                                        .clamp(2.0, 18.0);
+                                    if (!isWindAndClouds) {
+                                      _fullscreenMapController.move(
+                                        _fullscreenMapController.camera.center,
+                                        nextZoom,
+                                      );
+                                    }
+                                    setStateDialog(() {
+                                      _currentMapZoom = nextZoom;
+                                    });
+                                    setState(() {
+                                      _currentMapZoom = nextZoom;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: _isDarkMode
+                                          ? Colors.white10
+                                          : Colors.black
+                                              .withValues(alpha: 0.06),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.plus,
+                                      color: _darkText,
+                                      size: 18,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  PressableCard(
-                                    onTap: () {
-                                      final nextZoom = (_currentMapZoom - 1.0)
-                                          .clamp(2.0, 18.0);
-                                      if (!isWindAndClouds) {
-                                        _fullscreenMapController.move(
-                                          _fullscreenMapController
-                                              .camera.center,
-                                          nextZoom,
-                                        );
-                                      }
-                                      setStateDialog(() {
-                                        _currentMapZoom = nextZoom;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: _isDarkMode
-                                            ? Colors.white10
-                                            : Colors.black
-                                                .withValues(alpha: 0.06),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        CupertinoIcons.minus,
-                                        color: _darkText,
-                                        size: 17,
-                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: () {
+                                    SoundFeedbackService.playClick();
+                                    final nextZoom = (_currentMapZoom - 1.0)
+                                        .clamp(2.0, 18.0);
+                                    if (!isWindAndClouds) {
+                                      _fullscreenMapController.move(
+                                        _fullscreenMapController.camera.center,
+                                        nextZoom,
+                                      );
+                                    }
+                                    setStateDialog(() {
+                                      _currentMapZoom = nextZoom;
+                                    });
+                                    setState(() {
+                                      _currentMapZoom = nextZoom;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: _isDarkMode
+                                          ? Colors.white10
+                                          : Colors.black
+                                              .withValues(alpha: 0.06),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.minus,
+                                      color: _darkText,
+                                      size: 18,
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -1995,39 +2031,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMapLayerButton({
+  Widget _buildInteractiveMapButton({
     required IconData icon,
-    required String label,
     required String type,
-    required StateSetter setStateDialog,
+    required bool isSelected,
+    required VoidCallback onTap,
   }) {
-    final bool isSelected = _mapLayerType == type;
-    return Tooltip(
-      message: label,
-      child: PressableCard(
-        onTap: () {
-          setStateDialog(() {
-            _mapLayerType = type;
-          });
-          setState(() {
-            _mapLayerType = type;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? _purple
-                : (_isDarkMode
-                    ? Colors.white10
-                    : Colors.black.withValues(alpha: 0.06)),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: isSelected ? Colors.white : _darkText,
-            size: 18,
-          ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? _purple
+              : (_isDarkMode
+                  ? Colors.white10
+                  : Colors.black.withValues(alpha: 0.06)),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: isSelected ? Colors.white : _darkText,
+          size: 19,
         ),
       ),
     );
@@ -2617,7 +2643,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return kurdishDays[date.weekday - 1];
   }
 
-  /// هێڵکاری کەشوهەوا بە قەبارەی نوسین و ئایکۆنی گەورەکراو
   Widget _buildWeatherChartCard(WeatherModel data) {
     final int currentHour = DateTime.now().hour;
     final bool isCurrentlyDay =
@@ -3729,7 +3754,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// پەنجەرەی پێشکەوتووی بومەلەرزە بە پڕاوپڕی شاشە بۆ قارەی ئاسیا
   void _showEarthquakeReportDialog(BuildContext context) {
     String earthquakeSearchQuery = '';
     EarthquakeModel? selectedEarthquake;
