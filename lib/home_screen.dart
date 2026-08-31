@@ -97,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   late Future<WeatherModel> _weatherData;
   late Future<List<EarthquakeModel>> _earthquakeData;
+  late Future<Map<String, dynamic>?> _airQualityFuture;
 
   bool _isLocationLoading = false;
   bool _isDarkMode = false;
@@ -216,6 +217,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
+    _airQualityFuture = _fetchAirQualityData(_latitude, _longitude);
     _earthquakeData = _fetchLiveAsiaEarthquakes();
     _fetchElevation(_latitude, _longitude);
     _fetchLiveRadarTimestamp();
@@ -224,6 +226,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (mounted) {
         setState(() {
           _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
+          _airQualityFuture = _fetchAirQualityData(_latitude, _longitude);
         });
       }
     });
@@ -581,6 +584,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (mounted) {
       setState(() {
         _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
+        _airQualityFuture = _fetchAirQualityData(_latitude, _longitude);
       });
       _fetchElevation(_latitude, _longitude);
     }
@@ -608,11 +612,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
   }
 
-  /// وەرگرتنی داتای ڕاستەقینە و زیندووی وێستگە فەرمییەکان بە پێوەرەکانی US AQI
+  /// وەرگرتنی داتای ڕاستەقینە و نوێکراوەی کوالێتی هەوا بۆ هەر شوێنێکی دیاریکراو
   Future<Map<String, dynamic>?> _fetchAirQualityData(
     double lat,
     double lon,
   ) async {
+    try {
+      final url = Uri.parse(
+        'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&timezone=auto',
+      );
+      final response = await http.get(url).timeout(const Duration(seconds: 6));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data != null && data['current'] != null) {
+          return data['current'] as Map<String, dynamic>;
+        }
+      }
+    } catch (_) {}
+
     try {
       final waqiUrl = Uri.parse(
         'https://api.waqi.info/feed/geo:$lat;$lon/?token=demo',
@@ -646,18 +663,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     } catch (_) {}
 
-    try {
-      final url = Uri.parse(
-        'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&timezone=auto',
-      );
-      final response = await http.get(url).timeout(const Duration(seconds: 6));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data != null && data['current'] != null) {
-          return data['current'] as Map<String, dynamic>;
-        }
-      }
-    } catch (_) {}
     return null;
   }
 
@@ -766,7 +771,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       boxShadow: _neuShadows,
                     ),
                     child: FutureBuilder<Map<String, dynamic>?>(
-                      future: _fetchAirQualityData(_latitude, _longitude),
+                      future: _airQualityFuture,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
@@ -783,9 +788,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'داتای کوالێتیی هەوا بەردەست نییە یان ئینتەرنێت پچڕاوە.',
+                                'داتای کوالێتیی هەوا بۆ $_cityName بەردەست نییە یان ئینتەرنێت پچڕاوە.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   color: _darkText,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -806,6 +812,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   child: const Text(
                                     'داخستن',
                                     style: TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -864,6 +871,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           'کوالێتی هەوا — $_cityName',
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
+                                            fontFamily: 'Rabar_033',
                                             fontSize: 17,
                                             fontWeight: FontWeight.w900,
                                             letterSpacing: -0.4,
@@ -874,6 +882,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         Text(
                                           'داتای ڕاستەوخۆی وێستگەکان (IQAir/US AQI)',
                                           style: TextStyle(
+                                            fontFamily: 'Rabar_033',
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
                                             color: _secondaryText,
@@ -910,6 +919,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           Text(
                                             '$usAqi',
                                             style: TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 32,
                                               fontWeight: FontWeight.w900,
                                               color: statusColor,
@@ -921,6 +931,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           Text(
                                             'AQI',
                                             style: TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 13,
                                               fontWeight: FontWeight.w800,
                                               color: _secondaryText,
@@ -953,6 +964,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             child: Text(
                                               statusInfo['status'] as String,
                                               style: TextStyle(
+                                                fontFamily: 'Rabar_033',
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w900,
                                                 color: statusColor,
@@ -968,6 +980,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         statusInfo['desc'] as String,
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
+                                          fontFamily: 'Rabar_033',
                                           fontSize: 12.5,
                                           height: 1.35,
                                           fontWeight: FontWeight.w600,
@@ -1092,6 +1105,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     title,
                     textAlign: TextAlign.center,
                     style: TextStyle(
+                      fontFamily: 'Rabar_033',
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
                       color: _secondaryText,
@@ -1112,6 +1126,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   value,
                   textAlign: TextAlign.center,
                   style: TextStyle(
+                    fontFamily: 'Rabar_033',
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
                     color: _darkText,
@@ -1122,6 +1137,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   unit,
                   textAlign: TextAlign.center,
                   style: TextStyle(
+                    fontFamily: 'Rabar_033',
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: _secondaryText,
@@ -1137,7 +1153,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildAirQualityImageBannerCard() {
     return FutureBuilder<Map<String, dynamic>?>(
-      future: _fetchAirQualityData(_latitude, _longitude),
+      future: _airQualityFuture,
       builder: (context, snapshot) {
         int aqi = 0;
         if (snapshot.hasData && snapshot.data != null) {
@@ -1184,6 +1200,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'کوالێتی هەوا: $_cityName',
                             style: TextStyle(
+                              fontFamily: 'Rabar_033',
                               fontSize: 14.5,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.3,
@@ -1207,6 +1224,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: Text(
                           statusName,
                           style: TextStyle(
+                            fontFamily: 'Rabar_033',
                             fontSize: 13,
                             fontWeight: FontWeight.w900,
                             color: statusColor,
@@ -1225,6 +1243,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'هەوای ئێستا: $statusName',
                             style: TextStyle(
+                              fontFamily: 'Rabar_033',
                               fontSize: 13.5,
                               fontWeight: FontWeight.w800,
                               color: statusColor,
@@ -1233,6 +1252,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'ڕێژە: $aqi AQI',
                             style: TextStyle(
+                              fontFamily: 'Rabar_033',
                               fontSize: 13.5,
                               fontWeight: FontWeight.w900,
                               color: statusColor,
@@ -1298,6 +1318,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           return Text(
                             '$val',
                             style: TextStyle(
+                              fontFamily: 'Rabar_033',
                               fontSize: 11,
                               fontWeight: FontWeight.w900,
                               color: aqi >= val ? _darkText : _secondaryText,
@@ -1312,6 +1333,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'خاوێن',
                             style: TextStyle(
+                              fontFamily: 'Rabar_033',
                               fontSize: 14.0,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF10B981),
@@ -1320,6 +1342,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'مامناوەند',
                             style: TextStyle(
+                              fontFamily: 'Rabar_033',
                               fontSize: 14.0,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFF59E0B),
@@ -1328,6 +1351,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'پیسبوو',
                             style: TextStyle(
+                              fontFamily: 'Rabar_033',
                               fontSize: 14.0,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFFEF4444),
@@ -1336,6 +1360,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Text(
                             'مەترسیدار',
                             style: TextStyle(
+                              fontFamily: 'Rabar_033',
                               fontSize: 14.0,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF881337),
@@ -1569,6 +1594,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
               style: TextStyle(
+                fontFamily: 'Rabar_033',
                 color: _darkText,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -1600,6 +1626,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               textAlign: TextAlign.right,
               textDirection: TextDirection.rtl,
               style: const TextStyle(
+                fontFamily: 'Rabar_033',
                 color: CupertinoColors.destructiveRed,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -1688,6 +1715,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 Text(
                                   'وردەکاری ئاستی دەریا و بەرزی',
                                   style: TextStyle(
+                                    fontFamily: 'Rabar_033',
                                     fontSize: 17,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: -0.4,
@@ -1825,6 +1853,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Text(
                   title,
                   style: TextStyle(
+                    fontFamily: 'Rabar_033',
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: _darkText,
@@ -1836,6 +1865,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               value,
               textDirection: TextDirection.ltr,
               style: TextStyle(
+                fontFamily: 'Rabar_033',
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
                 color: color,
@@ -1939,6 +1969,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         child: Text(
                                           _cityName,
                                           style: const TextStyle(
+                                            fontFamily: 'Rabar_033',
                                             color: Colors.white,
                                             fontSize: 11.5,
                                             fontWeight: FontWeight.bold,
@@ -1990,6 +2021,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     'GPS: $_cityName  •  ${_latitude.toStringAsFixed(4)}, ${_longitude.toStringAsFixed(4)}',
                                     textDirection: TextDirection.ltr,
                                     style: const TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       color: Colors.white,
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w800,
@@ -2263,6 +2295,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               Text(
                                 'گەڕان بۆ ناوچەکان',
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 18,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -0.4,
@@ -2283,6 +2316,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: TextField(
                               controller: searchController,
                               style: TextStyle(
+                                fontFamily: 'Rabar_033',
                                 color: _darkText,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 15,
@@ -2290,6 +2324,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               decoration: InputDecoration(
                                 hintText: 'ناوی شار یان وڵات بنووسە...',
                                 hintStyle: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   color: _secondaryText.withValues(alpha: 0.7),
                                   fontSize: 14,
                                 ),
@@ -2395,6 +2430,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             : 'دۆزینەوەی شوێنی ئێستام (GPS)',
                                         textAlign: TextAlign.right,
                                         style: TextStyle(
+                                          fontFamily: 'Rabar_033',
                                           fontSize: 14,
                                           fontWeight: FontWeight.w900,
                                           color: _purple,
@@ -2412,6 +2448,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               child: Text(
                                 'پاریزگاکانی کوردستان:',
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 13,
                                   fontWeight: FontWeight.w900,
                                   color: _secondaryText,
@@ -2448,6 +2485,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: Text(
                                   'هیچ ناوچەیەک نەدۆزرایەوە',
                                   style: TextStyle(
+                                    fontFamily: 'Rabar_033',
                                     color: _secondaryText,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 15,
@@ -2479,17 +2517,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   return PressableCard(
                                     onTap: () {
                                       Navigator.pop(dialogContext);
+                                      final double newLat = double.parse(
+                                        result['lat'].toString(),
+                                      );
+                                      final double newLon = double.parse(
+                                        result['lon'].toString(),
+                                      );
                                       setState(() {
                                         _isManualLocation = true;
-                                        _latitude = double.parse(
-                                          result['lat'].toString(),
-                                        );
-                                        _longitude = double.parse(
-                                          result['lon'].toString(),
-                                        );
+                                        _latitude = newLat;
+                                        _longitude = newLon;
                                         _cityName = shortName;
                                         _weatherData =
                                             _loadWeatherForCoordinates(
+                                          _latitude,
+                                          _longitude,
+                                        );
+                                        _airQualityFuture =
+                                            _fetchAirQualityData(
                                           _latitude,
                                           _longitude,
                                         );
@@ -2514,6 +2559,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       title: Text(
                                         shortName,
                                         style: TextStyle(
+                                          fontFamily: 'Rabar_033',
                                           fontWeight: FontWeight.w900,
                                           fontSize: 15,
                                           color: _darkText,
@@ -2522,6 +2568,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       subtitle: Text(
                                         fullName,
                                         style: TextStyle(
+                                          fontFamily: 'Rabar_033',
                                           fontWeight: FontWeight.w700,
                                           fontSize: 12,
                                           color: _secondaryText,
@@ -2545,6 +2592,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   child: Text(
                                     'داخستن',
                                     style: TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       color: _secondaryText,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w900,
@@ -2578,6 +2626,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _longitude = lon;
           _cityName = name;
           _weatherData = _loadWeatherForCoordinates(_latitude, _longitude);
+          _airQualityFuture = _fetchAirQualityData(_latitude, _longitude);
         });
         _fetchElevation(lat, lon);
       },
@@ -2594,6 +2643,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           name,
           textAlign: TextAlign.right,
           style: TextStyle(
+            fontFamily: 'Rabar_033',
             fontSize: 13,
             fontWeight: FontWeight.w900,
             color: _darkText,
@@ -2882,6 +2932,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         Text(
                           '${data.currentTemp.round()}°',
                           style: TextStyle(
+                            fontFamily: 'Rabar_033',
                             color: _darkText,
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
@@ -2898,6 +2949,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       currentCondition,
                       textAlign: TextAlign.center,
                       style: TextStyle(
+                        fontFamily: 'Rabar_033',
                         color: _darkText,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
@@ -2912,6 +2964,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       isCurrentlyDay ? 'ئێستا: ڕۆژە ☀️' : 'ئێستا: شەوە 🌙',
                       textAlign: TextAlign.right,
                       style: TextStyle(
+                        fontFamily: 'Rabar_033',
                         color: isCurrentlyDay
                             ? const Color(0xFFFF8A00)
                             : const Color(0xFF818CF8),
@@ -3075,6 +3128,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     Text(
                                       '${t.round()}°',
                                       style: TextStyle(
+                                        fontFamily: 'Rabar_033',
                                         color: isCurrentPoint
                                             ? const Color(0xFFFF8A00)
                                             : _darkText,
@@ -3121,6 +3175,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Text(
                       time,
                       style: TextStyle(
+                        fontFamily: 'Rabar_033',
                         color: _secondaryText,
                         fontSize: 11.5,
                         fontWeight: FontWeight.bold,
@@ -3136,6 +3191,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Text(
                       '${temp.round()}°',
                       style: TextStyle(
+                        fontFamily: 'Rabar_033',
                         color: _darkText,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w900,
@@ -3188,6 +3244,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Text(
           label,
           style: TextStyle(
+            fontFamily: 'Rabar_033',
             color: _secondaryText,
             fontSize: 13,
             fontWeight: FontWeight.w800,
@@ -3224,6 +3281,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           value,
           textDirection: TextDirection.ltr,
           style: TextStyle(
+            fontFamily: 'Rabar_033',
             color: _darkText,
             fontSize: 14,
             fontWeight: FontWeight.w900,
@@ -3302,6 +3360,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 '$_cityName • ڕاپۆرتی کەشوهەوا',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 18,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -0.4,
@@ -3313,6 +3372,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 'پێشبینی $totalDays ڕۆژی داهاتوو',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w700,
                                   color: _secondaryText,
@@ -3382,6 +3442,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 Text(
                                                   dayName,
                                                   style: TextStyle(
+                                                    fontFamily: 'Rabar_033',
                                                     fontSize: 16.5,
                                                     fontWeight: FontWeight.w900,
                                                     color: _darkText,
@@ -3390,6 +3451,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 Text(
                                                   date,
                                                   style: TextStyle(
+                                                    fontFamily: 'Rabar_033',
                                                     fontSize: 12.5,
                                                     fontWeight: FontWeight.w700,
                                                     color: _secondaryText,
@@ -3402,6 +3464,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         Text(
                                           _getWeatherDescription(weatherCode),
                                           style: TextStyle(
+                                            fontFamily: 'Rabar_033',
                                             fontSize: 14,
                                             fontWeight: FontWeight.w900,
                                             color: _purple,
@@ -3538,6 +3601,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 '$_cityName • پێشبینی باران و بەفر',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 18,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -0.4,
@@ -3549,6 +3613,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 'ڕاپۆرتی وردی $totalDays ڕۆژی داهاتوو',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w700,
                                   color: _secondaryText,
@@ -3601,6 +3666,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   Text(
                                     'کۆی گشتی پێشبینیکراوی ($totalDays ڕۆژ)',
                                     style: TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       fontSize: 16,
                                       fontWeight: FontWeight.w900,
                                       color: _darkText,
@@ -3632,6 +3698,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           Text(
                                             'کۆی باران',
                                             style: TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 13,
                                               fontWeight: FontWeight.w700,
                                               color: _secondaryText,
@@ -3641,6 +3708,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           Text(
                                             '${sumTotalRain.toStringAsFixed(1)} مم',
                                             style: const TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 18,
                                               fontWeight: FontWeight.w900,
                                               color: Colors.blueAccent,
@@ -3672,6 +3740,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           Text(
                                             'کۆی بەفر',
                                             style: TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 13,
                                               fontWeight: FontWeight.w700,
                                               color: _secondaryText,
@@ -3681,6 +3750,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           Text(
                                             '${sumTotalSnow.toStringAsFixed(1)} سم',
                                             style: TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 18,
                                               fontWeight: FontWeight.w900,
                                               color: isDark
@@ -3758,6 +3828,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             Text(
                                               dayName,
                                               style: TextStyle(
+                                                fontFamily: 'Rabar_033',
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w900,
                                                 color: _darkText,
@@ -3767,6 +3838,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             Text(
                                               date,
                                               style: TextStyle(
+                                                fontFamily: 'Rabar_033',
                                                 fontSize: 12.5,
                                                 fontWeight: FontWeight.w700,
                                                 color: _secondaryText,
@@ -3792,6 +3864,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           child: Text(
                                             '$rainProb٪',
                                             style: const TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 13,
                                               fontWeight: FontWeight.w900,
                                               color: Colors.blueAccent,
@@ -3809,6 +3882,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 Text(
                                                   '$rainAmount مم',
                                                   style: TextStyle(
+                                                    fontFamily: 'Rabar_033',
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w900,
                                                     color: _darkText,
@@ -3829,6 +3903,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 Text(
                                                   '$snowAmount سم',
                                                   style: TextStyle(
+                                                    fontFamily: 'Rabar_033',
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w900,
                                                     color: _darkText,
@@ -3882,6 +3957,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Text(
               title,
               style: TextStyle(
+                fontFamily: 'Rabar_033',
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: _secondaryText,
@@ -3890,6 +3966,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Text(
               value,
               style: TextStyle(
+                fontFamily: 'Rabar_033',
                 fontSize: 14.5,
                 fontWeight: FontWeight.w900,
                 color: _darkText,
@@ -3982,6 +4059,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         : 'تۆماری بومەلەرزە (٤٨ کاتژمێر)',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       fontSize: 17,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: -0.4,
@@ -3997,6 +4075,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         : 'تەواوی ڕوودانەکان بە کات، بەروار و گوڕ',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                       color: _secondaryText,
@@ -4029,6 +4108,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               child: TextField(
                                 controller: searchEqController,
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   color: _darkText,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
@@ -4037,6 +4117,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   hintText:
                                       'گەڕان بەناوی وڵات یان شار (عێراق، ژاپۆن، ئێران، چین)...',
                                   hintStyle: TextStyle(
+                                    fontFamily: 'Rabar_033',
                                     color:
                                         _secondaryText.withValues(alpha: 0.7),
                                     fontSize: 13,
@@ -4234,6 +4315,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     child: Text(
                                                       eq.mag.toStringAsFixed(1),
                                                       style: const TextStyle(
+                                                        fontFamily: 'Rabar_033',
                                                         color: Colors.white,
                                                         fontSize: 9.5,
                                                         fontWeight:
@@ -4288,6 +4370,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: Text(
                                   'هیچ ڕووداوێکی بومەلەرزە لە ٢ ڕۆژی ڕابردوودا نەدۆزرایەوە.',
                                   style: TextStyle(
+                                    fontFamily: 'Rabar_033',
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
                                     color: _darkText,
@@ -4361,6 +4444,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               child: Text(
                                                 shortPlaceName,
                                                 style: TextStyle(
+                                                  fontFamily: 'Rabar_033',
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w900,
                                                   color: _darkText,
@@ -4391,6 +4475,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               child: Text(
                                                 '${eq.mag.toStringAsFixed(1)} ڕێختەر',
                                                 style: const TextStyle(
+                                                  fontFamily: 'Rabar_033',
                                                   fontSize: 13.5,
                                                   fontWeight: FontWeight.w900,
                                                   color: Colors.white,
@@ -4420,6 +4505,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 Text(
                                                   '${distance.round()} کم دوورە',
                                                   style: TextStyle(
+                                                    fontFamily: 'Rabar_033',
                                                     fontSize: 12.5,
                                                     fontWeight: FontWeight.w900,
                                                     color: _darkText,
@@ -4439,6 +4525,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 Text(
                                                   'قووڵی: ${eq.depth.toStringAsFixed(1)} کم',
                                                   style: const TextStyle(
+                                                    fontFamily: 'Rabar_033',
                                                     fontSize: 12.5,
                                                     fontWeight: FontWeight.w900,
                                                     color: Colors.redAccent,
@@ -4449,6 +4536,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             Text(
                                               kurdishTimeAgo,
                                               style: TextStyle(
+                                                fontFamily: 'Rabar_033',
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w800,
                                                 color: _secondaryText,
@@ -4468,6 +4556,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             Text(
                                               fullKurdishTime,
                                               style: const TextStyle(
+                                                fontFamily: 'Rabar_033',
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w900,
                                                 color: Colors.blueAccent,
@@ -4539,6 +4628,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
+                            fontFamily: 'Rabar_033',
                             fontSize: 15.5,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.3,
@@ -4551,6 +4641,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
+                            fontFamily: 'Rabar_033',
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: _secondaryText,
@@ -4567,6 +4658,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               value,
               textDirection: TextDirection.ltr,
               style: TextStyle(
+                fontFamily: 'Rabar_033',
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.5,
@@ -4721,6 +4813,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 '$_cityName • $dayName',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 16.5,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -0.4,
@@ -4732,6 +4825,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 date,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w700,
                                   color: _secondaryText,
@@ -4788,6 +4882,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               Text(
                                 '${maxT?.round() ?? 0}°',
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 40,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -1.5,
@@ -4799,6 +4894,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               Text(
                                 _getWeatherDescription(weatherCode),
                                 style: TextStyle(
+                                  fontFamily: 'Rabar_033',
                                   fontSize: 15,
                                   fontWeight: FontWeight.w900,
                                   color: _purple,
@@ -4816,6 +4912,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   Text(
                                     ' بەرزترین: ${maxT?.round() ?? 0}°  ',
                                     style: TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
                                       color: _secondaryText,
@@ -4834,6 +4931,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   Text(
                                     ' نزمترین: ${minT?.round() ?? 0}°',
                                     style: TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
                                       color: _secondaryText,
@@ -4869,6 +4967,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   Text(
                                     'پێشبینی کاتژمێر بە کاتژمێر',
                                     style: TextStyle(
+                                      fontFamily: 'Rabar_033',
                                       fontSize: 13,
                                       fontWeight: FontWeight.w900,
                                       color: _secondaryText,
@@ -4943,6 +5042,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             formattedTime12,
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 11,
                                               fontWeight: FontWeight.w800,
                                               color: _secondaryText,
@@ -4957,6 +5057,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             '${temp.round()}°',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontSize: 14,
                                               fontWeight: FontWeight.w900,
                                               color: _darkText,
@@ -5084,6 +5185,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Text(
                   title,
                   style: TextStyle(
+                    fontFamily: 'Rabar_033',
                     fontSize: 11.5,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.2,
@@ -5125,6 +5227,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'هێڵی ئینتەرنێتت نییە یان زۆر خاوە!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
+                  fontFamily: 'Rabar_033',
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
                   color: _darkText,
@@ -5135,6 +5238,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'تکایە پەیوەندی هێڵی ئینتەرنێتەکەت (Wi-Fi یان داتا) بپشکنە و دووبارە تاقی بکەرەوە.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
+                  fontFamily: 'Rabar_033',
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   height: 1.4,
@@ -5146,6 +5250,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 onTap: () {
                   setState(() {
                     _weatherData = _loadWeatherForCoordinates(
+                      _latitude,
+                      _longitude,
+                    );
+                    _airQualityFuture = _fetchAirQualityData(
                       _latitude,
                       _longitude,
                     );
@@ -5175,6 +5283,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Text(
                         'دووبارە هەوڵبدەرەوە',
                         style: TextStyle(
+                          fontFamily: 'Rabar_033',
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
@@ -5251,6 +5360,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const Text(
                     'کەشوهەوای ژیر',
                     style: TextStyle(
+                      fontFamily: 'Rabar_033',
                       fontSize: 25,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
@@ -5373,6 +5483,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             _cityName,
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
+                                              fontFamily: 'Rabar_033',
                                               fontWeight: FontWeight.w900,
                                               fontSize: 16,
                                               letterSpacing: -0.3,
@@ -5613,6 +5724,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   Text(
                                                     dayName,
                                                     style: TextStyle(
+                                                      fontFamily: 'Rabar_033',
                                                       fontSize: 16,
                                                       fontWeight: i == 0
                                                           ? FontWeight.w900
@@ -5624,6 +5736,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   Text(
                                                     date,
                                                     style: TextStyle(
+                                                      fontFamily: 'Rabar_033',
                                                       fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w700,
@@ -5672,6 +5785,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     Text(
                                                       '$rainProb٪',
                                                       style: const TextStyle(
+                                                        fontFamily: 'Rabar_033',
                                                         fontSize: 12.5,
                                                         fontWeight:
                                                             FontWeight.w900,
@@ -5692,6 +5806,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 textDirection:
                                                     TextDirection.ltr,
                                                 style: TextStyle(
+                                                  fontFamily: 'Rabar_033',
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w800,
                                                   color: _secondaryText,
@@ -5811,6 +5926,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 textDirection:
                                                     TextDirection.ltr,
                                                 style: TextStyle(
+                                                  fontFamily: 'Rabar_033',
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w900,
                                                   color: _darkText,
@@ -5862,6 +5978,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: Text(
                               '     programmer: Zheer T Mastakany ©2026  ',
                               style: TextStyle(
+                                fontFamily: 'Rabar_033',
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.2,
@@ -6018,6 +6135,7 @@ class _WeatherAlertCardState extends State<_WeatherAlertCard>
                         widget.title,
                         textAlign: TextAlign.right,
                         style: TextStyle(
+                          fontFamily: 'Rabar_033',
                           color: widget.isDarkMode
                               ? Colors.white
                               : const Color(0xFF0F172A),
@@ -6032,6 +6150,7 @@ class _WeatherAlertCardState extends State<_WeatherAlertCard>
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          fontFamily: 'Rabar_033',
                           color: secondary,
                           fontSize: 12.5,
                           height: 1.35,
