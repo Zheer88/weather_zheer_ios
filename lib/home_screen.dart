@@ -2966,7 +2966,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       style: TextStyle(
                         fontFamily: 'Rabar_033',
                         color: isCurrentlyDay
-                            ? const Color(0xFFFF8A00)
+                            ? const Color.fromARGB(255, 30, 54, 160)
                             : const Color(0xFF818CF8),
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
@@ -3213,7 +3213,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildWeatherInfoBadge(
-                    label: 'خۆرهەڵات',
+                    label: 'خۆرهەڵاتن',
                     customIconPath: 'assets/images/sunrise.png',
                     value: sunTimes['sunrise'] ?? '05:42 AM',
                   ),
