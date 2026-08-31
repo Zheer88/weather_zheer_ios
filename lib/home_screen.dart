@@ -612,7 +612,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
   }
 
-  /// وەرگرتنی داتای ڕاستەقینە و نوێکراوەی کوالێتی هەوا بۆ هەر شوێنێکی دیاریکراو
   Future<Map<String, dynamic>?> _fetchAirQualityData(
     double lat,
     double lon,
@@ -700,7 +699,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  /// پۆلێنکردنی دروست و تەواو بەپێی ٤ ئاستە سەرەکییەکە
   Map<String, dynamic> _getAqiStatus(int aqi) {
     if (aqi <= 50) {
       return {
@@ -3210,18 +3208,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Directionality(
               textDirection: TextDirection.rtl,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildWeatherInfoBadge(
-                    label: 'خۆرهەڵاتن',
-                    customIconPath: 'assets/images/sunrise.png',
-                    value: sunTimes['sunrise'] ?? '05:42 AM',
+                  Expanded(
+                    child: _buildWeatherInfoBadge(
+                      label: 'خۆرهەڵاتن',
+                      customIconPath: 'assets/images/sunrise.png',
+                      value: sunTimes['sunrise'] ?? '05:42 AM',
+                    ),
                   ),
-                  const SizedBox(width: 24),
-                  _buildWeatherInfoBadge(
-                    label: 'خۆرئاوابوون',
-                    customIconPath: 'assets/images/sunset.png',
-                    value: sunTimes['sunset'] ?? '07:12 PM',
+                  Container(
+                    height: 20,
+                    width: 1,
+                    color: _iosGlassBorder,
+                  ),
+                  Expanded(
+                    child: _buildWeatherInfoBadge(
+                      label: 'خۆرئاوابوون',
+                      customIconPath: 'assets/images/sunset.png',
+                      value: sunTimes['sunset'] ?? '07:12 PM',
+                    ),
                   ),
                 ],
               ),
@@ -3238,19 +3243,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required String value,
   }) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Rabar_033',
-            color: _secondaryText,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(width: 8),
         AnimatedBuilder(
           animation: _floatingIconAnimation,
           builder: (context, child) {
@@ -3261,8 +3255,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
           child: Image.asset(
             customIconPath,
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return Icon(
@@ -3270,21 +3264,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         customIconPath.contains('hhhh')
                     ? CupertinoIcons.sunrise_fill
                     : CupertinoIcons.sunset_fill,
-                size: 24,
+                size: 22,
                 color: const Color(0xFFFBBF24),
               );
             },
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          value,
-          textDirection: TextDirection.ltr,
-          style: TextStyle(
-            fontFamily: 'Rabar_033',
-            color: _darkText,
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
+        const SizedBox(width: 6),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Rabar_033',
+                  color: _secondaryText,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                value,
+                textDirection: TextDirection.ltr,
+                style: TextStyle(
+                  fontFamily: 'Rabar_033',
+                  color: _darkText,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w900,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ],
