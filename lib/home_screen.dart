@@ -14,6 +14,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:web/web.dart' as web;
+import 'weather_notification_service.dart';
 
 import 'earthquake_service.dart';
 import 'location_weather_service.dart';
@@ -170,6 +171,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Timer? _refreshTimer;
 
+  // ئاگادارییەکانی کەشوهەوا: تەنها کاتێک باران دەست پێدەکات
+  // یان گەرمی بۆ یەکەم جار دەگاتە ٣٩°، نیشان دەدرێت.
+  String? _lastWeatherAlertCategory;
+  OverlayEntry? _weatherAlertEntry;
+  Timer? _weatherAlertTimer;
+
+  Future<void> _initializeWeatherNotifications() async {
+    if (kIsWeb) return;
+
+    final bool isMobile = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+
+    if (!isMobile) return;
+
+    try {
+      final service = WeatherNotificationService.instance;
+      await service.initialize();
+      await service.requestPermissions();
+    } catch (_) {
+      // Notification permission/initialization must never stop the weather UI.
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -228,6 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeWeatherNotifications();
       _initLiveLocation();
       _startLocationStream();
     });
@@ -238,6 +263,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _splashTimer?.cancel();
     _splashAnimController.dispose();
     _refreshTimer?.cancel();
+    _weatherAlertTimer?.cancel();
+    _removeWeatherAlert();
     _pulseController.dispose();
     _positionStreamSubscription?.cancel();
     super.dispose();
@@ -332,6 +359,185 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
     } catch (_) {}
+  }
+
+  /// کۆدی کەشوهەوای ئێستا بە شێوەیەکی باوەڕپێکراو وەردەگرێت.
+  /// ئەگەر current ـەکە کۆدی هەوا نەدابوو، لە hourly نزیکترین کات وەردەگیرێت.
+  int _getCurrentWeatherCode(WeatherModel data) {
+    if (data.currentWeatherCode >= 0) {
+      return data.currentWeatherCode;
+    }
+
+    if (data.hourlyWeatherCodes.isEmpty) {
+      return 0;
+    }
+
+    final int currentHour = DateTime.now().hour;
+    final int index = currentHour.clamp(0, data.hourlyWeatherCodes.length - 1);
+    return data.hourlyWeatherCodes[index];
+  }
+
+  bool _isRainWeatherCode(int code) {
+    return (code >= 51 && code <= 67) ||
+        (code >= 80 && code <= 82) ||
+        (code >= 95 && code <= 99);
+  }
+
+  /// ئاگادارییەکی سادە، جوان و RTL بۆ ئەندرۆید و iOS.
+  ///
+  /// دۆخەکان:
+  /// 🌧️ باران
+  /// 🔥 گەرمای ٣٩° یان زیاتر
+  /// ❄️ ساردی ١٥° یان کەمتر
+  ///
+  /// کاتێک ئەپەکە کراوە، Overlay نیشان دەدرێت و دوای ٤ چرکە خۆکارانە
+  /// لادەچێت. هەمان کات Local Notification ـیش نێردراوە بۆ ئەوەی
+  /// notification ـەکە لە سیستەمی مۆبایلدا تۆمار بێت.
+  void _checkWeatherAlert(WeatherModel data) {
+    if (!mounted) return;
+
+    final int weatherCode = _getCurrentWeatherCode(data);
+    final bool isRaining = _isRainWeatherCode(weatherCode);
+    final bool isExtremeHeat = data.currentTemp >= 39.0;
+    final bool isCold = data.currentTemp <= 15.0;
+
+    String? category;
+    String title;
+    String message;
+    IconData icon;
+    Color accent;
+
+    if (isRaining) {
+      category = 'rain';
+      title = 'ئاگاداریی کەشوهەوا';
+      message = 'لە ئێستادا باران دەبارێت لە $_cityName.';
+      icon = CupertinoIcons.cloud_rain_fill;
+      accent = const Color(0xFF38BDF8);
+    } else if (isExtremeHeat) {
+      category = 'heat';
+      title = 'ئاگاداریی گەرما';
+      message =
+          'پلەی گەرمی گەیشتە ٣٩° لە $_cityName. ئاگاداری لە گەرمای زۆر بە.';
+      icon = CupertinoIcons.sun_max_fill;
+      accent = const Color(0xFFFF9F0A);
+    } else if (isCold) {
+      category = 'cold';
+      title = 'ئاگاداریی ساردی';
+      message = 'پلەی گەرمی گەیشتە ١٥° لە $_cityName. خۆت لە ساردی بپارێزە.';
+      icon = CupertinoIcons.snow;
+      accent = const Color(0xFF60A5FA);
+    } else {
+      // کاتێک هیچ ئاگادارییەکی چالاک نییە، دۆخەکە reset دەکەین.
+      _lastWeatherAlertCategory = null;
+      return;
+    }
+
+    // بۆ هەر دۆخێک تەنها یەک جار لە هەمان دۆخی کەشوهەوا ئاگاداری دەدەین.
+    if (_lastWeatherAlertCategory == category || _weatherAlertEntry != null) {
+      return;
+    }
+
+    _lastWeatherAlertCategory = category;
+
+    // هەموو کاری notification و overlay لە دوای build ئەنجام دەدرێت،
+    // بۆ ئەوەی هیچ side-effect ـێک لە ناو build ڕوونەدات.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      try {
+        final notificationService = WeatherNotificationService.instance;
+        await notificationService.initialize();
+
+        if (category == 'rain') {
+          await notificationService.showRainAlert(
+            locationName: _cityName,
+          );
+        } else if (category == 'heat') {
+          await notificationService.showHotAlert(
+            temperature: data.currentTemp,
+            locationName: _cityName,
+          );
+        } else if (category == 'cold') {
+          await notificationService.showColdAlert(
+            temperature: data.currentTemp,
+            locationName: _cityName,
+          );
+        }
+      } catch (_) {
+        // Notification نابێتە هۆی شکانی UI ـی ئەپ.
+      }
+
+      if (!mounted) return;
+
+      _showWeatherAlert(
+        title: title,
+        message: message,
+        icon: icon,
+        accent: accent,
+      );
+    });
+  }
+
+  void _showWeatherAlert({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color accent,
+  }) {
+    if (!mounted || _weatherAlertEntry != null) return;
+
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+
+    _weatherAlertTimer?.cancel();
+
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (overlayContext) {
+        final media = MediaQuery.of(overlayContext);
+        final double top = media.padding.top + 12;
+
+        return Positioned(
+          top: top,
+          left: 14,
+          right: 14,
+          child: IgnorePointer(
+            ignoring: true,
+            child: SafeArea(
+              top: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: _WeatherAlertCard(
+                    title: title,
+                    message: message,
+                    icon: icon,
+                    accent: accent,
+                    isDarkMode: _isDarkMode,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    _weatherAlertEntry = entry;
+    overlay.insert(entry);
+
+    _weatherAlertTimer = Timer(const Duration(seconds: 4), () {
+      _removeWeatherAlert();
+    });
+  }
+
+  void _removeWeatherAlert() {
+    _weatherAlertTimer?.cancel();
+    _weatherAlertTimer = null;
+
+    final entry = _weatherAlertEntry;
+    _weatherAlertEntry = null;
+    entry?.remove();
   }
 
   void _startLocationStream() {
@@ -1165,7 +1371,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     text = text.replaceAll('Dukan', 'دوکان');
     text = text.replaceAll('Zakho', 'زاخۆ');
     text = text.replaceAll('Mosul', 'موسڵ');
-    text = text.replaceAll('Baghdad', 'بەغدا');
     text = text.replaceAll('Basra', 'بەسرە');
     text = text.replaceAll('Tehran', 'تاران');
     text = text.replaceAll('Kermanshah', 'کرماشان');
@@ -1618,14 +1823,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// نەخشەی شێوازی Nullschool Earth بە شێوەیەکی ستاندارد و کارا
+  /// نەخشەی زیندووی پێشکەوتووی جووڵەی با و هەورەکان (Windy Layer) بە دیاریکردنی GPS
   Widget _buildLiveWindAndCloudSimulationView(double zoomLevel) {
-    final int zoomInt = (zoomLevel * 160).round().clamp(600, 3000);
+    final int zoomInt = zoomLevel.round().clamp(4, 11);
     final String viewType =
-        'earth-wind-clouds-${_latitude.toStringAsFixed(2)}-${_longitude.toStringAsFixed(2)}-$zoomInt';
+        'windy-live-map-${_latitude.toStringAsFixed(4)}-${_longitude.toStringAsFixed(4)}-$zoomInt';
 
     final String embedUrl =
-        'https://earth.nullschool.net/#current/wind/surface/level/overlay=relative_humidity/orthographic=$_longitude,$_latitude,$zoomInt/loc=$_longitude,$_latitude';
+        'https://embed.windy.com/embed2.html?lat=$_latitude&lon=$_longitude&detailLat=$_latitude&detailLon=$_longitude&width=650&height=450&zoom=$zoomInt&level=surface&overlay=wind&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=true&metricWind=default&metricTemp=default&radarRange=-1';
 
     if (kIsWeb) {
       // ignore: undefined_prefixed_name
@@ -1637,6 +1842,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           iframe.style.border = 'none';
           iframe.style.width = '100%';
           iframe.style.height = '100%';
+          // Flutter Web platform views can swallow pointer events from
+          // Flutter widgets painted above an iframe.  The map toolbar below
+          // is a Flutter toolbar, so let Flutter receive the pointer events.
+          // Zoom/layer changes are handled by the Flutter controls themselves.
+          iframe.style.pointerEvents = 'none';
           iframe.allow = 'geolocation';
           return iframe;
         },
@@ -1674,8 +1884,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           markers: [
             Marker(
               point: LatLng(_latitude, _longitude),
-              width: 85,
-              height: 70,
+              width: 90,
+              height: 75,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -5154,6 +5364,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 }
 
                 final WeatherModel data = snapshot.data!;
+
+                // پشکنینی دۆخی ئێستا: باران یان گەرمی ٣٩°.
+                // FutureBuilder دەکرێت چەند جار build بکرێت، بەڵام
+                // _checkWeatherAlert ئاگادارییەکە دووبارە نیشان نادات.
+                _checkWeatherAlert(data);
+
                 final int forecastDays = min(
                   6,
                   min(
@@ -5726,8 +5942,175 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
+class _WeatherAlertCard extends StatefulWidget {
+  final String title;
+  final String message;
+  final IconData icon;
+  final Color accent;
+  final bool isDarkMode;
+
+  const _WeatherAlertCard({
+    required this.title,
+    required this.message,
+    required this.icon,
+    required this.accent,
+    required this.isDarkMode,
+  });
+
+  @override
+  State<_WeatherAlertCard> createState() => _WeatherAlertCardState();
+}
+
+class _WeatherAlertCardState extends State<_WeatherAlertCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fade;
+  late final Animation<double> _slide;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+
+    _fade = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+
+    _slide = Tween<double>(begin: -18.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _scale = Tween<double>(begin: 0.96, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color background = widget.isDarkMode
+        ? const Color(0xFF111827).withValues(alpha: 0.94)
+        : Colors.white.withValues(alpha: 0.96);
+
+    final Color secondary =
+        widget.isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
+
+    return FadeTransition(
+      opacity: _fade,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, _slide.value),
+            child: Transform.scale(
+              scale: _scale.value,
+              child: child,
+            ),
+          );
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: widget.accent.withValues(alpha: 0.34),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: widget.accent.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: widget.accent.withValues(alpha: 0.24),
+                    ),
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.accent,
+                    size: 23,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        widget.title,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: widget.isDarkMode
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.message,
+                        textAlign: TextAlign.right,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: secondary,
+                          fontSize: 12.5,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class WeatherModel {
   final double currentTemp;
+  final int currentWeatherCode;
   final int isDay;
   final List<String> times;
   final List<double> maxTemps;
@@ -5746,6 +6129,7 @@ class WeatherModel {
 
   WeatherModel({
     required this.currentTemp,
+    required this.currentWeatherCode,
     required this.isDay,
     required this.times,
     required this.maxTemps,
@@ -5789,6 +6173,10 @@ class WeatherModel {
                   currentWeather['temperature'] as num?)
               ?.toDouble() ??
           0.0,
+      currentWeatherCode: (currentWeather['weather_code'] ??
+                  currentWeather['weathercode'] as num?)
+              ?.toInt() ??
+          -1,
       isDay: (currentWeather['is_day'] as num?)?.toInt() ?? 1,
       times: parseStringList(daily['time']),
       maxTemps: parseDoubleList(daily['temperature_2m_max']),

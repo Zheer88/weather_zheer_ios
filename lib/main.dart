@@ -1,11 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'home_screen.dart';
 
-void main() {
+import 'home_screen.dart';
+import 'weather_background_service.dart';
+import 'weather_notification_service.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ڕێکخستنی شریتی سەرەوەی مۆبایل بە ڕوونی (تەواو پڕاوپڕی شاشە)
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -14,6 +17,21 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
+
+  // Local notifications + Workmanager are intentionally disabled on Web.
+  // The web implementation requires a separately compiled background.dart.js
+  // worker, which this project does not use.
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS)) {
+    try {
+      await WeatherNotificationService.instance.initialize();
+      await WeatherBackgroundService.instance.initialize();
+      await WeatherBackgroundService.instance.registerPeriodicTask();
+    } catch (e) {
+      debugPrint('Background/notification initialization skipped: $e');
+    }
+  }
 
   runApp(const WeatherZheerApp());
 }
